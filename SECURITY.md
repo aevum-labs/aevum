@@ -14,7 +14,7 @@ Once 1.0 is released, only the most recent minor version receives security fixes
 
 Report vulnerabilities privately by emailing:
 
-**security@aevum.dev**
+**security@aevum.build**
 
 Include:
 - A description of the vulnerability

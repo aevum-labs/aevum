@@ -15,6 +15,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## Documentation
 
+- [Website](https://aevum.build)
 - [Architecture and conventions](CLAUDE.md)
 - [Non-Goals](NON-GOALS.md)
 - [Contributing](CONTRIBUTING.md)

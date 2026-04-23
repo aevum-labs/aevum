@@ -18,7 +18,7 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://aevum.dev"
+Homepage = "https://aevum.build"
 Repository = "https://github.com/aevum-labs/aevum"
 Issues = "https://github.com/aevum-labs/aevum/issues"
 

@@ -75,6 +75,8 @@ is mandatory for changes to `aevum-core` and cannot be bypassed.
 - **No bare exceptions.** Catch specific exception types. Use the exception
   hierarchy in `aevum.core.exceptions`.
 - **Naming conventions** are in `CLAUDE.md` Section 1. They are not negotiable.
+- **Tests are required.** New functionality MUST include tests in the
+  automated test suite before the PR will be merged.
 
 ## Reporting Bugs
 
