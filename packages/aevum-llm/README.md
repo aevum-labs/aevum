@@ -5,4 +5,4 @@ Every LLM call is recorded in the episodic ledger.
 
 > **Status:** Pre-release (Phase 0 — skeleton only)
 
-See [aevum.dev](https://aevum.dev) for documentation.
+See [aevum.build](https://aevum.build) for documentation.
