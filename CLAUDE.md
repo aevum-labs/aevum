@@ -41,7 +41,7 @@ document and not in a phase briefing, ask rather than infer.
 - Conformance repo: github.com/aevum-labs/aevum-conformance
 - Domains repo: github.com/aevum-labs/aevum-domains
 - Primary PyPI package: aevum-core
-- Project domain: aevum.dev
+- Project domain: aevum.build
 
 ---
 
