@@ -1,0 +1,24 @@
+name: Conformance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/aevum-core/**"
+
+jobs:
+  conformance:
+    name: Conformance suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Phase 0.4 placeholder — the conformance suite arrives in Phase 2.
+      # This job exists so branch protection can require it.
+      # DO NOT remove or rename this job.
+      # When Phase 2 delivers aevum-labs/aevum-conformance, replace the
+      # step below with the real conformance runner action.
+      - name: Placeholder (Phase 2 will replace this)
+        run: |
+          echo "Conformance suite not yet available (Phase 2)."
+          echo "This placeholder exits 0 so branch protection passes."
+          exit 0
