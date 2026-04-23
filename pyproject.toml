@@ -1,0 +1,33 @@
+# Aevum monorepo — uv virtual workspace root
+# This file is a workspace coordinator only — it has no project section.
+# Individual packages live under packages/ with their own pyproject.toml.
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "hypothesis>=6.100",
+    "mypy>=1.10",
+    "ruff>=0.9",
+    "rich>=13.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["packages", "tests"]
+asyncio_mode = "auto"
+addopts = "--tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I", "TCH", "ANN"]
+ignore = ["ANN401"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
