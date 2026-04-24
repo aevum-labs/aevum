@@ -1,13 +1,13 @@
 [project]
 name = "aevum-core"
-version = "0.0.1"
+version = "0.1.0"
 description = "Aevum — the sealed movement. Replay-first, policy-governed context kernel."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 keywords = ["ai", "governance", "provenance", "audit", "context", "replay"]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.11",
@@ -15,7 +15,11 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
 ]
-dependencies = []
+dependencies = [
+    "pydantic>=2.0,<3.0",
+    "cryptography>=42.0",
+    "httpx>=0.27",
+]
 
 [project.urls]
 Homepage = "https://aevum.build"
@@ -28,3 +32,26 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aevum"]
+
+[tool.uv.sources]
+# aevum-core has no workspace dependencies — it IS the foundation
+
+[tool.mypy]
+mypy_path = "src"
+strict = true
+python_version = "3.11"
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I", "ANN"]
+ignore = ["ANN401"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--tb=short"
+pythonpath = ["src", "tests"]
