@@ -1,0 +1,132 @@
+"""Behavioral tests for all five functions via the Engine."""
+
+from __future__ import annotations
+
+from aevum.core.consent.models import ConsentGrant
+from aevum.core.engine import Engine
+
+
+def _grant(subject_id: str = "s1", ops: list[str] | None = None) -> ConsentGrant:
+    return ConsentGrant(grant_id="g1", subject_id=subject_id, grantee_id="actor",
+                        operations=ops or ["ingest", "query", "replay", "export"],
+                        purpose="unit-testing", classification_max=3,
+                        granted_at="2026-01-01T00:00:00Z", expires_at="2030-01-01T00:00:00Z")
+
+
+def _prov() -> dict:  # type: ignore[type-arg]
+    return {"source_id": "src", "chain_of_custody": ["src"], "classification": 0}
+
+
+def test_commit_ok() -> None:
+    e = Engine()
+    r = e.commit(event_type="app.test", payload={"k": "v"}, actor="actor")
+    assert r.status == "ok"
+    assert r.audit_id.startswith("urn:aevum:audit:")
+
+
+def test_commit_idempotency() -> None:
+    e = Engine()
+    r1 = e.commit(event_type="app.t", payload={}, actor="a", idempotency_key="k1")
+    r2 = e.commit(event_type="app.t", payload={}, actor="a", idempotency_key="k1")
+    assert r1.audit_id == r2.audit_id
+    assert e.ledger_count() == 1
+
+
+def test_commit_reserved_prefix() -> None:
+    e = Engine()
+    r = e.commit(event_type="ingest.fake", payload={}, actor="a")
+    assert r.status == "error"
+    assert r.data["error_code"] == "reserved_event_type"
+
+
+def test_ingest_ok() -> None:
+    e = Engine()
+    e.add_consent_grant(_grant())
+    r = e.ingest(data={"x": 1}, provenance=_prov(), purpose="test", subject_id="s1", actor="actor")
+    assert r.status == "ok"
+
+
+def test_ingest_no_consent() -> None:
+    e = Engine()
+    r = e.ingest(data={"x": 1}, provenance=_prov(), purpose="test", subject_id="s1", actor="actor")
+    assert r.status == "error"
+    assert r.data["error_code"] == "consent_required"
+
+
+def test_ingest_no_provenance() -> None:
+    e = Engine()
+    e.add_consent_grant(_grant())
+    r = e.ingest(data={"x": 1}, provenance={}, purpose="test", subject_id="s1", actor="actor")
+    assert r.status == "error"
+    assert r.data["error_code"] == "provenance_required"
+
+
+def test_query_ok() -> None:
+    e = Engine()
+    e.add_consent_grant(_grant())
+    e.ingest(data={"x": 1}, provenance=_prov(), purpose="test", subject_id="s1", actor="actor")
+    r = e.query(purpose="test", subject_ids=["s1"], actor="actor")
+    assert r.status == "ok"
+
+
+def test_query_no_consent() -> None:
+    e = Engine()
+    r = e.query(purpose="test", subject_ids=["s1"], actor="actor")
+    assert r.status == "error"
+    assert r.data["error_code"] == "consent_required"
+
+
+def test_replay_existing() -> None:
+    e = Engine()
+    e.add_consent_grant(_grant())
+    c = e.commit(event_type="app.r", payload={"v": 42}, actor="actor")
+    r = e.replay(audit_id=c.audit_id, actor="actor")
+    assert r.status == "ok"
+    assert r.data["replayed_payload"]["v"] == 42
+
+
+def test_replay_not_found() -> None:
+    e = Engine()
+    r = e.replay(audit_id="urn:aevum:audit:00000000-0000-7000-8000-000000000999", actor="a")
+    assert r.status == "error"
+    assert r.data["error_code"] == "replay_not_found"
+
+
+def test_replay_deterministic() -> None:
+    e = Engine()
+    c = e.commit(event_type="app.d", payload={"x": 1}, actor="a")
+    r1 = e.replay(audit_id=c.audit_id, actor="a")
+    r2 = e.replay(audit_id=c.audit_id, actor="a")
+    assert r1.data == r2.data
+
+
+def test_review_cycle() -> None:
+    e = Engine()
+    rid = e.create_review(proposed_action="delete data", reason="test", actor="a")
+    polled = e.review(audit_id=rid, actor="a")
+    assert polled.status == "pending_review"
+    approved = e.review(audit_id=rid, actor="a", action="approve")
+    assert approved.status == "ok"
+
+
+def test_review_veto() -> None:
+    e = Engine()
+    rid = e.create_review(proposed_action="action", reason="test", actor="a")
+    r = e.review(audit_id=rid, actor="a", action="veto")
+    assert r.status == "error"
+    assert r.data["error_code"] == "review_vetoed"
+
+
+def test_review_not_found() -> None:
+    e = Engine()
+    r = e.review(audit_id="urn:aevum:audit:00000000-0000-7000-8000-000000000999", actor="a")
+    assert r.status == "error"
+    assert r.data["error_code"] == "review_not_found"
+
+
+def test_sigchain_integrity() -> None:
+    e = Engine()
+    e.add_consent_grant(_grant())
+    for i in range(5):
+        e.commit(event_type=f"app.e{i}", payload={"i": i}, actor="a")
+    assert e.verify_sigchain() is True
