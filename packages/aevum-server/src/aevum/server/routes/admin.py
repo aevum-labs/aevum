@@ -49,7 +49,7 @@ async def approve_complication(
             status_code=status.HTTP_409_CONFLICT,
             detail={"type": "https://aevum.build/problems/complication-error",
                     "title": "Complication Error", "status": 409, "detail": str(e)},
-        )
+        ) from e
 
 
 @router.post("/complications/{complication_id}/suspend")
@@ -68,7 +68,7 @@ async def suspend_complication(
             status_code=status.HTTP_409_CONFLICT,
             detail={"type": "https://aevum.build/problems/complication-error",
                     "title": "Complication Error", "status": 409, "detail": str(e)},
-        )
+        ) from e
 
 
 @router.get("/complications/{complication_id}/health")
