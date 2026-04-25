@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from tests.conformance_adapter import ConformanceAdapter
+from conformance_adapter import ConformanceAdapter
 
 
 def _adapter_with_consent() -> ConformanceAdapter:
