@@ -61,7 +61,7 @@ def test_barrier4_setitem_raises() -> None:
     from aevum.core.exceptions import BarrierViolationError
     ledger = InMemoryLedger(Sigchain())
     with pytest.raises(BarrierViolationError):
-        ledger["k"] = "v"  # type: ignore[index]
+        ledger["k"] = "v"
 
 
 def test_barrier5_no_provenance() -> None:
