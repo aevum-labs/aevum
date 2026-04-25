@@ -9,9 +9,9 @@ from aevum.core.audit.event import AuditEvent
 from aevum.core.audit.ledger import InMemoryLedger
 from aevum.core.audit.sigchain import _uuid7
 from aevum.core.barriers import check_consent
-from aevum.core.consent.ledger import ConsentLedger
 from aevum.core.envelope.models import OutputEnvelope, ProvenanceRecord
 from aevum.core.exceptions import ReplayNotFoundError
+from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 
 
 def replay(
@@ -19,7 +19,7 @@ def replay(
     audit_id: str,
     actor: str,
     ledger: InMemoryLedger,
-    consent_ledger: ConsentLedger,
+    consent_ledger: ConsentLedgerProtocol,
     scope: list[str] | None = None,
     episode_id: str | None = None,
     correlation_id: str | None = None,

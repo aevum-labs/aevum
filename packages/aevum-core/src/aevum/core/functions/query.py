@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any
 from aevum.core.audit.ledger import InMemoryLedger
 from aevum.core.audit.sigchain import _uuid7
 from aevum.core.barriers import check_consent, check_crisis
-from aevum.core.consent.ledger import ConsentLedger
 from aevum.core.envelope.models import (
     OutputEnvelope,
     ProvenanceRecord,
@@ -19,6 +18,7 @@ from aevum.core.envelope.models import (
     SourceHealthSummary,
     UncertaintyAnnotation,
 )
+from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
 
 if TYPE_CHECKING:
@@ -37,7 +37,7 @@ def query(
     subject_ids: list[str],
     actor: str,
     ledger: InMemoryLedger,
-    consent_ledger: ConsentLedger,
+    consent_ledger: ConsentLedgerProtocol,
     graph: GraphStore,
     constraints: dict[str, Any] | None = None,
     classification_max: int = 0,

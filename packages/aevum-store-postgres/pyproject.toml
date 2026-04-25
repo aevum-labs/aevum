@@ -1,13 +1,26 @@
 [project]
 name = "aevum-store-postgres"
-version = "0.0.1"
-description = "Aevum — PostgreSQL GraphStore backend (team deployments)."
+version = "0.1.0"
+description = "Aevum — PostgreSQL GraphStore + ConsentLedger backend (team deployments)."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
 dependencies = [
     "aevum-core",
+    "psycopg[binary]>=3.1,<4.0",
 ]
+
+[project.scripts]
+aevum-store-migrate = "aevum.store.postgres.migrate:main"
 
 [project.urls]
 Homepage = "https://aevum.build"
@@ -22,3 +35,23 @@ packages = ["src/aevum"]
 
 [tool.uv.sources]
 aevum-core = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--tb=short"
+pythonpath = ["src", "tests"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+mypy_path = "src"
+explicit_package_bases = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 130
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I", "ANN"]
+ignore = ["ANN401"]
