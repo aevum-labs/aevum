@@ -1,6 +1,6 @@
 """
-Engine — the public entry point wiring all kernel components.
-Usage: from aevum.core import Engine; engine = Engine()
+Engine — wires all kernel components together.
+Phase 6: adds ComplicationRegistry integration.
 """
 
 from __future__ import annotations
@@ -9,9 +9,18 @@ from typing import Any
 
 from aevum.core.audit.ledger import InMemoryLedger
 from aevum.core.audit.sigchain import Sigchain
+from aevum.core.complications import (
+    CircuitBreaker,
+    ComplicationRegistry,
+    ComplicationState,
+    ConflictDetector,
+    ManifestValidator,
+    WebhookRegistry,
+)
 from aevum.core.consent.ledger import ConsentLedger
 from aevum.core.consent.models import ConsentGrant
 from aevum.core.envelope.models import OutputEnvelope
+from aevum.core.exceptions import ComplicationError
 from aevum.core.functions.commit import commit as _commit
 from aevum.core.functions.ingest import ingest as _ingest
 from aevum.core.functions.query import query as _query
@@ -27,8 +36,11 @@ class Engine:
     """
     The Aevum context kernel.
 
-    Engine() — development defaults (in-memory everything).
-    Engine(graph_store=OxigraphStore(), opa_url="http://opa:8181") — production.
+    Phase 6 additions:
+      - install_complication(instance) — register + validate + approve
+      - approve_complication(name) — admin approval
+      - suspend_complication(name) — admin suspension
+      - complication registry exposed for status queries
     """
 
     def __init__(
@@ -38,13 +50,22 @@ class Engine:
         opa_url: str | None = None,
         sigchain: Sigchain | None = None,
     ) -> None:
-        self._sigchain: Sigchain = sigchain or Sigchain()
-        self._ledger: InMemoryLedger = InMemoryLedger(self._sigchain)
-        self._consent_ledger: ConsentLedger = ConsentLedger()
+        self._sigchain = sigchain or Sigchain()
+        self._ledger = InMemoryLedger(self._sigchain)
+        self._consent_ledger = ConsentLedger()
         self._graph: GraphStore = graph_store or InMemoryGraphStore()
-        self._policy: PolicyBridge = PolicyBridge(opa_url=opa_url)
-        self._review_store: ReviewStore = ReviewStore()
+        self._policy = PolicyBridge(opa_url=opa_url)
+        self._review_store = ReviewStore()
         self._idempotency_cache: dict[str, OutputEnvelope] = {}
+
+        # Phase 6: complication governance
+        self._complication_registry = ComplicationRegistry()
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
+        self._manifest_validator = ManifestValidator()
+        self._conflict_detector = ConflictDetector()
+        self._webhook_registry = WebhookRegistry()
+
+    # ── Consent management ────────────────────────────────────────────────────
 
     def add_consent_grant(self, grant: ConsentGrant) -> None:
         self._consent_ledger.add_grant(grant)
@@ -52,57 +73,220 @@ class Engine:
     def revoke_consent_grant(self, grant_id: str) -> None:
         self._consent_ledger.revoke_grant(grant_id)
 
-    def ingest(self, *, data: dict[str, Any], provenance: dict[str, Any],
-               purpose: str, subject_id: str, actor: str,
-               idempotency_key: str | None = None,
-               episode_id: str | None = None, correlation_id: str | None = None) -> OutputEnvelope:
-        return _ingest(data=data, provenance=provenance, purpose=purpose, subject_id=subject_id,
-                       actor=actor, ledger=self._ledger, consent_ledger=self._consent_ledger,
-                       graph=self._graph, idempotency_key=idempotency_key,
-                       idempotency_cache=self._idempotency_cache,
-                       episode_id=episode_id, correlation_id=correlation_id)
+    # ── Complication management (Phase 6) ─────────────────────────────────────
 
-    def query(self, *, purpose: str, subject_ids: list[str], actor: str,
-              constraints: dict[str, Any] | None = None, classification_max: int = 0,
-              episode_id: str | None = None, correlation_id: str | None = None) -> OutputEnvelope:
-        return _query(purpose=purpose, subject_ids=subject_ids, actor=actor,
-                      ledger=self._ledger, consent_ledger=self._consent_ledger,
-                      graph=self._graph, constraints=constraints,
-                      classification_max=classification_max,
-                      episode_id=episode_id, correlation_id=correlation_id)
+    def install_complication(self, instance: Any, *, auto_approve: bool = False) -> None:
+        """
+        Install a complication: validate manifest, check conflicts, register.
 
-    def review(self, *, audit_id: str, actor: str, action: str | None = None,
-               episode_id: str | None = None, correlation_id: str | None = None) -> OutputEnvelope:
-        return _review(audit_id=audit_id, action=action, actor=actor,
-                       ledger=self._ledger, review_store=self._review_store,
-                       episode_id=episode_id, correlation_id=correlation_id)
+        Args:
+            instance: A Complication instance (from aevum.sdk).
+            auto_approve: If True, immediately approve (for testing / trusted installs).
 
-    def commit(self, *, event_type: str, payload: dict[str, Any], actor: str,
-               idempotency_key: str | None = None,
-               episode_id: str | None = None, correlation_id: str | None = None) -> OutputEnvelope:
-        return _commit(event_type=event_type, payload=payload, actor=actor,
-                       ledger=self._ledger, idempotency_key=idempotency_key,
-                       idempotency_cache=self._idempotency_cache,
-                       episode_id=episode_id, correlation_id=correlation_id)
+        Raises:
+            ComplicationError: if manifest is invalid or capability conflicts exist.
+        """
+        manifest = instance.manifest()
+        name = manifest.get("name", "")
 
-    def replay(self, *, audit_id: str, actor: str, scope: list[str] | None = None,
-               episode_id: str | None = None, correlation_id: str | None = None) -> OutputEnvelope:
-        return _replay(audit_id=audit_id, actor=actor, ledger=self._ledger,
-                       consent_ledger=self._consent_ledger, scope=scope,
-                       episode_id=episode_id, correlation_id=correlation_id)
+        # Validate manifest schema (Ed25519 optional)
+        errors = self._manifest_validator.validate(manifest)
+        if errors:
+            raise ComplicationError(
+                f"Complication '{name}' manifest validation failed: {errors}"
+            )
 
-    def create_review(self, *, proposed_action: str, reason: str, actor: str,
-                      autonomy_level: int = 1, risk_assessment: str = "",
-                      deadline_iso: str | None = None) -> str:
-        return self._review_store.create(proposed_action=proposed_action, reason=reason,
-                                         actor=actor, autonomy_level=autonomy_level,
-                                         risk_assessment=risk_assessment, deadline_iso=deadline_iso)
+        # Check capability conflicts against active complications
+        active_manifests = [
+            c.manifest() for c in self._complication_registry.active_complications()
+        ]
+        conflicts = self._conflict_detector.check(manifest, active_manifests)
+        if conflicts:
+            raise ComplicationError(
+                f"Complication '{name}' has capability conflicts: {conflicts}"
+            )
+
+        # Register in DISCOVERED state
+        self._complication_registry.install(manifest, instance)
+
+        # Technical validation: DISCOVERED → PENDING
+        self._complication_registry.validate(name)
+
+        # Initialise circuit breaker
+        self._circuit_breakers[name] = CircuitBreaker()
+
+        # Log to ledger
+        self._ledger.append(
+            event_type="complication.installed",
+            payload={"name": name, "version": manifest.get("version", "")},
+            actor="aevum-core",
+        )
+
+        if auto_approve:
+            self.approve_complication(name)
+
+    def approve_complication(self, name: str) -> None:
+        """Admin approval: PENDING → APPROVED → ACTIVE."""
+        self._complication_registry.approve(name)
+        self._ledger.append(
+            event_type="complication.approved",
+            payload={"name": name},
+            actor="aevum-core",
+        )
+
+    def suspend_complication(self, name: str) -> None:
+        """Admin suspension: ACTIVE → SUSPENDED."""
+        self._complication_registry.suspend(name)
+        self._ledger.append(
+            event_type="complication.suspended",
+            payload={"name": name},
+            actor="aevum-core",
+        )
+
+    def resume_complication(self, name: str) -> None:
+        """Admin resume: SUSPENDED → ACTIVE."""
+        self._complication_registry.resume(name)
+
+    def complication_state(self, name: str) -> ComplicationState:
+        return self._complication_registry.state(name)
+
+    def list_complications(self) -> dict[str, dict[str, Any]]:
+        return self._complication_registry.all_entries()
+
+    # ── Webhook management (Phase 6) ──────────────────────────────────────────
+
+    def register_webhook(
+        self,
+        webhook_id: str,
+        url: str,
+        secret: str,
+        events: list[str] | None = None,
+    ) -> None:
+        self._webhook_registry.register(webhook_id, url, secret, events)
+
+    def deregister_webhook(self, webhook_id: str) -> None:
+        self._webhook_registry.deregister(webhook_id)
+
+    # ── The Five Functions ────────────────────────────────────────────────────
+
+    def ingest(
+        self,
+        *,
+        data: dict[str, Any],
+        provenance: dict[str, Any],
+        purpose: str,
+        subject_id: str,
+        actor: str,
+        idempotency_key: str | None = None,
+        episode_id: str | None = None,
+        correlation_id: str | None = None,
+    ) -> OutputEnvelope:
+        return _ingest(
+            data=data, provenance=provenance, purpose=purpose,
+            subject_id=subject_id, actor=actor, ledger=self._ledger,
+            consent_ledger=self._consent_ledger, graph=self._graph,
+            idempotency_key=idempotency_key,
+            idempotency_cache=self._idempotency_cache,
+            episode_id=episode_id, correlation_id=correlation_id,
+        )
+
+    def query(
+        self,
+        *,
+        purpose: str,
+        subject_ids: list[str],
+        actor: str,
+        constraints: dict[str, Any] | None = None,
+        classification_max: int = 0,
+        episode_id: str | None = None,
+        correlation_id: str | None = None,
+    ) -> OutputEnvelope:
+        return _query(
+            purpose=purpose, subject_ids=subject_ids, actor=actor,
+            ledger=self._ledger, consent_ledger=self._consent_ledger,
+            graph=self._graph, constraints=constraints,
+            classification_max=classification_max,
+            complication_registry=self._complication_registry,
+            circuit_breakers=self._circuit_breakers,
+            episode_id=episode_id, correlation_id=correlation_id,
+        )
+
+    def review(
+        self,
+        *,
+        audit_id: str,
+        actor: str,
+        action: str | None = None,
+        episode_id: str | None = None,
+        correlation_id: str | None = None,
+    ) -> OutputEnvelope:
+        result = _review(
+            audit_id=audit_id, action=action, actor=actor,
+            ledger=self._ledger, review_store=self._review_store,
+            episode_id=episode_id, correlation_id=correlation_id,
+        )
+        # Phase 6: dispatch webhook on review resolution
+        if action in ("approve", "veto") and result.status in ("ok", "error"):
+            event_type = "review.approved" if action == "approve" else "review.vetoed"
+            self._webhook_registry.dispatch(event_type, {"audit_id": audit_id, "actor": actor})
+        return result
+
+    def commit(
+        self,
+        *,
+        event_type: str,
+        payload: dict[str, Any],
+        actor: str,
+        idempotency_key: str | None = None,
+        episode_id: str | None = None,
+        correlation_id: str | None = None,
+    ) -> OutputEnvelope:
+        return _commit(
+            event_type=event_type, payload=payload, actor=actor,
+            ledger=self._ledger, idempotency_key=idempotency_key,
+            idempotency_cache=self._idempotency_cache,
+            episode_id=episode_id, correlation_id=correlation_id,
+        )
+
+    def replay(
+        self,
+        *,
+        audit_id: str,
+        actor: str,
+        scope: list[str] | None = None,
+        episode_id: str | None = None,
+        correlation_id: str | None = None,
+    ) -> OutputEnvelope:
+        return _replay(
+            audit_id=audit_id, actor=actor, ledger=self._ledger,
+            consent_ledger=self._consent_ledger, scope=scope,
+            episode_id=episode_id, correlation_id=correlation_id,
+        )
+
+    # ── Internal / testing hooks ──────────────────────────────────────────────
+
+    def create_review(
+        self,
+        *,
+        proposed_action: str,
+        reason: str,
+        actor: str,
+        autonomy_level: int = 1,
+        risk_assessment: str = "",
+        deadline_iso: str | None = None,
+    ) -> str:
+        return self._review_store.create(
+            proposed_action=proposed_action, reason=reason, actor=actor,
+            autonomy_level=autonomy_level, risk_assessment=risk_assessment,
+            deadline_iso=deadline_iso,
+        )
 
     def get_ledger_entries(self) -> list[dict[str, Any]]:
-        """Conformance hook — not part of public API."""
-        return [{"audit_id": e.audit_id(), "event_type": e.event_type,
-                 "actor": e.actor, "payload": e.payload, "sequence": e.sequence}
-                for e in self._ledger.all_events()]
+        return [
+            {"audit_id": e.audit_id(), "event_type": e.event_type,
+             "actor": e.actor, "payload": e.payload, "sequence": e.sequence}
+            for e in self._ledger.all_events()
+        ]
 
     def ledger_count(self) -> int:
         return self._ledger.count()
