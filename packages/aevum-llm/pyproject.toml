@@ -1,14 +1,25 @@
 [project]
 name = "aevum-llm"
-version = "0.0.1"
-description = "Aevum — LLM adapter complication (LiteLLM-backed)."
+version = "0.1.0"
+description = "Aevum — LiteLLM-backed LLM complication with full audit trail."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Typing :: Typed",
+]
 dependencies = [
     "aevum-core",
     "aevum-sdk",
+    "litellm>=1.40",
 ]
+
+[project.entry-points."aevum.complications"]
+llm = "aevum.llm.complication:LlmComplication"
 
 [project.urls]
 Homepage = "https://aevum.build"
@@ -24,3 +35,31 @@ packages = ["src/aevum"]
 [tool.uv.sources]
 aevum-core = { workspace = true }
 aevum-sdk = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--tb=short"
+pythonpath = ["src", "tests"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+mypy_path = "src"
+explicit_package_bases = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 130
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I", "ANN"]
+ignore = ["ANN401"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "mypy>=1.10",
+    "ruff>=0.9",
+]
