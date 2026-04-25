@@ -1,10 +1,12 @@
 """
 query — NAVIGATE — graph traversal for declared purpose. Spec Section 08.4.
+Phase 6: calls active complications, stores results in ledger for replay.
 """
 
 from __future__ import annotations
 
-from typing import Any, Literal
+import json
+from typing import TYPE_CHECKING, Any
 
 from aevum.core.audit.ledger import InMemoryLedger
 from aevum.core.audit.sigchain import _uuid7
@@ -19,6 +21,15 @@ from aevum.core.envelope.models import (
 )
 from aevum.core.protocols.graph_store import GraphStore
 
+if TYPE_CHECKING:
+    from aevum.core.complications.circuit_breaker import CircuitBreaker
+    from aevum.core.complications.registry import ComplicationRegistry
+
+
+def _json_safe(value: Any) -> Any:
+    """Round-trip through JSON to ensure serializability."""
+    return json.loads(json.dumps(value, default=str))
+
 
 def query(
     *,
@@ -30,11 +41,20 @@ def query(
     graph: GraphStore,
     constraints: dict[str, Any] | None = None,
     classification_max: int = 0,
+    complication_registry: ComplicationRegistry | None = None,
+    circuit_breakers: dict[str, CircuitBreaker] | None = None,
     episode_id: str | None = None,
     correlation_id: str | None = None,
 ) -> OutputEnvelope:
+    """
+    Traverse the knowledge graph for a declared purpose.
+    Phase 6: calls active complications and stores results in ledger.
+    """
+    from aevum.core.complications import _run_coro
+
     provisional_id = f"urn:aevum:audit:{_uuid7()}"
 
+    # Barrier 1
     crisis = check_crisis({"purpose": purpose}, provisional_id)
     if crisis is not None:
         ledger.append(event_type="barrier.triggered",
@@ -42,42 +62,103 @@ def query(
                       actor=actor, episode_id=episode_id, correlation_id=correlation_id)
         return crisis
 
+    # Barrier 3: consent for all subjects
     for subject_id in subject_ids:
-        consent_err = check_consent(subject_id=subject_id, operation="query",
-                                    grantee_id=actor, consent_ledger=consent_ledger,
-                                    audit_id=provisional_id)
+        consent_err = check_consent(
+            subject_id=subject_id, operation="query", grantee_id=actor,
+            consent_ledger=consent_ledger, audit_id=provisional_id,
+        )
         if consent_err is not None:
             ledger.append(event_type="barrier.triggered",
                           payload={"barrier": 3, "function": "query", "subject_id": subject_id},
                           actor=actor, episode_id=episode_id, correlation_id=correlation_id)
             return consent_err
 
-    # Graph read — use classification_max for Barrier 2
-    results = graph.query_entities(subject_ids=subject_ids, classification_max=classification_max)
+    # Graph read (Barrier 2 enforced by GraphStore)
+    graph_results = graph.query_entities(
+        subject_ids=subject_ids, classification_max=classification_max
+    )
+    redacted = [s for s in subject_ids if s not in graph_results]
 
-    # Track redacted subjects (those requested but not in results)
-    redacted = [s for s in subject_ids if s not in results]
+    # Phase 6: call active complications
+    complication_results: dict[str, Any] = {}
+    available: list[str] = []
+    degraded: list[str] = []
+    unavailable: list[str] = []
 
+    if complication_registry is not None:
+        # Build context for complications
+        ctx_data = {
+            "subject_ids": subject_ids,
+            "purpose": purpose,
+            "actor": actor,
+            "classification_max": classification_max,
+        }
+
+        for comp in complication_registry.active_complications():
+            cb = (circuit_breakers or {}).get(comp.name)
+            if cb and not cb.allow_request():
+                unavailable.append(comp.name)
+                continue
+
+            try:
+                result = _run_coro(comp.run(ctx_data, graph_results))
+                result_safe = _json_safe(result)
+                complication_results[comp.name] = result_safe
+                available.append(comp.name)
+                if cb:
+                    cb.record_success()
+            except Exception:
+                if cb:
+                    cb.record_failure()
+                degraded.append(comp.name)
+
+    # Determine overall source health
+    if unavailable and not available:
+        overall = "critical"
+    elif degraded or unavailable:
+        overall = "degraded"
+    else:
+        overall = "healthy"
+
+    # Append to ledger — include complication results for replay faithfulness
     event = ledger.append(
         event_type="query.complete",
-        payload={"subject_ids": subject_ids, "purpose": purpose,
-                 "result_count": len(results), "redacted_count": len(redacted)},
+        payload={
+            "subject_ids": subject_ids,
+            "purpose": purpose,
+            "result_count": len(graph_results),
+            "redacted_count": len(redacted),
+            "complication_results": complication_results,  # stored for replay
+        },
         actor=actor, episode_id=episode_id, correlation_id=correlation_id,
     )
     audit_id = event.audit_id()
-    status: Literal["ok", "degraded"] = "degraded" if redacted else "ok"
-    warnings = [f"Redacted {len(redacted)} entities above clearance level {classification_max}"] if redacted else []
+
+    status = "degraded" if (redacted or degraded or unavailable) else "ok"
+    warnings = []
+    if redacted:
+        warnings.append(f"Redacted {len(redacted)} entities above clearance {classification_max}")
+    if degraded:
+        warnings.append(f"Complications degraded: {degraded}")
+    if unavailable:
+        warnings.append(f"Complications unavailable: {unavailable}")
 
     return OutputEnvelope(
-        status=status,
-        data={"results": results},
+        status=status,  # type: ignore[arg-type]
+        data={"results": graph_results, "complication_results": complication_results},
         audit_id=audit_id,
-        confidence=0.9 if not redacted else 0.7,
+        confidence=0.9 if status == "ok" else 0.7,
         uncertainty=UncertaintyAnnotation.empty(),
         provenance=ProvenanceRecord.kernel(audit_id),
         review_required=False,
         review_context=None,
-        source_health=SourceHealthSummary.no_complications(),
+        source_health=SourceHealthSummary(
+            available=available,
+            degraded=degraded,
+            unavailable=unavailable,
+            overall=overall,  # type: ignore[arg-type]
+        ),
         warnings=warnings,
         schema_version="1.0",
         reasoning_trace=ReasoningTrace.empty(),
