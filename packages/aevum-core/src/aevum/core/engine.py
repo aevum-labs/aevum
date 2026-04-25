@@ -29,6 +29,7 @@ from aevum.core.functions.review import ReviewStore
 from aevum.core.functions.review import review as _review
 from aevum.core.graph.memory import InMemoryGraphStore
 from aevum.core.policy.bridge import PolicyBridge
+from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
 
 
@@ -47,12 +48,13 @@ class Engine:
         self,
         *,
         graph_store: GraphStore | None = None,
+        consent_ledger: ConsentLedgerProtocol | None = None,
         opa_url: str | None = None,
         sigchain: Sigchain | None = None,
     ) -> None:
         self._sigchain = sigchain or Sigchain()
         self._ledger = InMemoryLedger(self._sigchain)
-        self._consent_ledger = ConsentLedger()
+        self._consent_ledger: ConsentLedgerProtocol = consent_ledger or ConsentLedger()
         self._graph: GraphStore = graph_store or InMemoryGraphStore()
         self._policy = PolicyBridge(opa_url=opa_url)
         self._review_store = ReviewStore()
@@ -166,6 +168,14 @@ class Engine:
 
     def deregister_webhook(self, webhook_id: str) -> None:
         self._webhook_registry.deregister(webhook_id)
+
+    def get_active_complication_by_capability(self, capability: str) -> Any | None:
+        """Return the first ACTIVE complication that declares the given capability, or None."""
+        return next(
+            (c for c in self._complication_registry.active_complications()
+             if capability in getattr(c, "capabilities", [])),
+            None,
+        )
 
     # ── The Five Functions ────────────────────────────────────────────────────
 
