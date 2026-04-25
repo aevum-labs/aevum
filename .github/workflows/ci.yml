@@ -35,6 +35,7 @@ jobs:
           uv run mypy --package aevum.core --config-file packages/aevum-core/pyproject.toml
           uv run mypy --package aevum.server --config-file packages/aevum-server/pyproject.toml
           uv run mypy --package aevum.store.oxigraph --config-file packages/aevum-store-oxigraph/pyproject.toml
+          uv run mypy --package aevum.sdk --ignore-missing-imports
 
   namespace-check:
     name: Namespace discipline
