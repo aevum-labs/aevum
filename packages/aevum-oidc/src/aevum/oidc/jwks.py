@@ -45,3 +45,4 @@ class JwksCache:
     def invalidate(self) -> None:
         """Force re-fetch on next access."""
         self._fetched_at = 0.0
+        self._keys = []
