@@ -9,10 +9,10 @@ import threading
 from datetime import UTC
 from typing import Any
 
-from aevum.core.audit.ledger import InMemoryLedger
 from aevum.core.audit.sigchain import _uuid7
 from aevum.core.envelope.models import OutputEnvelope, ProvenanceRecord, ReviewContext
 from aevum.core.exceptions import ReviewAlreadyResolvedError, ReviewNotFoundError
+from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 
 
 class ReviewStore:
@@ -59,7 +59,7 @@ def review(
     audit_id: str,
     action: str | None = None,
     actor: str,
-    ledger: InMemoryLedger,
+    ledger: AuditLedgerProtocol,
     review_store: ReviewStore,
     episode_id: str | None = None,
     correlation_id: str | None = None,

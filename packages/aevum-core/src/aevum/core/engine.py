@@ -29,6 +29,7 @@ from aevum.core.functions.review import ReviewStore
 from aevum.core.functions.review import review as _review
 from aevum.core.graph.memory import InMemoryGraphStore
 from aevum.core.policy.bridge import PolicyBridge
+from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
 
@@ -48,12 +49,13 @@ class Engine:
         self,
         *,
         graph_store: GraphStore | None = None,
-        consent_ledger: ConsentLedgerProtocol | None = None,
         opa_url: str | None = None,
         sigchain: Sigchain | None = None,
+        consent_ledger: ConsentLedgerProtocol | None = None,
+        ledger: AuditLedgerProtocol | None = None,   # NEW Phase 9
     ) -> None:
         self._sigchain = sigchain or Sigchain()
-        self._ledger = InMemoryLedger(self._sigchain)
+        self._ledger = ledger or InMemoryLedger(self._sigchain)
         self._consent_ledger: ConsentLedgerProtocol = consent_ledger or ConsentLedger()
         self._graph: GraphStore = graph_store or InMemoryGraphStore()
         self._policy = PolicyBridge(opa_url=opa_url)
@@ -65,7 +67,7 @@ class Engine:
         self._circuit_breakers: dict[str, CircuitBreaker] = {}
         self._manifest_validator = ManifestValidator()
         self._conflict_detector = ConflictDetector()
-        self._webhook_registry = WebhookRegistry()
+        self._webhook_registry = WebhookRegistry(ledger=self._ledger)
 
     # ── Consent management ────────────────────────────────────────────────────
 
