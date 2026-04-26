@@ -23,6 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 default = ["aevum-store-oxigraph"]
+cedar = ["cedarpy>=0.3"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
@@ -60,6 +61,9 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "UP", "B", "SIM", "I", "ANN"]
 ignore = ["ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

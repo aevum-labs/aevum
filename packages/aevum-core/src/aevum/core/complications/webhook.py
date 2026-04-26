@@ -1,9 +1,9 @@
 """
-WebhookRegistry — register endpoints and dispatch review events.
+WebhookRegistry -- register endpoints and dispatch review events.
+Phase 9: exponential backoff retry + dead-letter AuditEvent on final failure.
 
-Spec Section 10 (deferred from Phase 3b).
-Implements registration and dispatch interface.
-HTTP delivery is testable via mock injection.
+Retry schedule: 3 attempts at 1s, 5s, 25s (base^n with base=5).
+On final failure: appends a barrier.webhook_failed AuditEvent to the ledger.
 """
 
 from __future__ import annotations
@@ -18,18 +18,12 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Events that trigger webhook delivery
 WEBHOOK_EVENTS = {"review.approved", "review.vetoed"}
+_RETRY_DELAYS = (1.0, 5.0, 25.0)  # seconds between attempts
 
 
 class WebhookRegistration:
-    def __init__(
-        self,
-        webhook_id: str,
-        url: str,
-        secret: str,
-        events: list[str],
-    ) -> None:
+    def __init__(self, webhook_id: str, url: str, secret: str, events: list[str]) -> None:
         self.webhook_id = webhook_id
         self.url = url
         self.secret = secret
@@ -39,22 +33,21 @@ class WebhookRegistration:
 
 class WebhookRegistry:
     """
-    Thread-safe webhook registry.
+    Thread-safe webhook registry with exponential backoff retry.
 
-    Webhooks are registered per-event-type. When a matching event
-    occurs, dispatch() is called with the event payload.
-
-    HTTP delivery is injected via `http_client` to allow mocking in tests.
-    In production, pass an httpx.Client or similar.
+    http_client: injected for testability (mock in tests, httpx.Client in prod).
+    ledger: optional -- if provided, dead-letter events are appended on final failure.
     """
 
     def __init__(
         self,
         http_client: Any | None = None,
+        ledger: Any | None = None,
     ) -> None:
         self._registrations: dict[str, WebhookRegistration] = {}
         self._lock = threading.Lock()
-        self._http_client = http_client  # injected; None = no real delivery
+        self._http_client = http_client
+        self._ledger = ledger
 
     def register(
         self,
@@ -63,7 +56,6 @@ class WebhookRegistry:
         secret: str,
         events: list[str] | None = None,
     ) -> None:
-        """Register a webhook endpoint."""
         if not url.startswith("https://") and not url.startswith("http://localhost"):
             raise ValueError("Webhook URL must use HTTPS (or http://localhost for dev)")
         with self._lock:
@@ -87,10 +79,8 @@ class WebhookRegistry:
 
     def dispatch(self, event_type: str, payload: dict[str, Any]) -> list[str]:
         """
-        Dispatch an event to all registered webhooks that subscribe to it.
-
-        Returns list of webhook_ids that were dispatched to.
-        Failures are logged but do not raise — delivery is best-effort.
+        Dispatch to all subscribed webhooks with exponential backoff retry.
+        Returns list of webhook_ids successfully delivered to.
         """
         with self._lock:
             targets = [
@@ -99,50 +89,81 @@ class WebhookRegistry:
             ]
 
         dispatched: list[str] = []
-        for registration in targets:
-            try:
-                self._deliver(registration, event_type, payload)
-                dispatched.append(registration.webhook_id)
-            except Exception as e:
-                logger.warning(
-                    "Webhook delivery failed for %s → %s: %s",
-                    registration.webhook_id, registration.url, e,
-                )
+        for reg in targets:
+            if self._deliver_with_retry(reg, event_type, payload):
+                dispatched.append(reg.webhook_id)
+            else:
+                self._dead_letter(reg.webhook_id, event_type, payload)
         return dispatched
 
-    def _deliver(
-        self,
-        registration: WebhookRegistration,
-        event_type: str,
-        payload: dict[str, Any],
+    def _deliver_with_retry(
+        self, reg: WebhookRegistration, event_type: str, payload: dict[str, Any]
+    ) -> bool:
+        """Attempt delivery with exponential backoff. Returns True on success."""
+        for attempt, _delay in enumerate(_RETRY_DELAYS):
+            try:
+                self._deliver(reg, event_type, payload)
+                if attempt > 0:
+                    logger.info(
+                        "Webhook %s delivered after %d retries", reg.webhook_id, attempt
+                    )
+                return True
+            except Exception as e:
+                if attempt < len(_RETRY_DELAYS) - 1:
+                    next_delay = _RETRY_DELAYS[attempt + 1]
+                    logger.warning(
+                        "Webhook %s attempt %d failed: %s -- retrying in %.0fs",
+                        reg.webhook_id, attempt + 1, e, next_delay,
+                    )
+                    time.sleep(next_delay)
+                else:
+                    logger.error(
+                        "Webhook %s failed all %d attempts: %s",
+                        reg.webhook_id, len(_RETRY_DELAYS), e,
+                    )
+        return False
+
+    def _dead_letter(
+        self, webhook_id: str, event_type: str, payload: dict[str, Any]
     ) -> None:
-        """Deliver one webhook. Uses injected http_client if present."""
+        """Append dead-letter AuditEvent to ledger if configured."""
+        if self._ledger is None:
+            return
+        try:
+            self._ledger.append(
+                event_type="barrier.webhook_failed",
+                payload={
+                    "webhook_id": webhook_id,
+                    "original_event_type": event_type,
+                    "original_payload_keys": list(payload.keys()),
+                    "attempts": len(_RETRY_DELAYS),
+                },
+                actor="aevum-core",
+            )
+        except Exception as e:
+            logger.error("Failed to write webhook dead-letter to ledger: %s", e)
+
+    def _deliver(
+        self, reg: WebhookRegistration, event_type: str, payload: dict[str, Any]
+    ) -> None:
         body = json.dumps({
             "event_type": event_type,
             "payload": payload,
             "timestamp": time.time(),
-            "webhook_id": registration.webhook_id,
+            "webhook_id": reg.webhook_id,
         }, default=str)
-
-        signature = self._sign(registration.secret, body)
+        signature = self._sign(reg.secret, body)
         headers = {
             "Content-Type": "application/json",
             "X-Aevum-Signature": signature,
             "X-Aevum-Event": event_type,
         }
-
         if self._http_client is not None:
-            self._http_client.post(
-                registration.url, content=body, headers=headers
-            )
+            self._http_client.post(reg.url, content=body, headers=headers)
         else:
-            logger.debug(
-                "Webhook dispatch (no http_client configured): %s → %s",
-                event_type, registration.url,
-            )
+            logger.debug("Webhook dispatch (no http_client): %s -> %s", event_type, reg.url)
 
     @staticmethod
     def _sign(secret: str, body: str) -> str:
-        """HMAC-SHA256 signature over the body. Spec Section 10."""
         mac = hmac.new(secret.encode(), body.encode(), hashlib.sha256)
         return f"sha256={mac.hexdigest()}"
