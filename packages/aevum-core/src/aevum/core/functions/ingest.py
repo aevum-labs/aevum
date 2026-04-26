@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from aevum.core.audit.ledger import InMemoryLedger
 from aevum.core.audit.sigchain import _uuid7
 from aevum.core.barriers import check_consent, check_crisis, check_provenance
 from aevum.core.envelope.models import OutputEnvelope, ProvenanceRecord
+from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
 
@@ -22,7 +22,7 @@ def ingest(
     purpose: str,
     subject_id: str,
     actor: str,
-    ledger: InMemoryLedger,
+    ledger: AuditLedgerProtocol,
     consent_ledger: ConsentLedgerProtocol,
     graph: GraphStore,
     idempotency_key: str | None = None,

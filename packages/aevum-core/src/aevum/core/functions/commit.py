@@ -6,10 +6,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from aevum.core.audit.ledger import InMemoryLedger
 from aevum.core.audit.sigchain import _uuid7
 from aevum.core.barriers import check_crisis
 from aevum.core.envelope.models import OutputEnvelope, ProvenanceRecord
+from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 
 _RESERVED_PREFIXES = (
     "ingest.", "query.", "review.", "commit.",
@@ -22,7 +22,7 @@ def commit(
     event_type: str,
     payload: dict[str, Any],
     actor: str,
-    ledger: InMemoryLedger,
+    ledger: AuditLedgerProtocol,
     idempotency_key: str | None = None,
     idempotency_cache: dict[str, OutputEnvelope] | None = None,
     episode_id: str | None = None,
