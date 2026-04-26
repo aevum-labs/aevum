@@ -47,3 +47,4 @@ class JwksCache:
         """Force re-fetch on next access. Thread-safe."""
         with self._lock:
             self._fetched_at = 0.0
+            self._keys = []

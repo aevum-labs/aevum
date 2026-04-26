@@ -32,14 +32,35 @@ dev = [
 
 [[package]]
 name = "aevum-cli"
-version = "0.0.1"
+version = "0.1.0"
 source = { editable = "packages/aevum-cli" }
 dependencies = [
     { name = "aevum-core" },
+    { name = "aevum-server" },
+    { name = "typer" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "aevum-core", editable = "packages/aevum-core" }]
+requires-dist = [
+    { name = "aevum-core", editable = "packages/aevum-core" },
+    { name = "aevum-server", editable = "packages/aevum-server" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
+    { name = "typer", extras = ["all"], specifier = ">=0.12" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "aevum-core"
