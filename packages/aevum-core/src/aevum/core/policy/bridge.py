@@ -139,7 +139,7 @@ class PolicyBridge:
                 "context": context,
             }
             result = is_authorized(request, _CEDAR_POLICY, [])
-            return result.decision == Decision.Allow
+            return bool(result.decision == Decision.Allow)
         except Exception as exc:
             logger.warning(
                 "Cedar evaluation failed for %s/%s -- denying (fail-closed): %s",

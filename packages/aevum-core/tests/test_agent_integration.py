@@ -9,8 +9,6 @@ from __future__ import annotations
 import threading
 from typing import Any
 
-import pytest
-
 from aevum.core.consent.models import ConsentGrant
 from aevum.core.engine import Engine
 
@@ -130,11 +128,9 @@ def test_reset_after_review_approval() -> None:
         if "review" in e["event_type"].lower() and "approved" not in e["event_type"]
     ]
 
-    if review_entries:
-        # Counter resets via engine
-        if hasattr(engine, "reset_agent_actions"):
-            engine.reset_agent_actions("gate-l3-agent")
-            assert agent.consecutive_actions == 0
+    if review_entries and hasattr(engine, "reset_agent_actions"):
+        engine.reset_agent_actions("gate-l3-agent")
+        assert agent.consecutive_actions == 0
 
 
 def test_sigchain_intact_after_agent_events() -> None:

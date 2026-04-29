@@ -10,7 +10,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import httpx
-import pytest
 
 from aevum.core.policy.bridge import PolicyBridge
 
@@ -78,6 +77,29 @@ class TestOPASidecar:
         mock_resp = MagicMock()
         mock_resp.json.return_value = {}  # No "result" key
         mock_resp.raise_for_status.return_value = None
+        with patch.object(bridge._http_client(), "post", return_value=mock_resp):
+            assert bridge.evaluate_infrastructure(
+                actor="actor", operation="query", resource={}
+            ) is False
+
+    def test_opa_non_200_fail_closed(self) -> None:
+        """Non-200 HTTP response (raise_for_status raises) fails closed."""
+        bridge = PolicyBridge(opa_url="http://opa:8181")
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "403 Forbidden", request=MagicMock(), response=MagicMock()
+        )
+        with patch.object(bridge._http_client(), "post", return_value=mock_resp):
+            assert bridge.evaluate_infrastructure(
+                actor="actor", operation="query", resource={}
+            ) is False
+
+    def test_opa_json_parse_error_fail_closed(self) -> None:
+        """JSON parse failure on OPA response fails closed."""
+        bridge = PolicyBridge(opa_url="http://opa:8181")
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.side_effect = ValueError("not valid JSON")
         with patch.object(bridge._http_client(), "post", return_value=mock_resp):
             assert bridge.evaluate_infrastructure(
                 actor="actor", operation="query", resource={}

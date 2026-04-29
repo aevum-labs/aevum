@@ -32,7 +32,6 @@ from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
 
-
 # Check for AgentComplication dynamically to avoid circular import
 # (aevum-sdk is not a dependency of aevum-core)
 

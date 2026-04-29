@@ -12,8 +12,6 @@
 # granted consent for which operations.
 # Both must permit a request for it to proceed.
 
-version: "3.9"
-
 services:
   opa:
     image: openpolicyagent/opa:latest-static
