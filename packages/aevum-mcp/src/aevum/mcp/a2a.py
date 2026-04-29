@@ -1,10 +1,9 @@
 """
-A2A task format compatibility (Phase 11).
+A2A task format — Pydantic model and state machine for agent-to-agent task exchange.
 
-Implements the A2A task Pydantic model and state machine.
-Does NOT implement a full A2A HTTP server (Phase 13).
-
-Task states from spec: created, working, input_required, completed, failed, cancelled
+Task states: created, working, input_required, completed, failed, cancelled.
+Task IDs map directly to Aevum audit_ids for provenance tracking.
+A full A2A HTTP server is not included; the MCP tools provide the integration surface.
 """
 
 from __future__ import annotations

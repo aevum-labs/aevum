@@ -1,6 +1,5 @@
 """
 WebhookRegistry -- register endpoints and dispatch review events.
-Phase 9: exponential backoff retry + dead-letter AuditEvent on final failure.
 
 Retry schedule: 3 attempts at 1s, 5s, 25s (base^n with base=5).
 On final failure: appends a barrier.webhook_failed AuditEvent to the ledger.

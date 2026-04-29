@@ -7,7 +7,7 @@ Complications register themselves in pyproject.toml:
     my-comp = "my_package.complication:MyComplication"
 
 The kernel calls discover_complications() to find all installed complications.
-Phase 6 adds manifest validation and approval gating to this pipeline.
+Results are passed through Engine.install_complication() for manifest validation and approval gating.
 """
 
 from __future__ import annotations

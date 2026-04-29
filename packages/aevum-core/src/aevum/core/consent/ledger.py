@@ -1,6 +1,7 @@
 """
 Consent ledger — OR-Set semantics. Spec Section 07.
-Phase 3: in-memory. Cedar integration arrives Phase 6.
+
+In-memory implementation. Cedar policy evaluation is in aevum.core.policy.bridge.
 """
 
 from __future__ import annotations

@@ -2,7 +2,7 @@
 OTel instrumentation for complications.
 
 Wraps Complication.run() with a span automatically.
-Emits cost telemetry aligned with FOCUS 1.3 (Phase 6 completes this).
+Safe no-op when opentelemetry is not installed.
 """
 
 from __future__ import annotations
