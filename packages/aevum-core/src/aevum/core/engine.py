@@ -34,6 +34,10 @@ from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
 
 
+# Check for AgentComplication dynamically to avoid circular import
+# (aevum-sdk is not a dependency of aevum-core)
+
+
 class Engine:
     """
     The Aevum context kernel.
@@ -119,6 +123,10 @@ class Engine:
         # Initialise circuit breaker
         self._circuit_breakers[name] = CircuitBreaker()
 
+        # Inject review callback for AgentComplication autonomy enforcement
+        if hasattr(instance, "set_review_callback"):
+            instance.set_review_callback(self.create_review)
+
         # Log to ledger
         self._ledger.append(
             event_type="complication.installed",
@@ -170,6 +178,22 @@ class Engine:
 
     def deregister_webhook(self, webhook_id: str) -> None:
         self._webhook_registry.deregister(webhook_id)
+
+    def reset_agent_actions(self, complication_name: str) -> None:
+        """
+        Reset the consecutive action counter for an AgentComplication.
+        Call this after a review is resolved (approved or vetoed).
+        """
+        complication = self._get_active_complication(complication_name)
+        if complication is not None and hasattr(complication, "reset_consecutive_actions"):
+            complication.reset_consecutive_actions()
+
+    def _get_active_complication(self, name: str) -> Any | None:
+        """Return an active complication instance by name, or None."""
+        for comp in self._complication_registry.active_complications():
+            if comp.name == name:
+                return comp
+        return None
 
     def get_active_complication_by_capability(self, capability: str) -> Any | None:
         """Return the first ACTIVE complication that declares the given capability, or None."""
@@ -241,6 +265,11 @@ class Engine:
         if action in ("approve", "veto") and result.status in ("ok", "error"):
             event_type = "review.approved" if action == "approve" else "review.vetoed"
             self._webhook_registry.dispatch(event_type, {"audit_id": audit_id, "actor": actor})
+        # Reset agent consecutive action counter on approval
+        if action == "approve" and result.status == "ok":
+            for comp in self._complication_registry.active_complications():
+                if hasattr(comp, "reset_consecutive_actions"):
+                    comp.reset_consecutive_actions()
         return result
 
     def commit(
@@ -287,11 +316,22 @@ class Engine:
         risk_assessment: str = "",
         deadline_iso: str | None = None,
     ) -> str:
-        return self._review_store.create(
+        provisional_id = self._review_store.create(
             proposed_action=proposed_action, reason=reason, actor=actor,
             autonomy_level=autonomy_level, risk_assessment=risk_assessment,
             deadline_iso=deadline_iso,
         )
+        self._ledger.append(
+            event_type="review.created",
+            payload={
+                "audit_id": provisional_id,
+                "proposed_action": proposed_action,
+                "reason": reason,
+                "autonomy_level": autonomy_level,
+            },
+            actor=actor,
+        )
+        return provisional_id
 
     def get_ledger_entries(self) -> list[dict[str, Any]]:
         return [
