@@ -21,6 +21,7 @@ dependencies = [
     "pydantic-settings>=2.0",
     "opentelemetry-instrumentation-fastapi>=0.50b0",
     "opentelemetry-sdk>=1.25",
+    "python-dotenv>=1.2.2", # CVE-2026-28684 fixed in 1.2.2
 ]
 
 [project.urls]

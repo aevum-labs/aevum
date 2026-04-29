@@ -1,7 +1,7 @@
 [project]
 name = "aevum-llm"
 version = "0.2.0"
-description = "Aevum — LiteLLM-backed LLM complication with full audit trail."
+description = "Aevum — LiteLLM-backed LLM complication with episodic ledger record."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
@@ -16,6 +16,8 @@ dependencies = [
     "aevum-core",
     "aevum-sdk",
     "litellm>=1.40",
+    "aiohttp>=3.13.4",      # CVE-2026-34516/34519/34515/22815 fixed in 3.13.4
+    "python-dotenv>=1.2.2", # CVE-2026-28684 fixed in 1.2.2
 ]
 
 [project.entry-points."aevum.complications"]
