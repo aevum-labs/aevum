@@ -32,7 +32,7 @@ dev = [
 
 [[package]]
 name = "aevum-cli"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/aevum-cli" }
 dependencies = [
     { name = "aevum-core" },
@@ -64,7 +64,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "aevum-core"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/aevum-core" }
 dependencies = [
     { name = "cryptography" },
@@ -104,7 +104,7 @@ provides-extras = ["default", "cedar", "dev"]
 
 [[package]]
 name = "aevum-llm"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/aevum-llm" }
 dependencies = [
     { name = "aevum-core" },
@@ -134,7 +134,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "aevum-mcp"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/aevum-mcp" }
 dependencies = [
     { name = "aevum-core" },
@@ -162,7 +162,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "aevum-oidc"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/aevum-oidc" }
 dependencies = [
     { name = "aevum-core" },
@@ -196,7 +196,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "aevum-sdk"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/aevum-sdk" }
 dependencies = [
     { name = "aevum-core" },
@@ -226,7 +226,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "aevum-server"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/aevum-server" }
 dependencies = [
     { name = "aevum-core" },
@@ -249,7 +249,7 @@ requires-dist = [
 
 [[package]]
 name = "aevum-store-jena"
-version = "0.0.1"
+version = "0.2.0"
 source = { editable = "packages/aevum-store-jena" }
 dependencies = [
     { name = "aevum-core" },
@@ -260,7 +260,7 @@ requires-dist = [{ name = "aevum-core", editable = "packages/aevum-core" }]
 
 [[package]]
 name = "aevum-store-oxigraph"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/aevum-store-oxigraph" }
 dependencies = [
     { name = "aevum-core" },
@@ -275,7 +275,7 @@ requires-dist = [
 
 [[package]]
 name = "aevum-store-postgres"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/aevum-store-postgres" }
 dependencies = [
     { name = "aevum-core" },
