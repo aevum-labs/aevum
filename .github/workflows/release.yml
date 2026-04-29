@@ -7,7 +7,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write  # Required for OIDC Trusted Publisher authentication
+  id-token: write
 
 jobs:
   publish:
@@ -24,26 +24,13 @@ jobs:
         with:
           version: "latest"
 
-      - name: Verify all packages build cleanly
+      - name: Verify workspace syncs cleanly
         run: uv sync --frozen
 
-      - name: Build all packages
+      - name: Build aevum-core
         run: |
           mkdir -p dist
-          for pkg in \
-            aevum-core \
-            aevum-server \
-            aevum-sdk \
-            aevum-store-oxigraph \
-            aevum-store-postgres \
-            aevum-store-jena \
-            aevum-mcp \
-            aevum-oidc \
-            aevum-llm \
-            aevum-cli; do
-            echo "Building $pkg..."
-            uv build packages/$pkg --out-dir dist/
-          done
+          uv build packages/aevum-core --out-dir dist/
           echo "Built packages:"
           ls dist/
 
@@ -51,6 +38,3 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
-          # Trusted Publisher -- no API token required.
-          # Configure at: https://pypi.org/manage/account/publishing/
-          # For each package: owner=aevum-labs, repo=aevum, workflow=release.yml, env=pypi
