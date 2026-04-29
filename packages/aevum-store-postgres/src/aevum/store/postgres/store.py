@@ -15,8 +15,6 @@ import json
 import threading
 from typing import Any
 
-from aevum.core.protocols.graph_store import GraphStore
-
 
 class PostgresStore:
     """
@@ -110,7 +108,3 @@ class PostgresStore:
             cur.execute(sql)
             row = cur.fetchone()
         return int(row[0]) if row else 0
-
-
-def _is_graphstore(obj: object) -> bool:
-    return isinstance(obj, GraphStore)
