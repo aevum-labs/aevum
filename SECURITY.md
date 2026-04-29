@@ -12,9 +12,11 @@ Once 1.0 is released, only the most recent minor version receives security fixes
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Report vulnerabilities privately by emailing:
+Please report security vulnerabilities using GitHub Security Advisories:
+https://github.com/aevum-labs/aevum/security/advisories/new
 
-**security@aevum.build**
+Reports are kept private until a fix is released.
+We aim to respond within 48 hours and release a fix within 14 days.
 
 Include:
 - A description of the vulnerability

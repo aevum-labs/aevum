@@ -1,90 +1,58 @@
 # Contributing to Aevum
 
-Thank you for your interest in contributing. This document explains how to get
-involved.
+Thank you for your interest in contributing.
 
-## Before You Start
+## Ways to contribute
 
-**Discuss before you code.** For anything beyond a clear bug fix, open an issue
-first. This prevents wasted effort and ensures your contribution aligns with
-the project's direction. The [Non-Goals](NON-GOALS.md) document is the scope
-fence — read it before proposing new features.
+- **Bug reports:** [Open an issue](https://github.com/aevum-labs/aevum/issues)
+- **Feature requests:** [Start a discussion](https://github.com/aevum-labs/aevum/discussions)
+- **Security vulnerabilities:** [GitHub Security Advisories](https://github.com/aevum-labs/aevum/security/advisories/new) (private)
+- **Pull requests:** See the development guide below
 
-**Read the master plan.** `CLAUDE.md` contains the complete architectural
-decisions, naming conventions, and frozen invariants. Contributions that
-contradict frozen decisions will not be merged.
+## Development setup
 
-## Developer Certificate of Origin
+```bash
+git clone https://github.com/aevum-labs/aevum.git
+cd aevum
+uv sync
+```
 
-All contributions must be signed off under the
-[Developer Certificate of Origin (DCO)](https://developercertificate.org/).
-This certifies you have the right to submit the contribution under the
-Apache-2.0 license.
+## Running tests
 
-Sign off by appending the following to each commit message:
+```bash
+# All packages
+uv run pytest packages/
 
-    Signed-off-by: Your Name <your.email@example.com>
+# Single package
+cd packages/aevum-core
+uv run pytest tests/ -v
+```
 
-With git, use `git commit -s` to add this automatically.
+## Code standards
 
-We use DCO rather than a CLA because it is lower friction and places the legal
-responsibility appropriately on each contributor.
+- Python 3.11+, mypy strict, ruff (zero warnings)
+- Every function has a docstring explaining purpose and constraints
+- Comments explain *why*, not *what*
+- No `tests/__init__.py` -- test directories are not packages
+- Run `uv run mypy --package aevum.<name>` per package
 
-## Development Setup
+## Submitting a pull request
 
-    # Clone the repository
-    git clone https://github.com/aevum-labs/aevum.git
-    cd aevum
+1. Fork the repository
+2. Create a branch: `git checkout -b my-feature`
+3. Make your changes with tests
+4. Run: `uv run pytest` and `uv run mypy --package aevum.<name>`
+5. Sign your commits: `git commit -s -m "Your message"`
+6. Open a pull request against `main`
 
-    # Install uv if you don't have it
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+## Conformance
 
-    # Install all packages in development mode
-    uv sync
+Changes to aevum-core must pass the conformance suite:
+```bash
+cd ../aevum-conformance
+uv run pytest layer1_wire/ layer2_semantic/ layer3_invariants/ -v
+```
 
-    # Run the test suite
-    uv run pytest
+## License
 
-    # Run the linter
-    uv run ruff check .
-
-    # Run the type checker
-    uv run mypy .
-
-## Pull Request Process
-
-1. Fork the repository and create a branch from `main`.
-2. Make your changes. Keep commits small and focused.
-3. Ensure all tests pass: `uv run pytest`
-4. Ensure linting passes: `uv run ruff check .`
-5. Ensure type checking passes: `uv run mypy .`
-6. Sign off all commits with `git commit -s`.
-7. Open a pull request against `main` with a clear description.
-
-CI must pass before any pull request can be merged. The conformance workflow
-is mandatory for changes to `aevum-core` and cannot be bypassed.
-
-## Code Standards
-
-- **Python 3.11 minimum.** Use modern syntax: `X | Y` unions, `match` statements,
-  `asyncio.TaskGroup`.
-- **Strict typing.** All public functions must have complete type annotations.
-  `mypy --strict` must pass with zero errors.
-- **No `Any` without justification.** If you use `Any`, add a comment explaining
-  why it cannot be avoided.
-- **No bare exceptions.** Catch specific exception types. Use the exception
-  hierarchy in `aevum.core.exceptions`.
-- **Naming conventions** are in `CLAUDE.md` Section 1. They are not negotiable.
-- **Tests are required.** New functionality MUST include tests in the
-  automated test suite before the PR will be merged.
-
-## Reporting Bugs
-
-Open an issue with a minimal reproducible example. Include the version of
-`aevum-core` and Python you are using.
-
-## Proposing Features
-
-Open an issue with the `rfc` label. See [GOVERNANCE.md](GOVERNANCE.md) for the
-RFC process. Features that conflict with [NON-GOALS.md](NON-GOALS.md) will not
-be accepted regardless of implementation quality.
+By contributing, you agree your contributions are licensed under Apache-2.0.
