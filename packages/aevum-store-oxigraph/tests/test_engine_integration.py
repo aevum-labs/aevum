@@ -85,8 +85,7 @@ def test_sigchain_intact_with_oxigraph() -> None:
 
 def test_demo_ten_lines() -> None:
     """
-    The Phase 4 gate demo.
-    A developer can ingest data and query it in ~10 lines.
+    A developer can ingest data and query it back using OxigraphStore in ~10 lines.
     """
     from aevum.core import Engine
     from aevum.core.consent.models import ConsentGrant

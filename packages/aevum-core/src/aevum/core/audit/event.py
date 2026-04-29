@@ -1,7 +1,5 @@
 """
 AuditEvent — the 18-field episodic ledger entry. Spec Section 06.2.
-Note: master plan Phase 3 checklist says "16 fields" — typo corrected in
-Phase 1 review. Correct count is 18.
 """
 
 from __future__ import annotations

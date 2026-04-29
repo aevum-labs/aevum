@@ -1,7 +1,17 @@
 # aevum-store-oxigraph
 
-Oxigraph GraphStore backend for Aevum (small and single-node deployments).
+Oxigraph-backed graph store for Aevum. Suitable for single-node and embedded deployments. No external database required.
 
-> **Status:** Pre-release (Phase 0 — skeleton only)
+```bash
+pip install aevum-store-oxigraph
+```
 
-See [aevum.build](https://aevum.build) for documentation.
+```python
+from aevum.core import Engine
+from aevum.store.oxigraph import OxigraphStore
+
+engine = Engine(graph_store=OxigraphStore(path="./aevum-data"))
+```
+
+For team deployments requiring shared state, use `aevum-store-postgres` instead.
+See the [main repository README](https://github.com/aevum-labs/aevum) for backend selection guidance.

@@ -3,7 +3,7 @@ ManifestValidator — validate complication manifests.
 
 Validates:
 1. Required fields are present and well-formed (schema check)
-2. Ed25519 signature if public_key is provided (optional in Phase 6)
+2. Ed25519 signature if public_key is provided (optional; skipped when public_key is None)
 
 Spec Section 11.4.
 """
@@ -73,7 +73,6 @@ class ManifestValidator:
             if invalid:
                 errors.append(f"'functions' contains invalid values: {invalid}")
 
-        # Ed25519 signature (optional in Phase 6)
         public_key = manifest.get("auth", {}).get("public_key")
         if public_key is None:
             logger.warning(

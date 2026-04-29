@@ -9,9 +9,6 @@ Uses three Named Graphs (frozen invariants from spec Section 04.3):
 
 RDF-star is NOT used (dropped in pyoxigraph 0.5).
 Provenance is stored as separate quads in urn:aevum:provenance.
-
-Phase 4 implements store_entity, get_entity, query_entities.
-SPARQL helpers for complex traversal arrive in Phase 5 (aevum-sdk).
 """
 
 from __future__ import annotations
@@ -217,9 +214,8 @@ class OxigraphStore:
         """
         Execute a SPARQL SELECT query and return results as a list of dicts.
 
-        Not part of the GraphStore Protocol — a Phase 4 helper for internal
-        use by query() traversal. Not exposed as a user-facing endpoint
-        (Non-Goal per spec Section 3.4).
+        Not part of the GraphStore Protocol. Useful for ad-hoc traversal
+        within complications or diagnostics. Not exposed as a public HTTP endpoint.
         """
         kwargs: dict[str, Any] = {}
         if default_graph:

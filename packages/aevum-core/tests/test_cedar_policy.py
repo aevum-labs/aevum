@@ -1,6 +1,6 @@
 """
-Tests for the Cedar policy bridge (Phase 9).
-cedarpy must be installed for real tests; falls back to permissive if not.
+Tests for the Cedar policy bridge in PolicyBridge.
+cedarpy must be installed for real Cedar evaluation; falls back to permissive if not.
 
 NO tests/__init__.py (standing rule).
 """

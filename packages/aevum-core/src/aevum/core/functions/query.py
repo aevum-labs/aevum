@@ -1,6 +1,6 @@
 """
 query — NAVIGATE — graph traversal for declared purpose. Spec Section 08.4.
-Phase 6: calls active complications, stores results in ledger for replay.
+Calls active complications and stores results in the ledger for faithful replay.
 """
 
 from __future__ import annotations
@@ -48,7 +48,10 @@ def query(
 ) -> OutputEnvelope:
     """
     Traverse the knowledge graph for a declared purpose.
-    Phase 6: calls active complications and stores results in ledger.
+
+    Calls all ACTIVE complications in registry order, accumulates their results,
+    and appends a single ledger entry containing both graph and complication data
+    for deterministic replay.
     """
     from aevum.core.complications import _run_coro
 
@@ -80,7 +83,6 @@ def query(
     )
     redacted = [s for s in subject_ids if s not in graph_results]
 
-    # Phase 6: call active complications
     complication_results: dict[str, Any] = {}
     available: list[str] = []
     degraded: list[str] = []

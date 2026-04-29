@@ -1,6 +1,5 @@
 """
 Engine — wires all kernel components together.
-Phase 6: adds ComplicationRegistry integration.
 """
 
 from __future__ import annotations
@@ -33,7 +32,6 @@ from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
 
-
 # Check for AgentComplication dynamically to avoid circular import
 # (aevum-sdk is not a dependency of aevum-core)
 
@@ -42,11 +40,8 @@ class Engine:
     """
     The Aevum context kernel.
 
-    Phase 6 additions:
-      - install_complication(instance) — register + validate + approve
-      - approve_complication(name) — admin approval
-      - suspend_complication(name) — admin suspension
-      - complication registry exposed for status queries
+    Wires together the episodic ledger, consent ledger, graph store,
+    policy bridge, complication registry, and the five governed functions.
     """
 
     def __init__(
@@ -56,7 +51,7 @@ class Engine:
         opa_url: str | None = None,
         sigchain: Sigchain | None = None,
         consent_ledger: ConsentLedgerProtocol | None = None,
-        ledger: AuditLedgerProtocol | None = None,   # NEW Phase 9
+        ledger: AuditLedgerProtocol | None = None,
     ) -> None:
         self._sigchain = sigchain or Sigchain()
         self._ledger = ledger or InMemoryLedger(self._sigchain)
@@ -66,7 +61,6 @@ class Engine:
         self._review_store = ReviewStore()
         self._idempotency_cache: dict[str, OutputEnvelope] = {}
 
-        # Phase 6: complication governance
         self._complication_registry = ComplicationRegistry()
         self._circuit_breakers: dict[str, CircuitBreaker] = {}
         self._manifest_validator = ManifestValidator()
@@ -81,7 +75,7 @@ class Engine:
     def revoke_consent_grant(self, grant_id: str) -> None:
         self._consent_ledger.revoke_grant(grant_id)
 
-    # ── Complication management (Phase 6) ─────────────────────────────────────
+    # ── Complication management ───────────────────────────────────────────────
 
     def install_complication(self, instance: Any, *, auto_approve: bool = False) -> None:
         """
@@ -165,7 +159,7 @@ class Engine:
     def list_complications(self) -> dict[str, dict[str, Any]]:
         return self._complication_registry.all_entries()
 
-    # ── Webhook management (Phase 6) ──────────────────────────────────────────
+    # ── Webhook management ────────────────────────────────────────────────────
 
     def register_webhook(
         self,
@@ -261,7 +255,6 @@ class Engine:
             ledger=self._ledger, review_store=self._review_store,
             episode_id=episode_id, correlation_id=correlation_id,
         )
-        # Phase 6: dispatch webhook on review resolution
         if action in ("approve", "veto") and result.status in ("ok", "error"):
             event_type = "review.approved" if action == "approve" else "review.vetoed"
             self._webhook_registry.dispatch(event_type, {"audit_id": audit_id, "actor": actor})

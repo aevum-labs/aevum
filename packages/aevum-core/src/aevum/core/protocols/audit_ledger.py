@@ -1,9 +1,8 @@
 """
 AuditLedgerProtocol -- runtime-checkable Protocol for episodic ledger backends.
 
-InMemoryLedger (dev) and PostgresLedger (production) both satisfy this.
-Engine accepts ledger= kwarg following the same pattern as graph_store=
-and consent_ledger= from Phase 8.
+InMemoryLedger (dev) and PostgresLedger (production) both satisfy this Protocol.
+Engine accepts a ledger= kwarg following the same pattern as graph_store= and consent_ledger=.
 """
 
 from __future__ import annotations

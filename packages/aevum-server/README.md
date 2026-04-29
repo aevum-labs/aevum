@@ -1,5 +1,11 @@
 # aevum-server
 
-HTTP API server wrapping the five Aevum kernel functions.
+FastAPI HTTP server wrapping the five governed Aevum kernel functions (`ingest`, `query`, `review`, `commit`, `replay`).
 
-See [aevum.build](https://aevum.build) for documentation.
+```bash
+pip install aevum-server
+aevum server start --graph memory
+```
+
+See the [main repository README](https://github.com/aevum-labs/aevum) for configuration and deployment options.
+

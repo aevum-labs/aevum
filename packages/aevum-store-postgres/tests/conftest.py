@@ -17,7 +17,6 @@ from typing import Any
 
 import pytest
 
-
 POSTGRES_DSN = os.environ.get("AEVUM_TEST_POSTGRES_DSN", "")
 
 
@@ -95,7 +94,7 @@ class _FakeCursor:
     def fetchall(self) -> list[Any]:
         return list(self._rows)
 
-    def __enter__(self) -> "_FakeCursor":
+    def __enter__(self) -> _FakeCursor:
         return self
 
     def __exit__(self, *args: Any) -> None:

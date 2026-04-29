@@ -13,7 +13,7 @@ from aevum.core.exceptions import BarrierViolationError, ReplayNotFoundError
 
 
 class InMemoryLedger:
-    """Thread-safe append-only in-memory episodic ledger (Phase 3 dev impl)."""
+    """Thread-safe append-only in-memory episodic ledger. Suitable for development and testing."""
 
     def __init__(self, sigchain: Sigchain) -> None:
         self._sigchain = sigchain

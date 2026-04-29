@@ -1,5 +1,5 @@
 """
-/_aevum/v1/* — admin API. Phase 6: real complication lifecycle endpoints.
+/_aevum/v1/* — admin API for complication lifecycle and server diagnostics.
 """
 
 from __future__ import annotations
@@ -98,11 +98,11 @@ async def complication_health(
 async def get_usage(
     actor: Annotated[str, Depends(get_actor)],
 ) -> dict[str, Any]:
-    return {"usage": {}, "note": "Phase 9 placeholder"}
+    return {"usage": {}, "note": "Install a complication to see usage metrics here."}
 
 
 @router.get("/federation/peers")
 async def list_federation_peers(
     actor: Annotated[str, Depends(get_actor)],
 ) -> dict[str, Any]:
-    return {"peers": [], "note": "Phase 8 placeholder"}
+    return {"peers": [], "note": "Install a complication to see it listed here."}

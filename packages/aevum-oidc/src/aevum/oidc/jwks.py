@@ -1,6 +1,7 @@
 """
 JWKS fetching and caching with TTL.
-Phase 9: added threading.Lock for cache correctness under concurrent requests.
+
+Thread-safe: concurrent callers reuse cached keys without double-fetching.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ class JwksCache:
         self._keys: list[dict[str, Any]] = []
         self._fetched_at: float = 0.0
         self._client: httpx.Client | None = None
-        self._lock = threading.Lock()  # Phase 9: thread safety
+        self._lock = threading.Lock()
 
     def _http(self) -> httpx.Client:
         if self._client is None:

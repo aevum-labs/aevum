@@ -7,7 +7,7 @@ NOT for production. Production operators use:
   gunicorn aevum.server.app:create_app -k uvicorn.workers.UvicornWorker
 
 Configuration via environment variables (see aevum/server/core/config.py).
-Full CLI with config management arrives in Phase 5 (aevum-cli).
+For full CLI control use the aevum-cli package: `aevum server start`.
 """
 
 import uvicorn

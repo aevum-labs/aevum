@@ -20,7 +20,6 @@ jobs:
       - name: Run canary tests (Barriers 1 3 4 5)
         run: uv run pytest packages/aevum-core/tests/test_canary.py -v --tb=short
       # Full aevum-labs/conform@v0 action runs once the action is tagged.
-      # Canary tests are the meaningful conformance check for Phase 3b.
       # When conform@v0 is tagged, replace the step above with:
       #   uses: aevum-labs/conform@v0
       #   with:

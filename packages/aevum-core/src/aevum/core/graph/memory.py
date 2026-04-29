@@ -1,6 +1,6 @@
 """
 InMemoryGraphStore — development and testing only. NOT for production.
-Replace with OxigraphStore (Phase 4) or PostgresStore (Phase 5).
+For production use aevum-store-oxigraph (single-node) or aevum-store-postgres (team).
 """
 
 from __future__ import annotations

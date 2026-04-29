@@ -1,8 +1,10 @@
 # aevum-mcp
 
-MCP (Model Context Protocol) server complication for Aevum.
-Exposes Aevum's five functions as MCP tools.
+MCP server for Aevum — exposes all five governed functions (`ingest`, `query`, `review`, `commit`, `replay`) as MCP tools, plus A2A task management.
 
-> **Status:** Pre-release (Phase 0 — skeleton only)
+```bash
+pip install aevum-mcp
+python -m aevum.mcp
+```
 
-See [aevum.build](https://aevum.build) for documentation.
+Compatible with Claude Desktop and any MCP client. See the [main repository README](https://github.com/aevum-labs/aevum) for configuration.

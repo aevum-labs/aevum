@@ -15,7 +15,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from aevum.core.consent.models import ConsentGrant
-from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 
 
 class PostgresConsentLedger:
@@ -109,7 +108,3 @@ class PostgresConsentLedger:
             with contextlib.suppress(Exception):
                 grants.append(ConsentGrant(**d))
         return grants
-
-
-def _is_consent_ledger(obj: object) -> bool:
-    return isinstance(obj, ConsentLedgerProtocol)

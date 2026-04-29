@@ -1,8 +1,9 @@
 # aevum-store-jena
 
-Apache Jena TDB2 GraphStore backend for Aevum (enterprise deployments).
-HTTP-only access — never a direct dependency on the Jena binary.
+> **Status: Planned** — This package is not yet implemented.
 
-> **Status:** Pre-release (Phase 0 — skeleton only)
+A future Aevum graph store backend for Apache Jena TDB2.
+Designed for air-gap deployments that cannot use PostgreSQL.
 
-See [aevum.build](https://aevum.build) for documentation.
+Track development progress:
+https://github.com/aevum-labs/aevum/issues

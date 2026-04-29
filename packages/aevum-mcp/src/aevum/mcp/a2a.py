@@ -1,10 +1,9 @@
 """
-A2A task format compatibility (Phase 11).
+A2A task format — Pydantic model and state machine for agent-to-agent task exchange.
 
-Implements the A2A task Pydantic model and state machine.
-Does NOT implement a full A2A HTTP server (Phase 13).
-
-Task states from spec: created, working, input_required, completed, failed, cancelled
+Task states: created, working, input_required, completed, failed, cancelled.
+Task IDs map directly to Aevum audit_ids for provenance tracking.
+A full A2A HTTP server is not included; the MCP tools provide the integration surface.
 """
 
 from __future__ import annotations
@@ -12,7 +11,6 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
-
 
 A2ATaskState = Literal[
     "created", "working", "input_required", "completed", "failed", "cancelled"
@@ -59,7 +57,7 @@ class A2ATask(BaseModel):
     metadata: dict[str, Any] = {}
 
     @classmethod
-    def created(cls, task_id: str, name: str, description: str = "") -> "A2ATask":
+    def created(cls, task_id: str, name: str, description: str = "") -> A2ATask:
         return cls(task_id=task_id, name=name, state="created", description=description)
 
     @classmethod
@@ -69,7 +67,7 @@ class A2ATask(BaseModel):
         name: str,
         result: str,
         artifacts: list[A2AArtifact] | None = None,
-    ) -> "A2ATask":
+    ) -> A2ATask:
         return cls(
             task_id=task_id,
             name=name,
@@ -79,7 +77,7 @@ class A2ATask(BaseModel):
         )
 
     @classmethod
-    def input_required(cls, task_id: str, name: str, prompt: str) -> "A2ATask":
+    def input_required(cls, task_id: str, name: str, prompt: str) -> A2ATask:
         return cls(
             task_id=task_id,
             name=name,
@@ -88,7 +86,7 @@ class A2ATask(BaseModel):
         )
 
     @classmethod
-    def failed(cls, task_id: str, name: str, error: str) -> "A2ATask":
+    def failed(cls, task_id: str, name: str, error: str) -> A2ATask:
         return cls(
             task_id=task_id,
             name=name,

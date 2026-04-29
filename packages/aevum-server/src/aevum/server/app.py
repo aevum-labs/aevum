@@ -100,7 +100,7 @@ def create_app(
 
     app = FastAPI(
         title="Aevum HTTP API",
-        version="0.1.0",
+        version="0.2.0",
         description="Replay-first, policy-governed context kernel — HTTP surface.",
         docs_url="/v1/docs",
         openapi_url="/v1/openapi.json",

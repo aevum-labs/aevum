@@ -1,8 +1,8 @@
 """
 Authentication — X-Aevum-Key header validation.
 
-Phase 3b: API key only.
-OIDC bearer token support arrives with aevum-oidc (Phase 7).
+API key authentication only. For OIDC bearer token support install
+the aevum-oidc complication and add it to the Engine.
 """
 
 from __future__ import annotations

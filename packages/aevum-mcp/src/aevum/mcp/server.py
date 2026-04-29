@@ -1,9 +1,6 @@
 """
-Aevum MCP server — five functions + two A2A task tools.
-
-Phase 11 adds:
-  create_task(name, description, payload) -> A2ATask (state=created)
-  get_task(task_id) -> A2ATask (polls ledger for task state)
+Aevum MCP server — five governed functions exposed as MCP tools, plus two
+A2A task tools (create_task, get_task) backed by the episodic ledger.
 """
 
 from __future__ import annotations
@@ -11,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from aevum.core.engine import Engine
+
 from aevum.mcp.a2a import A2ATask
 from mcp.server.fastmcp import FastMCP
 

@@ -9,10 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 from aevum.core.protocols.graph_store import GraphStore
-
 
 # ── Protocol conformance ──────────────────────────────────────────────────────
 
