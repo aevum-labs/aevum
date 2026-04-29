@@ -1,6 +1,6 @@
 """
-ConformanceAdapter — wraps Engine to satisfy AevumProtocol (Phase 2 interface).
-Engine returns Pydantic models; this adapter returns dicts for the conformance suite.
+ConformanceAdapter — wraps Engine to return plain dicts for the conformance suite.
+Engine returns Pydantic models; this adapter converts them for protocol-level testing.
 """
 
 from __future__ import annotations

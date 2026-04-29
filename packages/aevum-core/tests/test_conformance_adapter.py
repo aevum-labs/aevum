@@ -1,4 +1,4 @@
-"""Conformance adapter — verify Engine passes Phase 2 scenarios."""
+"""Tests for ConformanceAdapter — verifies Engine behaviour against the protocol scenarios."""
 
 from __future__ import annotations
 

@@ -1,7 +1,9 @@
 # aevum-sdk
 
-The Aevum SDK — build complications (extensions) for the Aevum kernel.
+The Aevum complication developer kit — build, test, and publish complications for the Aevum kernel.
 
-> **Status:** Pre-release (Phase 0 — skeleton only)
+```bash
+pip install aevum-sdk
+```
 
-See [aevum.build](https://aevum.build) for documentation.
+See the [main repository README](https://github.com/aevum-labs/aevum) for architecture and the complication lifecycle.

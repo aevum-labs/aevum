@@ -1,5 +1,5 @@
 """
-Tests for WebhookRegistry exponential backoff retry and dead-letter (Phase 9).
+Tests for WebhookRegistry exponential backoff retry and dead-letter behaviour.
 
 NO tests/__init__.py (standing rule).
 """

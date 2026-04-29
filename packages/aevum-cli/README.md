@@ -1,7 +1,12 @@
 # aevum-cli
 
-Command-line interface for Aevum.
+Command-line interface for Aevum — start the server, manage store migrations, and inspect complication state.
 
-> **Status:** Pre-release (Phase 0 — skeleton only)
+```bash
+pip install aevum-cli
+aevum server start --graph memory
+aevum store migrate postgres:<dsn>
+aevum version
+```
 
-See [aevum.build](https://aevum.build) for documentation.
+See the [main repository README](https://github.com/aevum-labs/aevum) for full usage.

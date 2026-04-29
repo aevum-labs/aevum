@@ -1,8 +1,20 @@
 # aevum-oidc
 
-OIDC identity federation complication for Aevum.
-Resolves permissions at query time — never stores credentials.
+OIDC identity federation complication for Aevum. Validates Bearer tokens via JWKS and resolves actor identity from the `sub` claim — never stores credentials or raw tokens.
 
-> **Status:** Pre-release (Phase 0 — skeleton only)
+```bash
+pip install aevum-oidc
+```
 
-See [aevum.build](https://aevum.build) for documentation.
+```python
+from aevum.oidc import OidcComplication
+from aevum.core import Engine
+
+engine = Engine()
+engine.install_complication(
+    OidcComplication(jwks_uri="https://your-idp/.well-known/jwks.json", audience="your-api"),
+    auto_approve=True,
+)
+```
+
+See the [main repository README](https://github.com/aevum-labs/aevum) for the complication installation guide.

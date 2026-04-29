@@ -1,6 +1,6 @@
 """
-Hello-world complication — the Phase 5 gate example.
-Used by tests. Also serves as the canonical reference implementation.
+Hello-world complication — minimal reference implementation.
+Used by SDK tests to verify the Complication base class contract.
 """
 
 from aevum.sdk import Complication, Context

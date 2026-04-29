@@ -1,8 +1,20 @@
 # aevum-llm
 
-LLM adapter complication for Aevum. LiteLLM-backed with tier-ordered fallback.
-Every LLM call is recorded in the episodic ledger.
+LiteLLM-backed LLM complication for Aevum. Every call is audited: model ID, prompt hash, and response hash are recorded in the episodic ledger. Raw prompts and responses are never stored.
 
-> **Status:** Pre-release (Phase 0 — skeleton only)
+```bash
+pip install aevum-llm
+```
 
-See [aevum.build](https://aevum.build) for documentation.
+```python
+from aevum.llm import LlmComplication
+from aevum.core import Engine
+
+engine = Engine()
+engine.install_complication(
+    LlmComplication(model="claude-sonnet-4-6", fallback_models=["gpt-4.1"]),
+    auto_approve=True,
+)
+```
+
+See the [main repository README](https://github.com/aevum-labs/aevum) for the complication installation guide.

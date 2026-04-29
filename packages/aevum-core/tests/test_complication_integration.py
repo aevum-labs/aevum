@@ -1,5 +1,5 @@
 """
-Phase 6 gate integration tests.
+Integration tests for the complication lifecycle: install, approve, query, suspend, replay, conflict detection.
 
 Scenario:
 1. Install and approve a complication
@@ -190,7 +190,7 @@ def test_webhook_fires_on_review_approve() -> None:
 
 # Existing tests still pass (regression)
 def test_existing_canary_barriers_unaffected() -> None:
-    """Phase 6 must not break Phase 3 barriers."""
+    """Complication installation must not affect absolute barrier behaviour."""
     engine = Engine()
     result = engine.ingest(
         data={"content": "I want to kill myself"},

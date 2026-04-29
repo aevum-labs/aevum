@@ -1,7 +1,21 @@
 # aevum-store-postgres
 
-PostgreSQL + pgvector GraphStore backend for Aevum (team deployments).
+PostgreSQL-backed graph store for Aevum. Suitable for team deployments with shared state, concurrent writers, and durable persistence.
 
-> **Status:** Pre-release (Phase 0 — skeleton only)
+```bash
+pip install aevum-store-postgres
+```
 
-See [aevum.build](https://aevum.build) for documentation.
+```python
+import psycopg
+from aevum.core import Engine
+from aevum.store.postgres import PostgresStore
+from aevum.store.postgres.store import initialize_schema
+
+conn = psycopg.connect("postgresql://user:pass@localhost/aevum")
+initialize_schema(conn)
+engine = Engine(graph_store=PostgresStore(conn))
+```
+
+For single-node deployments without PostgreSQL, use `aevum-store-oxigraph` instead.
+See the [main repository README](https://github.com/aevum-labs/aevum) for backend selection guidance.

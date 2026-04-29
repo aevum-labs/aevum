@@ -1,5 +1,5 @@
 """
-Phase 11 gate: Engine + AgentComplication autonomy enforcement.
+Integration tests for Engine + AgentComplication autonomy enforcement (L1-L5).
 
 NO tests/__init__.py (standing rule).
 """
