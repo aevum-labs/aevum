@@ -1,8 +1,7 @@
 """
-aevum.core.complications — Full complication governance lifecycle.
+aevum.core.complications — Complication governance lifecycle.
 
-Phase 6 deliverables:
-  ComplicationRegistry  — 7-state machine, install/approve/suspend
+  ComplicationRegistry  — 7-state machine: install/approve/suspend/decommission
   CircuitBreaker        — threshold-based, monotonic clock
   ManifestValidator     — schema + Ed25519 (optional)
   ConflictDetector      — capability overlap, fail-closed

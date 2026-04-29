@@ -100,18 +100,20 @@ class Complication(ABC):
     def manifest(self) -> dict[str, Any]:
         """
         Generate the complication manifest from class attributes.
-        Full manifest schema is spec Section 11.
+
+        Returns a dict conforming to the complication manifest schema (spec Section 11).
+        Override this method to customise classification_max, functions, or auth.
         """
         return {
             "name": self.name,
             "version": self.version,
             "capabilities": list(self.capabilities),
             "schema_version": "1.0",
-            "health_endpoint": None,  # Phase 6: real endpoint
-            "classification_max": 0,   # Phase 6: configurable
-            "functions": ["query"],    # Phase 6: configurable
+            "health_endpoint": None,
+            "classification_max": 0,
+            "functions": ["query"],
             "auth": {
                 "scopes_required": [],
-                "public_key": None,    # Phase 6: Ed25519 signing
+                "public_key": None,
             },
         }

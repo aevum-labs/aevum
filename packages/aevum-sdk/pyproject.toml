@@ -1,6 +1,6 @@
 [project]
 name = "aevum-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Aevum — complication developer kit. Build extensions in under 30 minutes."
 readme = "README.md"
 requires-python = ">=3.11"
