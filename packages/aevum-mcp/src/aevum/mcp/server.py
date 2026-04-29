@@ -1,8 +1,9 @@
 """
-Aevum MCP server — five functions as MCP tools.
+Aevum MCP server — five functions + two A2A task tools.
 
-Each tool maps directly to the corresponding Engine method.
-All tools are synchronous wrappers (Engine is sync; no asyncio bridge needed).
+Phase 11 adds:
+  create_task(name, description, payload) -> A2ATask (state=created)
+  get_task(task_id) -> A2ATask (polls ledger for task state)
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from aevum.core.engine import Engine
-
+from aevum.mcp.a2a import A2ATask
 from mcp.server.fastmcp import FastMCP
 
 
@@ -133,5 +134,78 @@ def create_server(engine: Engine | None = None) -> FastMCP:
             actor=actor,
         )
         return result.model_dump(mode="json")
+
+    @mcp.tool()
+    def create_task(
+        name: str,
+        description: str = "",
+        payload: dict[str, Any] | None = None,
+        actor: str = "mcp-user",
+    ) -> dict[str, Any]:
+        """
+        Create an A2A-compatible task and record it in the Aevum ledger.
+
+        The returned task_id is an aevum audit_id (urn:aevum:audit:...).
+        Poll task status with get_task(task_id).
+        Task state transitions are tracked via ledger events.
+        """
+        committed = _engine.commit(
+            event_type="agent.task.created",
+            payload={
+                "name": name,
+                "description": description,
+                "task_payload": payload or {},
+            },
+            actor=actor,
+        )
+        task = A2ATask.created(
+            task_id=committed.audit_id,
+            name=name,
+            description=description,
+        )
+        return task.model_dump(mode="json")
+
+    @mcp.tool()
+    def get_task(
+        task_id: str,
+        actor: str = "mcp-user",
+    ) -> dict[str, Any]:
+        """
+        Get the current state of an A2A task by its audit_id.
+
+        Replays the ledger entry to reconstruct task state.
+        Returns an A2ATask with the current state and any messages.
+        """
+        replayed = _engine.replay(audit_id=task_id, actor=actor)
+
+        if replayed.status == "error":
+            task = A2ATask.failed(
+                task_id=task_id,
+                name="unknown",
+                error=replayed.data.get("error_detail", "Task not found"),
+            )
+            return task.model_dump(mode="json")
+
+        original_payload = replayed.data.get("replayed_payload", {})
+        name = original_payload.get("name", "task")
+
+        # Map ledger event_type to A2A state
+        event_type = original_payload.get("event_type", "agent.task.created")
+        state_map = {
+            "agent.task.created": "created",
+            "agent.task.working": "working",
+            "agent.task.completed": "completed",
+            "agent.task.failed": "failed",
+            "agent.task.cancelled": "cancelled",
+        }
+        a2a_state = state_map.get(event_type, "created")
+
+        task = A2ATask(
+            task_id=task_id,
+            name=name,
+            state=a2a_state,  # type: ignore[arg-type]
+            description=original_payload.get("description", ""),
+        )
+        return task.model_dump(mode="json")
 
     return mcp
