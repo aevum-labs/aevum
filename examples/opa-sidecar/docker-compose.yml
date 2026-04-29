@@ -1,0 +1,46 @@
+# Aevum + OPA sidecar -- production deployment example
+#
+# Usage:
+#   docker compose up
+#
+# Aevum server available at: http://localhost:8000
+# OPA policy server at:      http://localhost:8181
+#
+# OPA (examples/opa-sidecar/policy/authz.rego) controls infrastructure-level
+# access: which actors may call which operations.
+# Cedar (inside aevum-core) controls consent decisions: which subjects have
+# granted consent for which operations.
+# Both must permit a request for it to proceed.
+
+version: "3.9"
+
+services:
+  opa:
+    image: openpolicyagent/opa:latest-static
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./policy:/policy
+    command:
+      - run
+      - --server
+      - --addr=0.0.0.0:8181
+      - /policy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8181/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  aevum:
+    image: python:3.11-slim
+    depends_on:
+      opa:
+        condition: service_healthy
+    environment:
+      AEVUM_OPA_URL: http://opa:8181
+      AEVUM_API_KEY: change-this-in-production
+    command: >
+      sh -c "pip install aevum-server && aevum server start --graph memory"
+    ports:
+      - "8000:8000"

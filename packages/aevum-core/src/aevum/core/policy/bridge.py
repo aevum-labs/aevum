@@ -1,16 +1,18 @@
 """
-PolicyBridge -- OPA + Cedar hybrid policy engine.
+PolicyBridge -- hybrid Cedar + OPA policy enforcement.
 
-Phase 9: Cedar consent decisions are real (cedarpy in-process).
-OPA infrastructure policy is still permissive stub (requires k8s/Docker sidecar).
+Cedar (in-process via cedarpy) handles consent decisions:
+  - Grant validation, purpose specificity, classification ceiling
+  - Fails gracefully to permissive if cedarpy is not installed
 
-Cedar handles:
-  - Consent grant validation (subject, grantee, operation, purpose, expiry)
-  - Purpose specificity checks
-  - Classification ceiling cross-check
+OPA (external sidecar via HTTP) handles infrastructure policy:
+  - Actor-level access control, rate limiting, environment-aware rules
+  - Configured via AEVUM_OPA_URL or Engine(opa_url=...)
+  - Fails closed on any error: timeout, parse failure, non-200 response
+  - Disabled (permissive) when opa_url is None or empty
 
-cedarpy docs: https://pypi.org/project/cedarpy/
-Cedar schema: a simple RBAC-style policy for Aevum grants.
+Both engines are optional. Without either, Aevum runs with built-in
+barrier enforcement only -- the five absolute barriers remain unconditional.
 """
 
 from __future__ import annotations
@@ -18,12 +20,17 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import httpx
+
 logger = logging.getLogger(__name__)
 
-# Cedar policy for Aevum consent decisions.
-# A request is ALLOWED if an active, non-expired grant covers the operation.
-# Purpose must not be a generic placeholder.
-# Classification must not exceed grant's classification_max.
+_GENERIC_PURPOSES = frozenset({
+    "any", "all", "all purposes", "any purpose", "analytics", ""
+})
+
+# Cedar policy for consent decisions.
+# Requests are permitted when: grant is active, purpose is specific,
+# and the data classification does not exceed the grant ceiling.
 _CEDAR_POLICY = """
 permit(
     principal == User::"?principal",
@@ -39,36 +46,52 @@ when {
 
 
 def _is_purpose_specific(purpose: str) -> bool:
-    generic = {"any", "all", "all purposes", "any purpose", "analytics", ""}
-    return purpose.lower().strip() not in generic
+    """Return True if the purpose is specific enough to be auditable."""
+    return purpose.lower().strip() not in _GENERIC_PURPOSES
 
 
 class PolicyBridge:
     """
-    Hybrid OPA + Cedar policy bridge.
+    Hybrid Cedar + OPA policy bridge.
 
-    Cedar: real in-process consent decisions (cedarpy).
-    OPA: still permissive stub -- Phase 10+ adds sidecar.
+    Cedar evaluates consent decisions in-process (fast, no network).
+    OPA evaluates infrastructure policy via HTTP sidecar (optional).
+    Either engine may be absent; the other continues to function.
     """
 
     def __init__(self, opa_url: str | None = None) -> None:
-        self._opa_url = opa_url
-        self._cedar_available = self._check_cedar()
+        self._opa_url = opa_url.rstrip("/") if opa_url else None
+        self._cedar_available = self._probe_cedar()
+        self._http: httpx.Client | None = None
+
         if not self._cedar_available:
             logger.warning(
-                "cedarpy not installed -- PolicyBridge falling back to permissive mode. "
-                "Install cedarpy for real Cedar consent enforcement."
+                "cedarpy not installed -- consent decisions are permissive. "
+                "Install with: pip install 'aevum-core[cedar]'"
             )
-        elif opa_url:
-            logger.info("OPA sidecar configured at %s (still permissive in Phase 9)", opa_url)
+        if self._opa_url:
+            logger.info("OPA sidecar configured at %s", self._opa_url)
+        else:
+            logger.debug(
+                "No OPA sidecar configured -- infrastructure policy is permissive. "
+                "Set AEVUM_OPA_URL or pass opa_url= to Engine() to enable."
+            )
 
     @staticmethod
-    def _check_cedar() -> bool:
+    def _probe_cedar() -> bool:
         try:
             from cedarpy import is_authorized  # noqa: F401
             return True
         except ImportError:
             return False
+
+    def _http_client(self) -> httpx.Client:
+        """Lazy-initialise a shared httpx client for OPA calls."""
+        if self._http is None:
+            self._http = httpx.Client(timeout=5.0)
+        return self._http
+
+    # ── Cedar: consent decisions ──────────────────────────────────────────────
 
     def evaluate_consent(
         self,
@@ -82,17 +105,16 @@ class PolicyBridge:
         classification_max: int = 3,
     ) -> bool:
         """
-        Cedar consent decision.
+        Evaluate a consent request via Cedar.
 
-        If cedarpy is installed: real Cedar evaluation.
-        If cedarpy is not installed: falls back to permissive (logs warning).
+        Fast-path denials skip the Cedar call entirely:
+          - grant_active is False
+          - classification exceeds classification_max
+          - purpose is a generic placeholder
 
-        Args:
-            grant_active: Whether an active, unexpired grant exists
-                          (checked by ConsentLedger before calling here)
-            classification_max: Maximum classification this grant covers
+        Falls back to permissive when cedarpy is not installed.
+        Fails closed (returns False) on any Cedar error.
         """
-        # Fast-path checks -- always applied regardless of cedarpy availability
         if not grant_active:
             return False
         if classification > classification_max:
@@ -103,7 +125,6 @@ class PolicyBridge:
         if not self._cedar_available:
             return True  # Permissive fallback -- cedarpy not installed
 
-        # Cedar evaluation (cedarpy 4.x API -- request is a plain dict)
         try:
             from cedarpy import Decision, is_authorized
             context = {
@@ -117,12 +138,16 @@ class PolicyBridge:
                 "resource": f'Subject::"{subject_id}"',
                 "context": context,
             }
-            # entities list is empty -- decisions are context-driven, not entity-driven
-            authz_result = is_authorized(request, _CEDAR_POLICY, [])
-            return bool(authz_result.decision == Decision.Allow)
-        except Exception as e:
-            logger.warning("Cedar evaluation error: %s -- denying (fail-closed)", e)
+            result = is_authorized(request, _CEDAR_POLICY, [])
+            return result.decision == Decision.Allow
+        except Exception as exc:
+            logger.warning(
+                "Cedar evaluation failed for %s/%s -- denying (fail-closed): %s",
+                grantee_id, operation, exc,
+            )
             return False
+
+    # ── OPA: infrastructure policy ────────────────────────────────────────────
 
     def evaluate_infrastructure(
         self,
@@ -132,7 +157,42 @@ class PolicyBridge:
         resource: dict[str, Any],
     ) -> bool:
         """
-        OPA infrastructure policy.
-        Phase 9: still permissive. Phase 10: HTTP call to OPA sidecar.
+        Evaluate infrastructure-level policy via OPA sidecar.
+
+        Sends a POST to {opa_url}/v1/data/aevum/authz/allow with the
+        request as the input bundle and returns the boolean result.
+
+        Fails closed on any error: network timeout, parse failure, or
+        non-200 response all return False. This prevents a misconfigured
+        sidecar from silently permitting all traffic.
+
+        Returns True (permissive) when no OPA URL is configured.
         """
-        return True
+        if not self._opa_url:
+            return True
+
+        input_bundle: dict[str, Any] = {
+            "principal": actor,
+            "action": operation,
+            "resource": resource,
+        }
+
+        try:
+            response = self._http_client().post(
+                f"{self._opa_url}/v1/data/aevum/authz/allow",
+                json={"input": input_bundle},
+            )
+            response.raise_for_status()
+            return bool(response.json().get("result", False))
+        except httpx.TimeoutException:
+            logger.warning(
+                "OPA sidecar timed out for %s/%s -- denying (fail-closed)",
+                actor, operation,
+            )
+            return False
+        except Exception as exc:
+            logger.warning(
+                "OPA sidecar error for %s/%s -- denying (fail-closed): %s",
+                actor, operation, exc,
+            )
+            return False
