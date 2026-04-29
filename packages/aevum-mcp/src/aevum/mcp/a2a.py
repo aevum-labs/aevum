@@ -12,7 +12,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-
 A2ATaskState = Literal[
     "created", "working", "input_required", "completed", "failed", "cancelled"
 ]
@@ -58,7 +57,7 @@ class A2ATask(BaseModel):
     metadata: dict[str, Any] = {}
 
     @classmethod
-    def created(cls, task_id: str, name: str, description: str = "") -> "A2ATask":
+    def created(cls, task_id: str, name: str, description: str = "") -> A2ATask:
         return cls(task_id=task_id, name=name, state="created", description=description)
 
     @classmethod
@@ -68,7 +67,7 @@ class A2ATask(BaseModel):
         name: str,
         result: str,
         artifacts: list[A2AArtifact] | None = None,
-    ) -> "A2ATask":
+    ) -> A2ATask:
         return cls(
             task_id=task_id,
             name=name,
@@ -78,7 +77,7 @@ class A2ATask(BaseModel):
         )
 
     @classmethod
-    def input_required(cls, task_id: str, name: str, prompt: str) -> "A2ATask":
+    def input_required(cls, task_id: str, name: str, prompt: str) -> A2ATask:
         return cls(
             task_id=task_id,
             name=name,
@@ -87,7 +86,7 @@ class A2ATask(BaseModel):
         )
 
     @classmethod
-    def failed(cls, task_id: str, name: str, error: str) -> "A2ATask":
+    def failed(cls, task_id: str, name: str, error: str) -> A2ATask:
         return cls(
             task_id=task_id,
             name=name,

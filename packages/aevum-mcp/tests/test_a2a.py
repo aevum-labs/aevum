@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from aevum.core.engine import Engine
-from aevum.mcp.a2a import A2AArtifact, A2AMessage, A2ATask
+
+from aevum.mcp.a2a import A2ATask
 from aevum.mcp.server import create_server
 
 

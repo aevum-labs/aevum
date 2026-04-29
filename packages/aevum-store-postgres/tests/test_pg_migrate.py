@@ -8,6 +8,7 @@ from typing import Any
 
 from aevum.core.consent.ledger import ConsentLedger
 from aevum.core.consent.models import ConsentGrant
+
 from aevum.store.postgres.migrate import migrate_from_oxigraph
 
 

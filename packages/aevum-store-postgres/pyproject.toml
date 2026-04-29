@@ -55,3 +55,6 @@ line-length = 130
 [tool.ruff.lint]
 select = ["E", "F", "UP", "B", "SIM", "I", "ANN"]
 ignore = ["ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]

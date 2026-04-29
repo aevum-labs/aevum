@@ -18,7 +18,6 @@ from aevum.core.audit.event import AuditEvent
 from aevum.core.audit.sigchain import Sigchain
 from aevum.core.exceptions import BarrierViolationError, ReplayNotFoundError
 
-
 _DDL_LEDGER = """
 CREATE TABLE IF NOT EXISTS aevum_ledger (
     sequence        BIGSERIAL PRIMARY KEY,
@@ -165,30 +164,27 @@ class PostgresLedger:
 
     def get(self, audit_id: str) -> AuditEvent:
         from psycopg.rows import dict_row
-        with self._lock:
-            with self._conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(
-                    "SELECT * FROM aevum_ledger WHERE audit_id = %s",
-                    (audit_id,),
-                )
-                row = cur.fetchone()
+        with self._lock, self._conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                "SELECT * FROM aevum_ledger WHERE audit_id = %s",
+                (audit_id,),
+            )
+            row = cur.fetchone()
         if row is None:
             raise ReplayNotFoundError(f"No ledger entry for {audit_id!r}")
         return _row_to_event(row)
 
     def all_events(self) -> list[AuditEvent]:
         from psycopg.rows import dict_row
-        with self._lock:
-            with self._conn.cursor(row_factory=dict_row) as cur:
-                cur.execute("SELECT * FROM aevum_ledger ORDER BY sequence ASC")
-                rows = cur.fetchall()
+        with self._lock, self._conn.cursor(row_factory=dict_row) as cur:
+            cur.execute("SELECT * FROM aevum_ledger ORDER BY sequence ASC")
+            rows = cur.fetchall()
         return [_row_to_event(r) for r in rows]
 
     def count(self) -> int:
-        with self._lock:
-            with self._conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM aevum_ledger")
-                result = cur.fetchone()
+        with self._lock, self._conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM aevum_ledger")
+            result = cur.fetchone()
         return result[0] if result else 0
 
     def __delitem__(self, key: object) -> None:

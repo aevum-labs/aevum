@@ -8,11 +8,12 @@ NO tests/__init__.py (standing rule).
 from __future__ import annotations
 
 import os
-import pytest
 
+import pytest
 from aevum.core.audit.sigchain import Sigchain
 from aevum.core.exceptions import BarrierViolationError, ReplayNotFoundError
-from aevum.store.postgres.ledger import PostgresLedger, _event_to_row, _row_to_event
+
+from aevum.store.postgres.ledger import PostgresLedger, _event_to_row
 
 
 class FakeConn:
@@ -64,13 +65,13 @@ class FakeCursor:
         if not self._last_result:
             return None
         if self._row_factory:
-            return dict(zip([d[0] for d in self.description], self._last_result[0]))
+            return dict(zip([d[0] for d in self.description], self._last_result[0], strict=False))
         return self._last_result[0]
 
     def fetchall(self):
         if self._row_factory:
             return [
-                dict(zip([d[0] for d in self.description], row))
+                dict(zip([d[0] for d in self.description], row, strict=False))
                 for row in self._last_result
             ]
         return self._last_result
@@ -126,6 +127,7 @@ _POSTGRES_DSN = os.environ.get("AEVUM_TEST_POSTGRES_DSN")
 class TestPostgresLedgerIntegration:
     def _real_ledger(self) -> PostgresLedger:
         import psycopg
+
         from aevum.store.postgres.ledger import initialize_ledger_schema
         conn = psycopg.connect(_POSTGRES_DSN)
         initialize_ledger_schema(conn)
@@ -146,6 +148,7 @@ class TestPostgresLedgerIntegration:
     def test_sigchain_survives_restart(self) -> None:
         """Sigchain verification works after reading from Postgres."""
         import psycopg
+
         from aevum.store.postgres.ledger import initialize_ledger_schema
         conn = psycopg.connect(_POSTGRES_DSN)
         initialize_ledger_schema(conn)
