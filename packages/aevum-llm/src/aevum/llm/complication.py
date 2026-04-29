@@ -50,7 +50,7 @@ class LlmComplication:
         return {
             "name": self.name,
             "version": self.version,
-            "description": "LiteLLM-backed LLM completion with full audit trail",
+            "description": "LiteLLM-backed LLM completion with episodic ledger record",
             "capabilities": list(self.capabilities),
             "classification_max": 2,  # LLM output is internal by default
             "functions": ["query"],

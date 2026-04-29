@@ -36,6 +36,7 @@ jobs:
             aevum-sdk \
             aevum-store-oxigraph \
             aevum-store-postgres \
+            aevum-store-jena \
             aevum-mcp \
             aevum-oidc \
             aevum-llm \
