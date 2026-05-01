@@ -27,10 +27,19 @@ jobs:
       - name: Verify workspace syncs cleanly
         run: uv sync --frozen
 
-      - name: Build aevum-core
+      - name: Build all packages
         run: |
           mkdir -p dist
           uv build packages/aevum-core --out-dir dist/
+          uv build packages/aevum-server --out-dir dist/
+          uv build packages/aevum-sdk --out-dir dist/
+          uv build packages/aevum-store-oxigraph --out-dir dist/
+          uv build packages/aevum-store-postgres --out-dir dist/
+          uv build packages/aevum-mcp --out-dir dist/
+          uv build packages/aevum-oidc --out-dir dist/
+          uv build packages/aevum-llm --out-dir dist/
+          uv build packages/aevum-cli --out-dir dist/
+          uv build packages/aevum-store-jena --out-dir dist/
           echo "Built packages:"
           ls dist/
 
