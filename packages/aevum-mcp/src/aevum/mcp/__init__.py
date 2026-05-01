@@ -1,7 +1,7 @@
 """
 aevum.mcp — MCP server exposing Aevum's five functions as tools.
 
-Claude Desktop config (~/.claude/claude_desktop_config.json):
+Example MCP host config (Claude Desktop: ~/.claude/claude_desktop_config.json):
     {
       "mcpServers": {
         "aevum": {
