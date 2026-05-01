@@ -1,6 +1,6 @@
 [project]
 name = "aevum-cli"
-version = "0.2.0"
+version = "0.3.0"
 description = "Aevum -- command-line interface for operating Aevum nodes."
 readme = "README.md"
 requires-python = ">=3.11"
