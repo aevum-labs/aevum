@@ -1,6 +1,6 @@
 [project]
 name = "aevum-oidc"
-version = "0.2.0"
+version = "0.3.0"
 description = "Aevum — OIDC token validation complication."
 readme = "README.md"
 requires-python = ">=3.11"
