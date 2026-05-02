@@ -2,8 +2,6 @@ name: Deploy Documentation
 
 on:
   push:
-    tags:
-      - "v*"
     branches:
       - main
     paths:
@@ -21,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # needed for git-cliff changelog
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -30,7 +28,7 @@ jobs:
       - name: Install documentation dependencies
         run: pip install -r docs/requirements.txt
 
-      - name: Install aevum packages (needed for mkdocstrings)
+      - name: Install aevum packages
         run: |
           pip install -e packages/aevum-core
           pip install -e packages/aevum-server
@@ -38,8 +36,15 @@ jobs:
           pip install -e packages/aevum-mcp
           pip install -e packages/aevum-cli
 
-      - name: Build and verify (strict mode catches broken links)
+      - name: Configure git for deploy
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Build (strict mode catches broken links)
         run: mkdocs build --strict
 
       - name: Deploy to GitHub Pages
-        run: mkdocs gh-deploy --force
+        run: mkdocs gh-deploy --force --remote-name origin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
