@@ -10,12 +10,17 @@ on:
       - "docs/requirements.txt"
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   deploy:
     name: Build and deploy documentation
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,15 +41,17 @@ jobs:
           pip install -e packages/aevum-mcp
           pip install -e packages/aevum-cli
 
-      - name: Configure git for deploy
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Build (strict mode catches broken links)
+      - name: Build documentation
         run: mkdocs build --strict
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
       - name: Deploy to GitHub Pages
-        run: mkdocs gh-deploy --force --remote-name origin
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: deployment
+        uses: actions/deploy-pages@v4
