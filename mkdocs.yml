@@ -23,10 +23,8 @@ theme:
         name: Switch to light mode
   features:
     - navigation.tabs
-    - navigation.tabs.sticky
     - navigation.sections
     - navigation.expand
-    - navigation.indexes
     - navigation.top
     - search.suggest
     - search.highlight
@@ -61,51 +59,41 @@ markdown_extensions:
   - toc:
       permalink: true
   - attr_list
-  - md_in_html
 
 extra:
-  analytics:
-    provider: google
-    property: G-FHDQEMNCM2
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/aevum-labs/aevum
+  version:
+    provider: mike
 
 nav:
   - Home: index.md
-  - Product:
-    - What is Aevum?: product/what-is-aevum.md
-    - Is It Right for You?: guides/fit-assessment.md
-    - Use Cases: use-cases/enterprise-scenarios.md
-    - By User Type: guides/non-enterprise.md
-  - Developers:
-    - Getting Started:
-      - Quickstart: getting-started/quickstart.md
-      - Installation: getting-started/installation.md
-      - MCP Setup: getting-started/mcp-setup.md
-      - Windows Guide: getting-started/quickstart-windows.md
-      - FAQ: getting-started/faq.md
-    - Concepts:
-      - How It Works: concepts/how-it-works.md
-      - Five Functions: concepts/five-functions.md
-      - Five Barriers: concepts/five-barriers.md
-      - Consent Model: concepts/consent-model.md
-      - The Sigchain: concepts/sigchain.md
-    - Guides:
-      - Integration Layer: guides/integration-layer.md
-      - Billing Walkthrough: use-cases/billing-inquiry.md
-      - Troubleshooting: guides/troubleshooting.md
-    - Domain Examples:
-      - Overview: domain-examples/index.md
-      - Healthcare (FHIR R4): domain-examples/healthcare.md
-      - Finance (SOX): domain-examples/finance.md
-      - Legal (GDPR): domain-examples/legal.md
-    - Reference:
-      - Engine: reference/engine.md
-      - Output Envelope: reference/output-envelope.md
-      - Consent Grants: reference/consent-grants.md
-      - Audit Events: reference/audit-events.md
-      - CLI: reference/cli.md
+  - Getting Started:
+    - Quickstart: getting-started/quickstart.md
+    - Installation: getting-started/installation.md
+    - MCP Setup: getting-started/mcp-setup.md
+    - Windows Guide: getting-started/quickstart-windows.md
+    - FAQ: getting-started/faq.md
+  - Concepts:
+    - How It Works: concepts/how-it-works.md
+    - The Five Functions: concepts/five-functions.md
+    - The Five Barriers: concepts/five-barriers.md
+    - Consent Model: concepts/consent-model.md
+    - The Sigchain: concepts/sigchain.md
+  - Use Cases:
+    - Billing Inquiry: use-cases/billing-inquiry.md
+    - Enterprise Scenarios: use-cases/enterprise-scenarios.md
+  - Domain Examples:
+    - Overview: domain-examples/index.md
+    - Healthcare (FHIR R4): domain-examples/healthcare.md
+    - Finance (SOX): domain-examples/finance.md
+    - Legal (GDPR): domain-examples/legal.md
+  - Guides:
+    - Is Aevum Right for You?: guides/fit-assessment.md
+    - Guide by User Type: guides/non-enterprise.md
+    - Building an Integration Layer: guides/integration-layer.md
+    - Troubleshooting: guides/troubleshooting.md
   - Enterprise:
     - Evaluation Package: enterprise/overview.md
     - Security Architecture: enterprise/security-architecture.md
@@ -113,5 +101,11 @@ nav:
     - Threat Model: enterprise/threat-model.md
     - Production Deployment: enterprise/deployment-guide.md
     - License Analysis: enterprise/license-analysis.md
+  - Reference:
+    - Engine: reference/engine.md
+    - Output Envelope: reference/output-envelope.md
+    - Consent Grants: reference/consent-grants.md
+    - Audit Events: reference/audit-events.md
+    - CLI: reference/cli.md
   - Changelog: changelog.md
   - Contributing: contributing.md

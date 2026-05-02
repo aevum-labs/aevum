@@ -1,6 +1,6 @@
 [project]
 name = "aevum-core"
-version = "0.2.0"
+version = "0.3.0"
 description = "Aevum — the sealed movement. Replay-first, policy-governed context kernel."
 readme = "README.md"
 requires-python = ">=3.11"

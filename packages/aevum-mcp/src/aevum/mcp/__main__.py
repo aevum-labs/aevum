@@ -1,7 +1,7 @@
 """
 python -m aevum.mcp — start the Aevum MCP server (stdio transport).
 
-For Claude Desktop, register in ~/.claude/claude_desktop_config.json:
+Example: to use with Claude Desktop, register in ~/.claude/claude_desktop_config.json:
     {
       "mcpServers": {
         "aevum": {

@@ -44,7 +44,7 @@ Every operation is signed, chained, and replayable. No consent grant = no operat
 | **Replay** | Deterministic reconstruction of any past decision |
 | **Five absolute barriers** | Crisis detection, classification ceiling, consent, audit immutability, provenance -- unconditional |
 | **Complication framework** | Policy-governed plugin system with 7-state lifecycle |
-| **MCP integration** | All five functions available as Claude Desktop MCP tools |
+| **MCP integration** | All five functions available as tools for any MCP-compatible host |
 | **Agent autonomy levels** | L1-L5 DeepMind taxonomy with automatic review triggers |
 
 ## Install
@@ -108,7 +108,7 @@ EOF
 | `aevum-sdk` | Complication developer kit |
 | `aevum-store-oxigraph` | Embedded RDF graph backend (single-node) |
 | `aevum-store-postgres` | PostgreSQL graph + consent + ledger backend |
-| `aevum-mcp` | MCP server for Claude Desktop integration |
+| `aevum-mcp` | MCP server for any MCP-compatible host (Claude Desktop, Cursor, and others) |
 | `aevum-oidc` | OIDC token validation complication |
 | `aevum-llm` | LiteLLM-backed LLM complication with audit trail |
 | `aevum-cli` | `aevum server start`, `aevum store migrate`, and more |
