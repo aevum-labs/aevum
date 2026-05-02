@@ -1,0 +1,45 @@
+name: Deploy Documentation
+
+on:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "docs/requirements.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Build and deploy documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed for git-cliff changelog
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install documentation dependencies
+        run: pip install -r docs/requirements.txt
+
+      - name: Install aevum packages (needed for mkdocstrings)
+        run: |
+          pip install -e packages/aevum-core
+          pip install -e packages/aevum-server
+          pip install -e packages/aevum-sdk
+          pip install -e packages/aevum-mcp
+          pip install -e packages/aevum-cli
+
+      - name: Build and verify (strict mode catches broken links)
+        run: mkdocs build --strict
+
+      - name: Deploy to GitHub Pages
+        run: mkdocs gh-deploy --force
