@@ -43,8 +43,6 @@ plugins:
             show_root_heading: true
             show_category_heading: true
             members_order: source
-  - mkdocs-click:
-      prog_name: aevum
 
 markdown_extensions:
   - pymdownx.highlight:
