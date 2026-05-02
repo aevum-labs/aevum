@@ -51,25 +51,20 @@ for a detailed assessment.
 
 ## How it works
 
-```
-Your application or AI agent
-         │
-         ▼
-  Five governed functions
-  ingest · query · review · commit · replay
-         │
-  Five absolute barriers (hardcoded, unconditional)
-  crisis · classification · consent · immutability · provenance
-         │
-         ▼
-  Knowledge graph + Episodic ledger + Consent ledger
-  (PostgreSQL or embedded Oxigraph — your infrastructure)
-```
+Every piece of data that enters Aevum through `ingest` is:
 
-Every piece of data that enters Aevum through `ingest` is checked
-against five unconditional barriers, validated against an active consent
-grant, written to the knowledge graph, and recorded as a signed, chained
-audit event.
+1. Checked against five unconditional barriers (crisis, classification,
+   consent, immutability, provenance)
+2. Validated against an active consent grant
+3. Written to the knowledge graph (`urn:aevum:knowledge`)
+4. Recorded as a signed, chained audit event (`urn:aevum:provenance`)
+
+Every `query` checks consent before returning any data.
+Every `commit` appends to the immutable ledger.
+Every `replay` reconstructs a past state from the ledger.
+
+The five governed functions are: `ingest`, `query`, `review`,
+`commit`, and `replay`.
 
 Read [How It Works](../concepts/how-it-works.md) for the complete
 end-to-end data flow with diagrams.
@@ -82,6 +77,6 @@ end-to-end data flow with diagrams.
 pip install aevum-core
 ```
 
-→ [Quickstart](../getting-started/quickstart.md) — working in 10 minutes
-→ [Installation](../getting-started/installation.md) — all platforms including Docker
-→ [GitHub](https://github.com/aevum-labs/aevum) — Apache-2.0, source available
+- [Quickstart](../getting-started/quickstart.md) — working in 10 minutes
+- [Installation](../getting-started/installation.md) — all platforms including Docker
+- [GitHub](https://github.com/aevum-labs/aevum) — Apache-2.0, source available

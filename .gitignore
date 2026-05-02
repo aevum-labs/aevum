@@ -9,6 +9,7 @@ __pycache__/
 # Build
 dist/
 build/
+site/
 
 # Tools
 .mypy_cache/
