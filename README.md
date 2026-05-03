@@ -5,6 +5,8 @@
 Aevum gives every AI agent cryptographic audit trails, human-review gates,
 and consent-bound context assembly -- built into the kernel, not bolted on.
 
+Documentation: https://aevum.build
+
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12630/badge)](https://www.bestpractices.dev/projects/12630)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/aevum-core.svg)](https://pypi.org/project/aevum-core/)
