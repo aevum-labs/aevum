@@ -1,3 +1,7 @@
+---
+description: "Threat model for aevum-core: seven threats, mitigations for signing key compromise, audit trail tampering, and consent ledger manipulation."
+---
+
 # Threat Model
 
 This document describes what Aevum protects against, what it does not

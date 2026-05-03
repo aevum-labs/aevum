@@ -1,3 +1,7 @@
+---
+description: "OutputEnvelope reference: the single return type for all five functions — status, audit_id, data, confidence, provenance, warnings, and nested models."
+---
+
 # OutputEnvelope
 
 Every function returns exactly one `OutputEnvelope`. No exceptions.

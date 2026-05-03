@@ -1,3 +1,7 @@
+---
+description: "Enterprise scenarios across finance, healthcare, legal, and insurance: consent-gated access, human review gates, sigchain audit, and regulatory replay."
+---
+
 # Enterprise Scenarios
 
 Aevum's governed context kernel applies across regulated industries.

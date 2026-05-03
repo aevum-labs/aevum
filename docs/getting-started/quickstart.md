@@ -1,3 +1,7 @@
+---
+description: "Install aevum-core, create consent grants, ingest signed data, query with purpose, replay past decisions, and verify the sigchain — in under 10 minutes."
+---
+
 # Quickstart
 
 Get Aevum running in 10 minutes on Linux or macOS.

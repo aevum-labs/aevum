@@ -1,3 +1,7 @@
+---
+description: "Healthcare domain: HIPAA PHI classification, FHIR R4 ingest with consent grants, care-coordination purpose scoping, and access log for HIPAA audits."
+---
+
 # Healthcare Domain Example (FHIR R4 / HIPAA)
 
 This example shows how to configure Aevum for a healthcare context.

@@ -1,3 +1,7 @@
+---
+description: "Domain pattern index: how Aevum's classification levels map to HIPAA, SOX, and GDPR, with examples for healthcare, finance, and legal industries."
+---
+
 # Domain Examples
 
 These examples show how Aevum's consent and classification primitives

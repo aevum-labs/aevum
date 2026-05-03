@@ -1,3 +1,7 @@
+---
+description: "Legal domain example: GDPR Article 17 consent revocation, Article 30 records of processing via the episodic ledger, and sigchain-backed audit."
+---
+
 # Legal Domain Example (GDPR)
 
 ## GDPR Article 17: Right to Erasure

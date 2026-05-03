@@ -1,3 +1,7 @@
+---
+description: "Consent as an absolute barrier: OR-Set CRDT grants, purpose-scoped operations, classification ceiling, GDPR Article 7 support, and immediate revocation."
+---
+
 # Consent Model
 
 Consent in Aevum is not a policy setting — it is a barrier. No traversal

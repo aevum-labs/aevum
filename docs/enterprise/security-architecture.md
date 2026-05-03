@@ -1,3 +1,7 @@
+---
+description: "Production security: layered authorization via Cedar and OPA, Ed25519 cryptographic audit trail, TLS, multi-tenancy scoping, and KMS key management."
+---
+
 # Security Architecture
 
 ## Authentication

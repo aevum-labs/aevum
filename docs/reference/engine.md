@@ -1,3 +1,7 @@
+---
+description: "Engine API reference: five governed functions, consent grant management, sigchain verification, complication lifecycle, webhooks, and review management."
+---
+
 # Engine
 
 The main entry point for all Aevum operations.

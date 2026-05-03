@@ -1,3 +1,7 @@
+---
+description: "What Aevum is: a self-hosted Python library providing consent enforcement, cryptographic audit trail, and human approval gates for AI agents."
+---
+
 # What is Aevum?
 
 Aevum is an open-source Python library that sits between your AI agents

@@ -1,3 +1,7 @@
+---
+description: "aevum-cli reference: version, server start, store migrate, complication management, conformance run, and environment variable configuration."
+---
+
 # CLI Reference
 
 The `aevum` CLI provides server management and store operations.

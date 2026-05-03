@@ -1,3 +1,7 @@
+---
+description: "How to build the integration layer that connects your data sources to Aevum's governed membrane: direct Python, complications, and message queues."
+---
+
 # Building an Integration Layer
 
 Aevum governs access to context. It does not move data between your systems.

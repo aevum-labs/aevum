@@ -1,3 +1,7 @@
+---
+description: "Production deployment guide: PostgreSQL backend, aevum-server with Gunicorn, Cedar policy, OPA sidecar, KMS key management, and Docker Compose."
+---
+
 # Production Deployment
 
 This guide covers production deployment of Aevum with PostgreSQL,

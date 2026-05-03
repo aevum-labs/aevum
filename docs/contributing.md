@@ -1,3 +1,7 @@
+---
+description: "How to contribute to Aevum: development setup, code standards, pull request process, conformance suite requirements, and Apache-2.0 licensing terms."
+---
+
 !!! note
     This page mirrors `CONTRIBUTING.md` in the repository root.
     If you find a discrepancy, the repository file takes precedence.

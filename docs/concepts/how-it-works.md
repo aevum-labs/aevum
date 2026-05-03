@@ -1,3 +1,7 @@
+---
+description: "Data flow through Aevum's five functions, three named graphs, and five absolute barriers: from governed membrane ingest to deterministic replay."
+---
+
 # How It Works
 
 Aevum is a replay-first, policy-governed context kernel. This page explains

@@ -1,3 +1,7 @@
+---
+description: "Enterprise evaluation package: security architecture, threat model, deployment guide, and license analysis for procurement and security teams."
+---
+
 # Enterprise Evaluation Package
 
 This package provides the information an enterprise security and procurement

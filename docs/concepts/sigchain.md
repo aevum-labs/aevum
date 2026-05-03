@@ -1,3 +1,7 @@
+---
+description: "The episodic ledger's Ed25519 + SHA3-256 sigchain: 18-field AuditEvent schema, hash chaining, tamper detection, Hybrid Logical Clock timestamps."
+---
+
 # The Episodic Ledger and Sigchain
 
 The episodic ledger is the canonical truth of every AI decision. It is
