@@ -17,6 +17,7 @@
   <meta property="og:description"
         content="{{ page.meta.description | default(config.site_description) }}">
   <meta property="og:url" content="{{ page.canonical_url }}">
+  <meta property="og:image" content="{{ config.site_url }}assets/og-image.png">
 
   {# Schema.org — SoftwareApplication on the homepage, TechArticle on all other pages #}
   {% if page.url == "." or page.url == "" %}
