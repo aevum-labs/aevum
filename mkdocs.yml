@@ -93,10 +93,15 @@ nav:
       - Five Barriers: concepts/five-barriers.md
       - Consent Model: concepts/consent-model.md
       - The Sigchain: concepts/sigchain.md
+      - Replay vs. Observability: concepts/replay-vs-observability.md
+      - Audit Trails and Article 12: concepts/audit-trails.md
+      - Memory Poisoning Defense: concepts/memory-poisoning.md
+      - Tamper-Evident Logging: concepts/tamper-evident-logs.md
     - Guides:
       - Integration Layer: guides/integration-layer.md
       - Billing Walkthrough: use-cases/billing-inquiry.md
       - Troubleshooting: guides/troubleshooting.md
+      - MCP Audit Trail: guides/mcp-audit-trail.md
     - Domain Examples:
       - Overview: domain-examples/index.md
       - Healthcare (FHIR R4): domain-examples/healthcare.md
