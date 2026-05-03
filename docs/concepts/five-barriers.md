@@ -1,3 +1,7 @@
+---
+description: "Five hardcoded, non-configurable barriers: crisis detection, classification ceiling, consent enforcement, audit immutability, and provenance checks."
+---
+
 # The Five Absolute Barriers
 
 Absolute barriers are unconditional, hardcoded checks in `aevum-core`.

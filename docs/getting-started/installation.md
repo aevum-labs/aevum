@@ -1,3 +1,7 @@
+---
+description: "All install options for aevum-core: minimum, persistence backends, HTTP API, MCP, CLI, Cedar policy, Docker, ARM, and OPA sidecar configuration."
+---
+
 # Installation
 
 All install options for Aevum. Start with the minimum and add what you need.

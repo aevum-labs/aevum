@@ -1,3 +1,7 @@
+---
+description: "Apache-2.0 obligations, LGPL-3 psycopg2 note, CC-BY-4.0 + OWFa 1.0.1 spec licenses, and SBOM audit commands for Aevum's dependency stack."
+---
+
 # License Analysis
 
 All Aevum packages are licensed under Apache-2.0.

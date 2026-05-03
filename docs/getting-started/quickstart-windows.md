@@ -1,3 +1,7 @@
+---
+description: "Windows quickstart: PowerShell and WSL setup, aevum-core install, consent-gated ingest and query, sigchain verification, and PATH configuration."
+---
+
 # Windows Quickstart
 
 Get Aevum running on Windows using PowerShell, Command Prompt, or WSL.

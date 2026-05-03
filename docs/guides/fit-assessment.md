@@ -1,3 +1,7 @@
+---
+description: "Four questions to determine if Aevum fits your project: agent-over-people data, regulatory obligations, deployment model, and engineering capacity."
+---
+
 # Is Aevum Right for You?
 
 Answer these questions honestly. They take 5 minutes and give you a clear answer.

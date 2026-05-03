@@ -1,3 +1,7 @@
+---
+description: "Governed context kernel for AI agents: consent enforcement, tamper-evident Ed25519 sigchain, deterministic replay, and five absolute barriers."
+---
+
 # Aevum
 
 **The governed context kernel for AI agents.**

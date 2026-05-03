@@ -1,3 +1,7 @@
+---
+description: "Guidance by user type: developer, startup, enterprise, AI/ML engineer, compliance team, and contributor — with recommended reading paths and installs."
+---
+
 # Guide by User Type
 
 Different teams use Aevum differently. This guide explains what each

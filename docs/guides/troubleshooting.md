@@ -1,3 +1,7 @@
+---
+description: "Troubleshooting guide: consent_required errors, provenance_required, crisis barrier triggers, sigchain failures, OPA sidecar issues, and Windows PATH."
+---
+
 # Troubleshooting
 
 Common errors and fixes.

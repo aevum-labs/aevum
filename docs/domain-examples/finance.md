@@ -1,3 +1,7 @@
+---
+description: "Finance domain example: SOX-compliant audit trail for trading decisions, financial data classification levels, and human review gate for large trades."
+---
+
 # Finance Domain Example (FIBO / SOX)
 
 ## Classification levels for financial data

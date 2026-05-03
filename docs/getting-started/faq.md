@@ -1,3 +1,7 @@
+---
+description: "Frequently asked questions: data residency, Cedar dependency, consent requirements, GDPR erasure via revocation, and replay vs query distinction."
+---
+
 # FAQ
 
 **Does Aevum send any data outside my environment?**

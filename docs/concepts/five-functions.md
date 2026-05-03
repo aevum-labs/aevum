@@ -1,3 +1,7 @@
+---
+description: "Complete API reference for ingest, query, review, commit, and replay: frozen function signatures, barrier interactions, and HTTP endpoints."
+---
+
 # The Five Functions
 
 These are the complete public API of `aevum-core`. Their signatures and

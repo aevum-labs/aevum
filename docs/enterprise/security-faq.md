@@ -1,3 +1,7 @@
+---
+description: "Security FAQ: data transmission policy, OPA fail-closed behavior, Ed25519 key protection, attack surface of aevum-server, and CVE response times."
+---
+
 # Security FAQ
 
 **Does Aevum transmit any data to Anthropic or any external service?**

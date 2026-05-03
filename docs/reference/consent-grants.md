@@ -1,3 +1,7 @@
+---
+description: "ConsentGrant reference: the permission unit for ingest, query, replay, and export operations — fields, validation rules, and OR-Set revocation."
+---
+
 # ConsentGrant
 
 The unit of permission. Every `ingest`, `query`, and `replay` operation

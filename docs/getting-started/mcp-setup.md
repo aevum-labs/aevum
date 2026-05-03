@@ -1,3 +1,7 @@
+---
+description: "Connect any MCP-compatible host to Aevum's five consent-gated, sigchain-logged tools: Claude Desktop, Cursor, VS Code, and stdio-compatible hosts."
+---
+
 # MCP Setup
 
 `aevum-mcp` exposes all five governed functions as tools for any MCP-compatible host.

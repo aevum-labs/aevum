@@ -1,3 +1,7 @@
+---
+description: "Billing inquiry walkthrough: consent-gated ingest, purpose-scoped query, human review gate, manager approval, and commit to the episodic ledger."
+---
+
 # Billing Inquiry Walkthrough
 
 This walkthrough shows a complete end-to-end example using Aevum in a
