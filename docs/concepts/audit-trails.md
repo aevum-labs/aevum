@@ -28,11 +28,11 @@ This guide covers the technical implementation of 12(1) and 12(2). For high-risk
 
 | Clause | What it requires technically | Aevum primitive |
 |--------|------------------------------|-----------------|
-| Article 12(1) | Automatic recording — no manual step, fires on every operation | Every engine call appends to the episodic ledger unconditionally |
-| Article 12(2)(a) | Record the period of each use | `event_metadata.timestamp` in every `AuditEvent` — UTC ISO 8601 |
-| Article 12(2)(b) | Record the reference database against which input was checked | `provenance.source_id` and `provenance.chain_of_custody` in `ingest` |
-| Article 12(2)(c) | Record input data for which a search led to a match | The ingested `data` payload is stored verbatim; `audit_id` links it to the ledger entry |
-| Article 26(6) | Retain logs for minimum 6 months after deployment | `engine.get_ledger_entries()` — ledger is append-only; entries are never deleted |
+| Article 12(1) | Automatic recording — fires on every operation without manual intervention | Every engine call appends to the episodic ledger unconditionally |
+| Article 12(2)(a) | Logs must enable identification of situations presenting risk or triggering a substantial modification | Every `AuditEvent` records `event_type`, `actor`, `timestamp`, and `status` — anomalous patterns are detectable via `get_ledger_entries()` |
+| Article 12(2)(b) | Logs must facilitate post-market monitoring by market surveillance authorities | The sigchain provides a complete, tamper-evident, replayable record accessible to authorised auditors via `replay` |
+| Article 12(2)(c) | Logs must support monitoring of deployer obligations under Article 26(5) | `get_ledger_entries()` gives deployers a full operational record; `verify_sigchain()` confirms integrity |
+| Article 26(6) | Minimum 6-month log retention | Ledger is append-only; entries are never deleted |
 
 ## What Article 12 does not specify — and what that means
 

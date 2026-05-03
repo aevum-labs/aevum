@@ -8,7 +8,7 @@ Memory poisoning is an attack in which a malicious actor injects a crafted entry
 
 ## The threat — what the research shows
 
-**OWASP Top 10 for Agentic Applications 2026, ASI06** (released 9 December 2025) classifies "Memory and Context Poisoning" as one of ten ranked risks for agentic systems. The classification covers both direct injection into memory stores and indirect poisoning via external documents and tool outputs retrieved during agent operation. See: [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/).
+**OWASP Top 10 for Agentic Applications 2026, ASI06** (released 9 December 2025) classifies "Memory and Context Poisoning" as one of ten ranked risks for agentic systems. The classification covers both direct injection into memory stores and indirect poisoning via external documents and tool outputs retrieved during agent operation. See: [OWASP Top 10 for Agentic AI Applications](https://owasp.org/www-project-top-10-for-agentic-ai-applications/).
 
 **MINJA (arXiv:2601.05504)** demonstrated a 95% injection success rate against memory-based agents in controlled conditions using indirect prompt injection via external documents and tool outputs. The attack required no direct access to the memory store — crafted content in documents the agent retrieved was sufficient to cause the agent to write poisoned entries on the attacker's behalf.
 
