@@ -1,0 +1,57 @@
+# Aevum
+
+> The governed context kernel for AI agents.
+> Replay-first. Policy-enforced. Cryptographically auditable.
+> Apache-2.0 — https://github.com/aevum-labs/aevum
+
+## What Aevum is
+
+Aevum is an open-source AI context kernel that sits between AI agents and
+the data they access. It enforces policy on every memory read and write,
+records every decision in a tamper-evident sigchain, and makes any past
+agent session deterministically replayable.
+
+It is not a memory store. It is not an observability platform.
+It is the governance and auditability layer underneath both.
+
+## Five public functions
+
+- ingest: policy-checked data ingestion with provenance and classification
+- query: consent-gated, classification-ceiling-enforced context retrieval
+- review: human-in-the-loop gate before irreversible agent actions
+- commit: episodic event recording in the immutable sigchain ledger
+- replay: deterministic reconstruction of any past agent session
+
+## Five absolute barriers (cannot be bypassed by any complication)
+
+1. Crisis detection — crisis content stops immediately, always
+2. Classification ceiling — agents cannot access data above their clearance
+3. Consent enforcement — no data access without a valid, scoped consent grant
+4. Audit immutability — the sigchain cannot be modified or deleted
+5. Provenance chain — every fact carries its full chain of custody
+
+## Compliance relevance
+
+- EU AI Act Article 12: sigchain provides automatic, tamper-evident recording
+- ISO/IEC 42001: complication lifecycle and governance controls
+- SOC 2 PI1.2: provenance and classification ceiling enforcement
+- OWASP ASI06 (Memory Poisoning): policy-mediated writes prevent injection
+
+## Agent autonomy levels
+
+Aevum enforces L1 (operator-controlled) through L5 (observer-only) autonomy
+levels as defined in the DeepMind taxonomy. Level is enforced by policy,
+not by the agent itself.
+
+## Install
+
+pip install aevum-core
+
+## Documentation
+
+Full docs:       https://aevum.build
+Getting started: https://aevum.build/getting-started/quickstart/
+How it works:    https://aevum.build/concepts/how-it-works/
+API reference:   https://aevum.build/reference/engine/
+Enterprise:      https://aevum.build/enterprise/overview/
+GitHub:          https://github.com/aevum-labs/aevum

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block extrahead %}
+  {{ super() }}
+  {% if page %}
+
+  {# Canonical URL — required for site_url to work correctly in search #}
+  <link rel="canonical" href="{{ page.canonical_url }}">
+
+  {# Robots — defaults to index/follow; override per page via front matter: robots: noindex #}
+  <meta name="robots" content="{{ page.meta.robots | default('index, follow') }}">
+
+  {# Open Graph — renders link previews on Slack, Discord, HN, Reddit, GitHub issues #}
+  <meta property="og:type"
+        content="{% if page.url == '.' or page.url == '' %}website{% else %}article{% endif %}">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title"     content="{{ page.title }} — {{ config.site_name }}">
+  <meta property="og:description"
+        content="{{ page.meta.description | default(config.site_description) }}">
+  <meta property="og:url" content="{{ page.canonical_url }}">
+
+  {# Schema.org — SoftwareApplication on the homepage, TechArticle on all other pages #}
+  {% if page.url == "." or page.url == "" %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Aevum",
+    "description": "{{ config.site_description }}",
+    "url": "{{ config.site_url }}",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Linux, macOS, Windows",
+    "programmingLanguage": "Python",
+    "license": "https://opensource.org/licenses/Apache-2.0",
+    "codeRepository": "https://github.com/aevum-labs/aevum",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  {% else %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "{{ page.title | replace('"', '\\"') }}",
+    "description": "{{ (page.meta.description | default(config.site_description)) | replace('"', '\\"') }}",
+    "url": "{{ page.canonical_url }}"{% if page.meta.git_revision_date_localized_raw_iso_datetime is defined %},
+    "dateModified": "{{ page.meta.git_revision_date_localized_raw_iso_datetime }}"{% endif %}
+  }
+  </script>
+  {% endif %}
+  {% endif %}
+{% endblock %}
