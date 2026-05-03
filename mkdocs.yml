@@ -8,6 +8,7 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
+  custom_dir: docs/overrides
   palette:
     - scheme: default
       primary: indigo
@@ -36,6 +37,10 @@ theme:
 
 plugins:
   - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: date
+      fallback_to_build_date: true
   - mkdocstrings:
       handlers:
         python:
@@ -67,9 +72,6 @@ extra:
   analytics:
     provider: google
     property: G-FHDQEMNCM2
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/aevum-labs/aevum
 
 nav:
   - Home: index.md
