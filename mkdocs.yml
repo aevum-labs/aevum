@@ -35,6 +35,9 @@ theme:
     - content.code.copy
     - content.code.annotate
     - content.tabs.link
+    - navigation.footer
+    - navigation.path
+    - toc.follow
 
 plugins:
   - search
@@ -51,6 +54,31 @@ plugins:
             show_root_heading: true
             show_category_heading: true
             members_order: source
+  - redirects:
+      redirect_maps:
+        'concepts/how-it-works.md': 'learn/architecture.md'
+        'concepts/five-functions.md': 'learn/architecture.md'
+        'concepts/five-barriers.md': 'learn/architecture.md'
+        'concepts/consent-model.md': 'learn/architecture.md'
+        'concepts/sigchain.md': 'learn/architecture.md'
+        'enterprise/security-architecture.md': 'learn/security.md'
+        'enterprise/security-faq.md': 'learn/security.md'
+        'enterprise/threat-model.md': 'learn/security.md'
+        'enterprise/deployment-guide.md': 'learn/deployment.md'
+        'enterprise/license-analysis.md': 'learn/deployment.md'
+        'enterprise/overview.md': 'learn/deployment.md'
+        'getting-started/installation.md': 'learn/deployment.md'
+        'getting-started/faq.md': 'guides/troubleshooting-faq.md'
+        'getting-started/quickstart-windows.md': 'getting-started/quickstart.md'
+        'guides/troubleshooting.md': 'guides/troubleshooting-faq.md'
+        'product/what-is-aevum.md': 'index.md'
+        'guides/fit-assessment.md': 'index.md'
+        'use-cases/enterprise-scenarios.md': 'index.md'
+        'guides/non-enterprise.md': 'index.md'
+        'reference/engine.md': 'reference/api.md'
+        'reference/output-envelope.md': 'reference/api.md'
+        'reference/consent-grants.md': 'reference/api.md'
+        'reference/audit-events.md': 'reference/api.md'
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -76,50 +104,28 @@ extra:
 
 nav:
   - Home: index.md
-  - Product:
-    - What is Aevum?: product/what-is-aevum.md
-    - Is It Right for You?: guides/fit-assessment.md
-    - Use Cases: use-cases/enterprise-scenarios.md
-    - By User Type: guides/non-enterprise.md
-  - Developers:
-    - Getting Started:
-      - Quickstart: getting-started/quickstart.md
-      - Installation: getting-started/installation.md
-      - MCP Setup: getting-started/mcp-setup.md
-      - Windows Guide: getting-started/quickstart-windows.md
-      - FAQ: getting-started/faq.md
-    - Concepts:
-      - How It Works: concepts/how-it-works.md
-      - Five Functions: concepts/five-functions.md
-      - Five Barriers: concepts/five-barriers.md
-      - Consent Model: concepts/consent-model.md
-      - The Sigchain: concepts/sigchain.md
-      - Replay vs. Observability: concepts/replay-vs-observability.md
-      - Audit Trails and Article 12: concepts/audit-trails.md
-      - Memory Poisoning Defense: concepts/memory-poisoning.md
-      - Tamper-Evident Logging: concepts/tamper-evident-logs.md
+  - Learn:
+    - Architecture: learn/architecture.md
+    - Security: learn/security.md
+    - Deployment: learn/deployment.md
+    - Replay vs. Observability: concepts/replay-vs-observability.md
+    - Audit Trails and Article 12: concepts/audit-trails.md
+    - Memory Poisoning Defense: concepts/memory-poisoning.md
+    - Tamper-Evident Logging: concepts/tamper-evident-logs.md
+  - Build:
+    - Quickstart: getting-started/quickstart.md
+    - MCP Setup: getting-started/mcp-setup.md
     - Guides:
       - Integration Layer: guides/integration-layer.md
       - Billing Walkthrough: use-cases/billing-inquiry.md
-      - Troubleshooting: guides/troubleshooting.md
       - MCP Audit Trail: guides/mcp-audit-trail.md
+      - Troubleshooting and FAQ: guides/troubleshooting-faq.md
     - Domain Examples:
       - Overview: domain-examples/index.md
       - Healthcare (FHIR R4): domain-examples/healthcare.md
       - Finance (SOX): domain-examples/finance.md
       - Legal (GDPR): domain-examples/legal.md
-    - Reference:
-      - Engine: reference/engine.md
-      - Output Envelope: reference/output-envelope.md
-      - Consent Grants: reference/consent-grants.md
-      - Audit Events: reference/audit-events.md
-      - CLI: reference/cli.md
-  - Enterprise:
-    - Evaluation Package: enterprise/overview.md
-    - Security Architecture: enterprise/security-architecture.md
-    - Security FAQ: enterprise/security-faq.md
-    - Threat Model: enterprise/threat-model.md
-    - Production Deployment: enterprise/deployment-guide.md
-    - License Analysis: enterprise/license-analysis.md
-  - Changelog: changelog.md
-  - Contributing: contributing.md
+  - Reference:
+    - API: reference/api.md
+    - CLI: reference/cli.md
+    - Changelog: changelog.md

@@ -2,6 +2,11 @@
 description: "Observability tools record what an AI agent did. Deterministic replay lets you reproduce it exactly. This page explains what that distinction requires architecturally."
 ---
 
+!!! tip "Prerequisite"
+    This page explains the replay distinction in depth.
+    For how the sigchain makes it possible, read
+    [Architecture](/learn/architecture/#the-sigchain) first.
+
 # Logs vs. Replay: What Reproducing an Agent Run Actually Requires
 
 Every major AI observability platform records what your agent did. None of them reproduce exactly what it did — same LLM responses, same tool outputs, same state at decision time. This page explains why that gap exists, what closing it actually requires, and how Aevum's `replay` function differs from checkpoint-based and trace-based approaches.
@@ -103,6 +108,6 @@ Each block demonstrates a distinct guarantee. The first `add_consent_grant` call
 
 ## See also
 
-- [The Sigchain](sigchain.md) — how the hash chain and Ed25519 signing work
-- [Audit Events](../reference/audit-events.md) — the AuditEvent schema
+- [The Sigchain](../learn/architecture.md#the-sigchain) — how the hash chain and Ed25519 signing work
+- [Audit Events](../reference/api.md#auditevent) — the AuditEvent schema
 - [Audit Trails and Article 12](audit-trails.md) — compliance implications
