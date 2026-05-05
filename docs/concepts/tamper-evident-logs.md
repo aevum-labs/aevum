@@ -83,6 +83,6 @@ Aevum provides the technical control. Compliance assessors determine whether the
 
 ## See also
 
-- [The Sigchain](sigchain.md)
+- [The Sigchain](../learn/architecture.md#the-sigchain)
 - [Audit Trails and Article 12](audit-trails.md)
-- [Audit Events reference](../reference/audit-events.md)
+- [Audit Events reference](../reference/api.md#auditevent)

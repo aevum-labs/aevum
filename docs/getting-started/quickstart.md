@@ -4,8 +4,7 @@ description: "Install aevum-core, create consent grants, ingest signed data, que
 
 # Quickstart
 
-Get Aevum running in 10 minutes on Linux or macOS.
-For Windows, see the [Windows Guide](quickstart-windows.md).
+Get Aevum running in 10 minutes.
 
 ## Prerequisites
 
@@ -14,25 +13,61 @@ For Windows, see the [Windows Guide](quickstart-windows.md).
 
 Check your version:
 
-```bash
-python --version
-# Python 3.11.x or higher
-```
+=== "Linux / macOS"
+
+    ```bash
+    python --version
+    # Python 3.11.x or higher
+    ```
+
+=== "Windows"
+
+    ```powershell
+    python --version
+    # Python 3.11.x or higher
+    ```
+
+    Windows users: install Python from [python.org](https://www.python.org/downloads/)
+    and tick **"Add Python to PATH"** during installation.
 
 ## Step 1 — Create a virtual environment
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
+=== "Linux / macOS"
+
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate
+    ```
+
+=== "Windows"
+
+    ```powershell
+    python -m venv .venv
+    .venv\Scripts\Activate.ps1
+    ```
+
+    If you see a script execution policy error:
+
+    ```powershell
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+    .venv\Scripts\Activate.ps1
+    ```
 
 You should see `(.venv)` in your prompt.
 
 ## Step 2 — Install aevum-core
 
-```bash
-pip install aevum-core
-```
+=== "Linux / macOS"
+
+    ```bash
+    pip install aevum-core
+    ```
+
+=== "Windows"
+
+    ```powershell
+    pip install aevum-core
+    ```
 
 Verify:
 
@@ -97,9 +132,17 @@ print("chain intact:", ok)  # True
 
 ## Step 4 — Run it
 
-```bash
-python demo.py
-```
+=== "Linux / macOS"
+
+    ```bash
+    python demo.py
+    ```
+
+=== "Windows"
+
+    ```powershell
+    python demo.py
+    ```
 
 Expected output:
 
@@ -122,9 +165,48 @@ Every step is governed:
 
 Try removing the `add_consent_grant` call. `ingest` and `query` will both return `status="error"` with `error_code="consent_required"`. This is Barrier 3.
 
+## Windows-specific notes
+
+### CLI: command not found
+
+If `aevum` is not found after installing `aevum-cli`, use the module form:
+
+```powershell
+python -m aevum.cli --help
+python -m aevum.cli version
+```
+
+To add the Scripts directory to your PATH permanently:
+
+```powershell
+$p = python -c "import sys; print(sys.exec_prefix)"
+[Environment]::SetEnvironmentVariable(
+    "PATH",
+    [Environment]::GetEnvironmentVariable("PATH", "User") + ";$p\Scripts",
+    "User"
+)
+```
+
+Restart your terminal after running this.
+
+### Long path support
+
+Some paths inside virtualenvs can exceed 260 characters on Windows.
+Enable long path support (run as Administrator):
+
+```powershell
+New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+    -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+```
+
+### WSL recommendation
+
+For a smoother development experience on Windows, use WSL 2 (Ubuntu) and follow
+the Linux instructions above inside the WSL terminal.
+
 ## Next steps
 
-- [Installation](installation.md) — all install options including persistence and HTTP API
-- [The Five Functions](../concepts/five-functions.md) — understand the full API
-- [The Five Barriers](../concepts/five-barriers.md) — understand what is unconditional
+- [Architecture](/learn/architecture/) — how the governed membrane, sigchain, barriers, and consent model work
+- [Security](/learn/security/) — threat model and production security architecture
+- [Deployment](/learn/deployment/) — all install options including persistence and HTTP API
 - [Billing Inquiry Walkthrough](../use-cases/billing-inquiry.md) — a real end-to-end example

@@ -106,6 +106,6 @@ Aevum records what the agent ingested and queried. It does not intercept raw MCP
 
 ## See also
 
-- [The Sigchain](../concepts/sigchain.md)
+- [The Sigchain](../learn/architecture.md#the-sigchain)
 - [Replay vs. Observability](../concepts/replay-vs-observability.md)
 - [Getting Started — MCP Setup](../getting-started/mcp-setup.md)

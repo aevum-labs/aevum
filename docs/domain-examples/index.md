@@ -50,4 +50,4 @@ Aevum uses four classification levels that map across all domains:
 ## Enterprise scenarios
 
 For cross-industry patterns (loan underwriting, claims processing, document review),
-see [Enterprise Scenarios](../use-cases/enterprise-scenarios.md).
+see the [Architecture](/learn/architecture/) page.

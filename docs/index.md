@@ -1,92 +1,82 @@
 ---
-description: "Governed context kernel for AI agents: consent enforcement, tamper-evident Ed25519 sigchain, deterministic replay, and five absolute barriers."
+description: "Aevum — the governed context kernel for AI agents.
+Cryptographic audit trails, consent enforcement, and deterministic replay."
 ---
 
 # Aevum
 
 **The governed context kernel for AI agents.**
 
-AI agents that access sensitive data, take real-world actions, or make
-decisions someone will need to explain later require more than a memory
-layer. They need consent enforcement, a tamper-evident audit trail, and
-human approval gates that cannot be bypassed.
+Aevum is an open-source Python library that sits between your AI agents and
+the data they reason over. Where observability tools log what happened after
+the fact, Aevum enforces governance before the agent acts — and records a
+cryptographically signed, hash-chained audit trail that makes every past
+decision deterministically replayable.
 
-Aevum provides all three — as a Python library you install and run
-in your own infrastructure.
+## Enforcement before the agent acts
+
+Three properties that AI agents do not have by default:
+
+1. **Consent enforced at the kernel level** — data cannot be accessed without
+   an active consent grant that specifies exactly who can access it, for what
+   purpose, and for how long. Revoking consent takes effect at the next operation.
+   No batch job, no delay. This fires before any policy evaluation, even without
+   Cedar installed.
+
+2. **Replay from an immutable sigchain** — every operation is signed with Ed25519
+   and hash-chained with SHA3-256. `engine.replay(audit_id=...)` reconstructs
+   any past decision exactly as it occurred — same payload, same metadata — not
+   a re-execution against a new model. Any modification to the ledger is
+   immediately detectable.
+
+3. **Five absolute barriers** — crisis detection, classification ceiling, consent
+   enforcement, audit immutability, and provenance checks are hardcoded in
+   `barriers.py`. They are not configurable. They cannot be bypassed by
+   configuration, policy, or administrator override.
+
+## Who it is for
+
+**Individual developers and startups** building agents that access data about
+real people — healthcare, finance, legal, HR, customer support. Aevum gives
+you consent enforcement and a tamper-evident audit trail without building
+custom infrastructure. Minimum viable setup: one afternoon, no database.
+
+**Enterprise teams with compliance requirements** — HIPAA, GDPR Article 7,
+SOX, FCRA. The episodic ledger produces the evidence an auditor needs: every
+data access, every consent grant, every human approval, replayable on demand.
+Runs fully self-hosted — your data never leaves your infrastructure.
+
+**Anyone who needs to answer "what did the agent do, and why?"** — incident
+investigation, customer complaints, regulatory audit, internal review.
+
+Aevum is not for you if your agent generates content without accessing personal
+data, or if you need a streaming pipeline, an orchestration framework, or a
+managed SaaS. See [fit assessment details in the Architecture page](/learn/architecture/).
+
+## Where to start
+
+**Understand it first**
+
+→ [Architecture](/learn/architecture/) — how Aevum works: the governed
+membrane, the sigchain, the five barriers, and the consent model — one page.
+
+**Build with it**
+
+→ [Quickstart](/getting-started/quickstart/) — first governed session in
+under 10 minutes. Works on Linux, macOS, and Windows.
+
+**Evaluate it**
+
+→ [Security](/learn/security/) — threat model, security architecture, and
+common security questions for engineers evaluating production deployment.
+
+## Install
 
 ```bash
 pip install aevum-core
 ```
 
----
-
-## Is Aevum right for your project?
-
-Answer these three questions:
-
-**1. Does your agent take irreversible real-world actions?**
-Sending emails, posting charges, modifying records, triggering deployments.
-
-**2. Does your agent access data about more than one person or organisation?**
-Multi-tenant SaaS, customer support, HR tools, healthcare platforms.
-
-**3. Would you need to explain what your agent did?**
-Regulatory audit, customer complaint, internal review, incident investigation.
-
-If you answered yes to any of these, Aevum is worth evaluating.
-Read the [full fit assessment](guides/fit-assessment.md) for a
-detailed breakdown.
-
----
-
-## What you get
-
-| Capability | What it means |
-|---|---|
-| Consent enforcement | No data access without an active, scoped consent grant |
-| Cryptographic audit trail | Every operation is Ed25519-signed and SHA3-256-chained |
-| Deterministic replay | Reconstruct exactly what the agent knew at any past moment |
-| Human review gates | Veto-as-default — silence past the deadline blocks the action |
-| Five absolute barriers | Crisis, classification, consent, immutability, provenance — hardcoded |
-
----
-
-## Where to go next
-
-<div class="grid cards" markdown>
-
--   :material-rocket-launch: **New to Aevum?**
-
-    Start with the quickstart — working code in under 10 minutes.
-
-    [Quickstart →](getting-started/quickstart.md)
-
--   :material-help-circle: **Not sure if it fits?**
-
-    Answer three questions and get an honest recommendation.
-
-    [Fit Assessment →](guides/fit-assessment.md)
-
--   :material-domain: **Enterprise evaluation?**
-
-    Security architecture, threat model, license analysis, and more.
-
-    [Enterprise Package →](enterprise/overview.md)
-
--   :material-book-open: **Want to understand the design?**
-
-    End-to-end data flow, the five functions, and the sigchain.
-
-    [How It Works →](concepts/how-it-works.md)
-
-</div>
-
----
-
-## Open source
-
-Apache-2.0 ·
-[github.com/aevum-labs/aevum](https://github.com/aevum-labs/aevum)
+Apache-2.0. No telemetry. Runs fully offline.
 
 Self-hosted — your data never leaves your infrastructure.
-No vendor API. No telemetry. No SaaS dependency.
+No vendor API. No licensing server. No SaaS dependency.

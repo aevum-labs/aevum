@@ -1,12 +1,13 @@
 ---
-description: "Troubleshooting guide: consent_required errors, provenance_required, crisis barrier triggers, sigchain failures, OPA sidecar issues, and Windows PATH."
+description: "Troubleshooting common Aevum errors and answers to
+frequently asked questions about installation, consent, and the sigchain."
 ---
 
-# Troubleshooting
+# Troubleshooting and FAQ
 
-Common errors and fixes.
+## Common errors
 
-## ModuleNotFoundError: No module named 'aevum.core'
+### ModuleNotFoundError: No module named 'aevum.core'
 
 The virtual environment is not active, or Aevum is not installed
 in the current environment.
@@ -36,7 +37,7 @@ On Windows (PowerShell):
 
 ---
 
-## "cedarpy not installed — consent decisions are permissive"
+### "cedarpy not installed — consent decisions are permissive"
 
 This is a warning, not an error. Cedar is an optional dependency.
 The five absolute barriers still fire unconditionally.
@@ -49,7 +50,7 @@ pip install "aevum-core[cedar]"
 
 ---
 
-## status="error", error_code="consent_required"
+### status="error", error_code="consent_required"
 
 Your agent does not have an active consent grant for this operation.
 
@@ -75,7 +76,7 @@ print("ledger count:", engine.ledger_count())
 
 ---
 
-## KeyError: 'replayed_payload' on engine.replay()
+### KeyError: 'replayed_payload' on engine.replay()
 
 The replay call is returning `status="error"`, not `status="ok"`.
 Always check `result.status` before accessing `result.data`:
@@ -93,7 +94,7 @@ in the operations list.
 
 ---
 
-## status="error", error_code="provenance_required"
+### status="error", error_code="provenance_required"
 
 The `provenance` dict is missing or has no `source_id`.
 
@@ -119,7 +120,7 @@ engine.ingest(
 
 ---
 
-## status="crisis"
+### status="crisis"
 
 The ingested payload contains a crisis keyword (suicidal ideation, immediate
 physical danger, medical emergency).
@@ -135,7 +136,7 @@ phrase and context.
 
 ---
 
-## aevum: command not found (Windows)
+### aevum: command not found (Windows)
 
 The Python Scripts directory is not on your PATH.
 Use the module form instead:
@@ -160,7 +161,7 @@ Restart your terminal after running this.
 
 ---
 
-## engine.verify_sigchain() returns False
+### engine.verify_sigchain() returns False
 
 The sigchain integrity check failed. This means either:
 - A ledger entry was modified after it was written
@@ -183,7 +184,7 @@ for e in events:
 
 ---
 
-## PostgreSQL: "column does not exist" or schema errors
+### PostgreSQL: "column does not exist" or schema errors
 
 Run the database migration:
 
@@ -193,7 +194,7 @@ aevum store migrate --dsn postgresql://user:password@host:5432/aevum
 
 ---
 
-## OPA sidecar: all operations returning error
+### OPA sidecar: all operations returning error
 
 OPA is configured (`AEVUM_OPA_URL` is set) but not reachable.
 Aevum fails closed — any OPA error results in a denial.
@@ -218,7 +219,7 @@ unset AEVUM_OPA_URL
 
 ---
 
-## ValidationError: purpose must be specific
+### ValidationError: purpose must be specific
 
 Aevum rejects generic purpose values:
 
@@ -235,7 +236,7 @@ ConsentGrant(..., purpose="care-coordination")
 
 ---
 
-## Still stuck?
+### Still stuck?
 
 Open an issue on [GitHub Issues](https://github.com/aevum-labs/aevum/issues)
 with:
@@ -243,3 +244,115 @@ with:
 2. The Python version (`python --version`)
 3. The aevum-core version (`python -c "import aevum.core; print(aevum.core.__version__)"`)
 4. Minimal code that reproduces the issue
+
+## Installation questions
+
+**Does Aevum send any data outside my environment?**
+
+No. By default, nothing leaves your process. Optional complications
+(`aevum-oidc`, `aevum-llm`) make outbound calls only when configured.
+
+---
+
+**Do I need a database to use Aevum?**
+
+No. The default `Engine()` uses in-memory storage. For persistence,
+add `aevum-store-oxigraph` (embedded) or `aevum-store-postgres`.
+
+---
+
+**Is Aevum a SaaS product?**
+
+No. It is a Python library. You install it and run it yourself.
+Your data never leaves your infrastructure.
+
+---
+
+**Can I run Aevum on a Raspberry Pi or other low-powered hardware?**
+
+Yes. With Oxigraph as the backend and no OPA sidecar, the memory
+and CPU footprint is minimal. The sigchain operations (Ed25519,
+SHA3-256) are fast on any modern hardware including ARM.
+
+---
+
+**Does aevum-mcp only work with Claude Desktop?**
+
+No. It works with any MCP-compatible host — Claude Desktop, Cursor,
+VS Code Copilot, and others. The configuration format is the same.
+See [MCP Setup](../getting-started/mcp-setup.md).
+
+---
+
+**How do I migrate from Oxigraph to PostgreSQL?**
+
+```bash
+aevum store migrate --from oxigraph:/path --to postgres:postgresql://...
+```
+
+This migrates the knowledge graph, consent ledger, and episodic ledger.
+
+## Consent and policy questions
+
+**Can I use Aevum without a consent grant?**
+
+No. Barrier 3 (Consent) blocks `ingest`, `query`, and `replay` without
+an active consent grant. This is unconditional.
+
+---
+
+**What happens if I don't have cedarpy installed?**
+
+The kernel warns at startup and falls back to permissive consent
+decisions. The five absolute barriers still fire unconditionally —
+crisis detection, classification ceiling, consent (fast-path denials),
+audit immutability, and provenance are not affected.
+
+---
+
+**How do I handle GDPR right-to-erasure?**
+
+Call `engine.revoke_consent_grant(grant_id)`. The data in the knowledge
+graph becomes immediately unreachable at the next operation. Physical
+deletion from the storage backend is a separate step if required by your
+data retention policy.
+
+---
+
+**Can multiple agents share the same Engine instance?**
+
+Yes, with different `grantee_id` values in their consent grants.
+Each agent's access is scoped to its own grants.
+
+---
+
+**What is a "complication"?**
+
+Aevum's word for a policy-governed extension. Not a plugin, not a module —
+a complication. Each complication goes through a 7-state lifecycle
+(DISCOVERED → PENDING → APPROVED → ACTIVE → SUSPENDED → DEPRECATED → REMOVED)
+and is logged to the episodic ledger at every state transition.
+
+## Sigchain and audit questions
+
+**Does Aevum have an SLA?**
+
+No. It is open source software. Community support via
+[GitHub Issues](https://github.com/aevum-labs/aevum/issues) and
+[GitHub Discussions](https://github.com/aevum-labs/aevum/discussions).
+Commercial support is on the roadmap.
+
+---
+
+**What is the difference between `replay` and `query`?**
+
+`query` retrieves current data from the knowledge graph (`urn:aevum:knowledge`).
+`replay` reconstructs a past ledger entry from the provenance graph
+(`urn:aevum:provenance`). They read from different places and return
+different things. See [The Five Functions](/learn/architecture/#five-public-functions)
+for the full distinction.
+
+## See also
+
+- [Architecture](/learn/architecture/) — how the sigchain works
+- [Quickstart](/getting-started/quickstart/) — getting started

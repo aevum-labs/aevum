@@ -145,7 +145,7 @@ Aevum produces the evidence; the compliance team interprets it. Aevum is not a c
 
 ## See also
 
-- [The Sigchain](sigchain.md)
+- [The Sigchain](../learn/architecture.md#the-sigchain)
 - [Replay vs. Observability](replay-vs-observability.md)
-- [Audit Events reference](../reference/audit-events.md)
-- [Enterprise overview](../enterprise/overview.md)
+- [Audit Events reference](../reference/api.md#auditevent)
+- [Deployment guide](../learn/deployment.md)
