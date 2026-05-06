@@ -8,8 +8,6 @@ import datetime
 import sys
 import unittest.mock
 
-import pytest
-
 
 def _make_mock_svid(spiffe_id_str: str = "spiffe://example.org/billing") -> unittest.mock.MagicMock:
     """Build a minimal mock JWT-SVID."""
@@ -21,7 +19,7 @@ def _make_mock_svid(spiffe_id_str: str = "spiffe://example.org/billing") -> unit
     mock_spiffe_id.trust_domain = mock_trust_domain
     mock_svid.spiffe_id = mock_spiffe_id
     mock_svid.expiry = datetime.datetime(
-        2026, 5, 6, 14, 0, 0, tzinfo=datetime.timezone.utc
+        2026, 5, 6, 14, 0, 0, tzinfo=datetime.UTC
     ).timestamp()
     return mock_svid
 
@@ -196,6 +194,7 @@ class TestSpiffeComplicationWithEngine:
         """spiffe.attested must be a verifiable, signed event in the chain."""
         # Engine lives in aevum-core; pythonpath configured in pyproject.toml
         from aevum.core import Engine
+
         from aevum.spiffe import SpiffeComplication
 
         mock_svid = _make_mock_svid()
