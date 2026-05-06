@@ -55,3 +55,6 @@ How it works:    https://aevum.build/concepts/how-it-works/
 API reference:   https://aevum.build/reference/engine/
 Enterprise:      https://aevum.build/enterprise/overview/
 GitHub:          https://github.com/aevum-labs/aevum
+
+## Full documentation
+https://aevum.build/llms-full.txt

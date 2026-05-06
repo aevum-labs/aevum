@@ -6,6 +6,21 @@ description: "Install aevum-core, create consent grants, ingest signed data, que
 
 Get Aevum running in 10 minutes.
 
+<div class="grid cards" markdown>
+
+-   :material-clock-fast:{ .lg } **10 minutes to first replay**
+
+    Install, create a consent grant, ingest signed data, and replay
+    a past decision. No database required.
+
+-   :material-puzzle-outline:{ .lg } **MCP integration**
+
+    Connect Aevum to any MCP-compatible host in under 5 minutes.
+
+    [:octicons-arrow-right-24: MCP Setup](/getting-started/mcp-setup/)
+
+</div>
+
 ## Prerequisites
 
 - Python 3.11 or higher

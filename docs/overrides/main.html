@@ -47,6 +47,27 @@
     "dateModified": "{{ page.meta.git_revision_date_localized_raw_iso_datetime }}"{% endif %}
   }
   </script>
+  {# BreadcrumbList — feeds Google SERP breadcrumb display on non-home pages #}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "{{ config.site_name | e }}",
+        "item": "{{ config.site_url }}"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "{{ page.title | e }}",
+        "item": "{{ page.canonical_url }}"
+      }
+    ]
+  }
+  </script>
   {% endif %}
   {% endif %}
 {% endblock %}
