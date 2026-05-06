@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aevum.build/spec/aevum-event-v1.json",
+  "title": "Aevum AuditEvent v1",
+  "description": "Schema for a single Aevum episodic ledger entry as returned by Engine.get_ledger_entries(). All 19 fields are always present; fields typed [T, null] may carry a null value. The signing specification (aevum-signing-v1.md) defines how to verify the signature field.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "episode_id",
+    "sequence",
+    "event_type",
+    "schema_version",
+    "valid_from",
+    "valid_to",
+    "system_time",
+    "causation_id",
+    "correlation_id",
+    "actor",
+    "trace_id",
+    "span_id",
+    "payload",
+    "payload_hash",
+    "prior_hash",
+    "signature",
+    "signer_key_id",
+    "audit_id"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "UUID v7 (time-ordered). Globally unique event identifier. The audit_id field encodes this as a URN."
+    },
+    "episode_id": {
+      "type": "string",
+      "description": "Groups related events into a logical episode (e.g. one AI workflow run). Always present; generated as UUID v7 when not supplied by the caller."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing sequence number within this chain. session.start is always sequence 1. Included in the signing fields."
+    },
+    "event_type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+      "description": "Dotted-namespace event type. Reserved prefixes: session., ingest., query., review., commit., replay., consent., capture., transparency., chain."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version. Will be incremented for breaking changes to the event format."
+    },
+    "valid_from": {
+      "type": "string",
+      "description": "Wall-clock ISO 8601 timestamp of the event (e.g. '2026-05-06T21:54:11.401122+00:00'). For causal ordering use system_time (HLC); valid_from is for human readability."
+    },
+    "valid_to": {
+      "type": ["string", "null"],
+      "description": "Wall-clock ISO 8601 timestamp when the record's validity ends. Null for point-in-time events."
+    },
+    "system_time": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Hybrid Logical Clock timestamp in nanoseconds. Monotonically non-decreasing within a chain. Provides causal ordering; NOT a substitute for UTC-traceable timestamps in regulated contexts."
+    },
+    "causation_id": {
+      "type": ["string", "null"],
+      "description": "audit_id of the event that directly caused this one. For session.start on a persistent backend: the audit_id of the last event in the previous session. Null otherwise."
+    },
+    "correlation_id": {
+      "type": ["string", "null"],
+      "description": "Deployment-wide correlation identifier. Used to group events across sessions or deployments."
+    },
+    "actor": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The agent, user, or system component that caused this event. For kernel-generated events: 'aevum-core'."
+    },
+    "trace_id": {
+      "type": ["string", "null"],
+      "description": "OpenTelemetry W3C trace ID (32 hex chars) for distributed tracing correlation."
+    },
+    "span_id": {
+      "type": ["string", "null"],
+      "description": "OpenTelemetry W3C span ID (16 hex chars) for distributed tracing correlation."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-specific structured data. Schema varies by event_type. The payload_hash field contains its SHA3-256 digest for integrity verification."
+    },
+    "payload_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA3-256 hex digest of the JCS-canonical JSON-serialised payload object."
+    },
+    "prior_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA3-256 hex digest of the previous event's signing fields (canonical form). For sequence=1 (session.start): the genesis hash constant sha3_256('aevum:genesis')."
+    },
+    "signature": {
+      "type": "string",
+      "description": "Base64url-encoded (no padding) Ed25519 signature over SHA3-256(JCS-canonical signing fields). See aevum-signing-v1.md for the exact field set and canonicalization procedure."
+    },
+    "signer_key_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for the signing key. For InProcessSigner: a UUID v4. For VaultTransitSigner: the Vault key URL. Must remain constant across the lifetime of a signing key."
+    },
+    "audit_id": {
+      "type": "string",
+      "pattern": "^urn:aevum:audit:[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "URN-encoded audit identifier. Format: urn:aevum:audit:{event_id}. Derived field; not part of the signing field set."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "event_type": { "const": "session.start" } }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "required": ["capture_surface", "key_provenance"],
+            "properties": {
+              "capture_surface": {
+                "type": "object",
+                "required": ["llm", "mcp"],
+                "properties": {
+                  "llm": { "type": "boolean" },
+                  "mcp": { "type": "boolean" }
+                }
+              },
+              "key_provenance": {
+                "type": "string",
+                "enum": ["in-process", "external", "vault-transit", "aws-kms", "pkcs11"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "event_type": { "const": "capture.gap" } }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "required": ["gap_type", "reason"],
+            "properties": {
+              "gap_type": {
+                "type": "string",
+                "enum": ["llm", "mcp", "tool", "custom"]
+              },
+              "reason": { "type": "string" },
+              "model_hint": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

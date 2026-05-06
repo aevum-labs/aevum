@@ -147,5 +147,8 @@ nav:
   - Reference:
     - API: reference/api.md
     - CLI: reference/cli.md
+    - Specification:
+      - Event Schema v1: spec/aevum-event-v1.md
+      - Signing Spec v1: spec/aevum-signing-v1.md
     - Glossary: reference/glossary.md
     - Changelog: changelog.md
