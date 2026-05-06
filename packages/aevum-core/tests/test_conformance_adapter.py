@@ -62,4 +62,4 @@ def test_get_ledger_entries() -> None:
     a = ConformanceAdapter()
     a.commit(event_type="app.e", payload={})
     entries = a.get_ledger_entries()
-    assert len(entries) == 1
+    assert len(entries) == 2  # session.start + one committed event

@@ -21,6 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+vault = ["hvac>=2.3.0"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
@@ -56,6 +57,10 @@ strict = true
 python_version = "3.11"
 mypy_path = "src"
 explicit_package_bases = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["hvac", "hvac.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
