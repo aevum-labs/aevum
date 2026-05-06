@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from aevum.core.consent.models import ConsentGrant
 from aevum.core.engine import Engine
 
@@ -180,9 +182,6 @@ def test_ingest_model_context_none_is_noop() -> None:
     last_event = e._ledger.all_events()[-1]
     for key in ("gen_ai.request.model", "gen_ai.system", "gen_ai.conversation.id"):
         assert key not in last_event.payload
-
-
-import pytest
 
 
 def test_record_capture_gap_writes_event() -> None:
