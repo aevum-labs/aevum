@@ -54,6 +54,14 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
+          paths:
+            - packages/aevum-core/src
+            - packages/aevum-sdk/src
+            - packages/aevum-llm/src
+            - packages/aevum-mcp/src
+            - packages/aevum-oidc/src
+            - packages/aevum-store-postgres/src
+            - packages/aevum-store-oxigraph/src
           options:
             docstring_style: google
             show_source: false

@@ -1,7 +1,7 @@
 # ADR-008: Multi-agent episode correlation
 
 Date: 2026-05-06
-Status: Proposed
+Status: Accepted
 Deciders: Aevum Labs
 Confidence: Medium
 
