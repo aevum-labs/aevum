@@ -130,3 +130,53 @@ def test_sigchain_integrity() -> None:
     for i in range(5):
         e.commit(event_type=f"app.e{i}", payload={"i": i}, actor="a")
     assert e.verify_sigchain() is True
+
+
+def test_ingest_model_context_stored_in_payload() -> None:
+    """model_context OTel keys are stored in the AuditEvent payload."""
+    e = Engine()
+    e.add_consent_grant(ConsentGrant(
+        grant_id="g1", subject_id="u1", grantee_id="agent",
+        operations=["ingest"], purpose="test", classification_max=0,
+        granted_at="2026-01-01T00:00:00Z", expires_at="2030-01-01T00:00:00Z",
+    ))
+    result = e.ingest(
+        data={"note": "test"},
+        provenance={"source_id": "test", "chain_of_custody": ["test"], "classification": 0},
+        purpose="test",
+        subject_id="u1",
+        actor="agent",
+        model_context={
+            "gen_ai.request.model": "gpt-4.1",
+            "gen_ai.system": "openai",
+            "gen_ai.conversation.id": "conv-123",
+            "unknown_key": "should_be_ignored",
+        },
+    )
+    assert result.status == "ok"
+    last_event = e._ledger.all_events()[-1]
+    assert last_event.payload.get("gen_ai.request.model") == "gpt-4.1"
+    assert last_event.payload.get("gen_ai.system") == "openai"
+    assert last_event.payload.get("gen_ai.conversation.id") == "conv-123"
+    assert "unknown_key" not in last_event.payload
+
+
+def test_ingest_model_context_none_is_noop() -> None:
+    """model_context=None must not affect existing behavior."""
+    e = Engine()
+    e.add_consent_grant(ConsentGrant(
+        grant_id="g1", subject_id="u1", grantee_id="agent",
+        operations=["ingest"], purpose="test", classification_max=0,
+        granted_at="2026-01-01T00:00:00Z", expires_at="2030-01-01T00:00:00Z",
+    ))
+    result = e.ingest(
+        data={"note": "test"},
+        provenance={"source_id": "test", "chain_of_custody": ["test"], "classification": 0},
+        purpose="test",
+        subject_id="u1",
+        actor="agent",
+    )
+    assert result.status == "ok"
+    last_event = e._ledger.all_events()[-1]
+    for key in ("gen_ai.request.model", "gen_ai.system", "gen_ai.conversation.id"):
+        assert key not in last_event.payload

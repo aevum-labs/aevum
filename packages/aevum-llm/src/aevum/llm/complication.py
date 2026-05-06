@@ -14,6 +14,29 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+_PROVIDER_PREFIXES: dict[str, str] = {
+    "gpt-": "openai",
+    "o1": "openai",
+    "o3": "openai",
+    "o4": "openai",
+    "claude-": "anthropic",
+    "gemini-": "google",
+    "mistral-": "mistral",
+    "llama-": "meta",
+    "command-": "cohere",
+}
+
+
+def _extract_provider(model: str) -> str:
+    """Extract OTel GenAI provider name from a LiteLLM model string."""
+    if "/" in model:
+        return model.split("/")[0]
+    lower = model.lower()
+    for prefix, provider in _PROVIDER_PREFIXES.items():
+        if lower.startswith(prefix):
+            return provider
+    return "unknown"
+
 
 def _sha3(text: str) -> str:
     return hashlib.sha3_256(text.encode()).hexdigest()
@@ -81,6 +104,7 @@ class LlmComplication:
         used_model: str = self._model
         response_text: str = ""
         error: str | None = None
+        response = None
 
         for model in models_to_try:
             try:
@@ -108,6 +132,9 @@ class LlmComplication:
 
         response_hash = _sha3(response_text)
 
+        actual_model_used: str = getattr(response, "model", None) or used_model
+        provider_name = _extract_provider(used_model)
+
         return {
             # model_id is the key field — maps to provenance.model_id
             "model_id": used_model,
@@ -115,6 +142,11 @@ class LlmComplication:
             "response_hash": response_hash,    # SHA3-256, not the raw response
             "response": response_text,         # The actual completion
             "token_estimate": len(response_text.split()),
+            # OTel GenAI semantic convention keys (gen-ai-spans spec)
+            "gen_ai.request.model": self._model,
+            "gen_ai.response.model": actual_model_used,
+            "gen_ai.system": provider_name,
+            "gen_ai.operation.name": "chat",
         }
 
     def _build_prompt(self, purpose: str, results: dict[str, Any]) -> str:

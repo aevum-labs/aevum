@@ -210,6 +210,7 @@ class Engine:
         idempotency_key: str | None = None,
         episode_id: str | None = None,
         correlation_id: str | None = None,
+        model_context: dict[str, Any] | None = None,
     ) -> OutputEnvelope:
         return _ingest(
             data=data, provenance=provenance, purpose=purpose,
@@ -218,6 +219,7 @@ class Engine:
             idempotency_key=idempotency_key,
             idempotency_cache=self._idempotency_cache,
             episode_id=episode_id, correlation_id=correlation_id,
+            model_context=model_context,
         )
 
     def query(
@@ -230,6 +232,7 @@ class Engine:
         classification_max: int = 0,
         episode_id: str | None = None,
         correlation_id: str | None = None,
+        model_context: dict[str, Any] | None = None,
     ) -> OutputEnvelope:
         return _query(
             purpose=purpose, subject_ids=subject_ids, actor=actor,
@@ -239,6 +242,7 @@ class Engine:
             complication_registry=self._complication_registry,
             circuit_breakers=self._circuit_breakers,
             episode_id=episode_id, correlation_id=correlation_id,
+            model_context=model_context,
         )
 
     def review(
@@ -290,11 +294,13 @@ class Engine:
         scope: list[str] | None = None,
         episode_id: str | None = None,
         correlation_id: str | None = None,
+        model_context: dict[str, Any] | None = None,
     ) -> OutputEnvelope:
         return _replay(
             audit_id=audit_id, actor=actor, ledger=self._ledger,
             consent_ledger=self._consent_ledger, scope=scope,
             episode_id=episode_id, correlation_id=correlation_id,
+            model_context=model_context,
         )
 
     # ── Internal / testing hooks ──────────────────────────────────────────────

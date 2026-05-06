@@ -5,11 +5,14 @@ Read-only, deterministic, consent-gated.
 
 from __future__ import annotations
 
+from typing import Any
+
 from aevum.core.audit.event import AuditEvent
 from aevum.core.audit.sigchain import _uuid7
 from aevum.core.barriers import check_consent
 from aevum.core.envelope.models import OutputEnvelope, ProvenanceRecord
 from aevum.core.exceptions import ReplayNotFoundError
+from aevum.core.functions.ingest import _merge_model_context
 from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 
@@ -23,6 +26,7 @@ def replay(
     scope: list[str] | None = None,
     episode_id: str | None = None,
     correlation_id: str | None = None,
+    model_context: dict[str, Any] | None = None,
 ) -> OutputEnvelope:
     provisional_id = f"urn:aevum:audit:{_uuid7()}"
 
@@ -44,11 +48,16 @@ def replay(
         if consent_err is not None:
             return consent_err
 
+    replay_payload: dict[str, Any] = {
+        "original_audit_id": audit_id,
+        "original_event_type": original_event.event_type,
+        "replayed_by": actor,
+    }
+    _merge_model_context(replay_payload, model_context)
+
     replay_event = ledger.append(
         event_type="replay.complete",
-        payload={"original_audit_id": audit_id,
-                 "original_event_type": original_event.event_type,
-                 "replayed_by": actor},
+        payload=replay_payload,
         actor=actor, episode_id=episode_id,
         causation_id=audit_id, correlation_id=correlation_id,
     )
