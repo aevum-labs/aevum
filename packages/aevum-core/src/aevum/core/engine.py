@@ -407,11 +407,13 @@ class Engine:
         return provisional_id
 
     def get_ledger_entries(self) -> list[dict[str, Any]]:
-        return [
-            {"audit_id": e.audit_id(), "event_type": e.event_type,
-             "actor": e.actor, "payload": e.payload, "sequence": e.sequence}
-            for e in self._ledger.all_events()
-        ]
+        import dataclasses
+        result = []
+        for e in self._ledger.all_events():
+            d = dataclasses.asdict(e)
+            d["audit_id"] = e.audit_id()
+            result.append(d)
+        return result
 
     def ledger_count(self) -> int:
         return self._ledger.count()
