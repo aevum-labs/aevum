@@ -1,11 +1,14 @@
 """Tests for aevum.llm.otel — OTel GenAI attribute mapper."""
 
+from __future__ import annotations
+
+from aevum.core.audit.event import AuditEvent
+
 from aevum.llm.otel import to_otel_attributes
 
 
-def _make_event(**payload_overrides):  # type: ignore[no-untyped-def]
+def _make_event(**payload_overrides: object) -> AuditEvent:
     """Build a minimal AuditEvent for testing."""
-    from aevum.core.audit.event import AuditEvent
     payload = {
         "gen_ai.request.model": "gpt-4.1",
         "gen_ai.response.model": "gpt-4.1-2026-04-14",
@@ -37,7 +40,7 @@ def _make_event(**payload_overrides):  # type: ignore[no-untyped-def]
     )
 
 
-def test_otel_attrs_contains_model_info():
+def test_otel_attrs_contains_model_info() -> None:
     event = _make_event()
     attrs = to_otel_attributes(event)
     assert attrs["gen_ai.request.model"] == "gpt-4.1"
@@ -46,7 +49,7 @@ def test_otel_attrs_contains_model_info():
     assert attrs["gen_ai.operation.name"] == "chat"
 
 
-def test_otel_attrs_contains_aevum_ids():
+def test_otel_attrs_contains_aevum_ids() -> None:
     event = _make_event()
     attrs = to_otel_attributes(event)
     assert attrs["aevum.audit_id"].startswith("urn:aevum:audit:")
@@ -54,7 +57,7 @@ def test_otel_attrs_contains_aevum_ids():
     assert attrs["aevum.actor"] == "billing-agent"
 
 
-def test_otel_attrs_contains_hash_refs_not_content():
+def test_otel_attrs_contains_hash_refs_not_content() -> None:
     event = _make_event()
     attrs = to_otel_attributes(event)
     assert attrs["aevum.gen_ai.prompt_hash"] == "abc123"
@@ -65,15 +68,14 @@ def test_otel_attrs_contains_hash_refs_not_content():
     assert "gen_ai.system_instructions" not in attrs
 
 
-def test_otel_attrs_external_storage_reference():
+def test_otel_attrs_external_storage_reference() -> None:
     event = _make_event()
     attrs = to_otel_attributes(event)
     # audit_id IS the external storage reference
     assert attrs["gen_ai.content.reference"] == event.audit_id()
 
 
-def test_otel_attrs_missing_model_info_is_graceful():
-    from aevum.core.audit.event import AuditEvent
+def test_otel_attrs_missing_model_info_is_graceful() -> None:
     payload: dict = {"prompt_hash": "abc"}
     e = AuditEvent(
         event_id="01234567-0000-7000-8000-000000000003",
@@ -101,7 +103,7 @@ def test_otel_attrs_missing_model_info_is_graceful():
     assert "aevum.audit_id" in attrs
 
 
-def test_otel_attrs_all_values_are_primitive_types():
+def test_otel_attrs_all_values_are_primitive_types() -> None:
     event = _make_event()
     attrs = to_otel_attributes(event)
     for key, val in attrs.items():
