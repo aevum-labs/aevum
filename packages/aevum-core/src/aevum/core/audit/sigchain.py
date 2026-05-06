@@ -13,12 +13,12 @@ import time
 from typing import Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
-    Ed25519PrivateKey,
     Ed25519PublicKey,
 )
 
 from aevum.core.audit.event import AuditEvent
 from aevum.core.audit.hlc import now as hlc_now
+from aevum.core.audit.signer import InProcessSigner, Signer
 
 GENESIS_HASH = hashlib.sha3_256(b"aevum:genesis").hexdigest()
 
@@ -40,25 +40,57 @@ class Sigchain:
 
     def __init__(
         self,
-        private_key: Ed25519PrivateKey | None = None,
+        signer: Signer | None = None,
+        # Backwards-compatible: wraps in InProcessSigner automatically
+        private_key: object | None = None,  # Ed25519PrivateKey | None
         key_id: str | None = None,
+        initial_sequence: int = 0,
+        initial_prior_hash: str = GENESIS_HASH,
     ) -> None:
-        self._private_key = private_key or Ed25519PrivateKey.generate()
-        self._key_id = key_id or _uuid7()
-        self._sequence: int = 0
-        self._prior_hash: str = GENESIS_HASH
+        if signer is not None:
+            self._signer = signer
+        elif private_key is not None:
+            self._signer = InProcessSigner(
+                private_key=private_key,
+                key_id=key_id,
+                provenance_override="external",
+            )
+        else:
+            self._signer = InProcessSigner()
+
+        self._sequence: int = initial_sequence
+        self._prior_hash: str = initial_prior_hash
 
     @property
     def key_id(self) -> str:
-        return self._key_id
+        return self._signer.key_id
+
+    @property
+    def key_provenance(self) -> str:
+        return self._signer.provenance
 
     @property
     def public_key(self) -> Ed25519PublicKey:
-        return self._private_key.public_key()
+        signer = self._signer
+        # Access inner key for InProcessSigner (the only case where we need Ed25519PublicKey)
+        if isinstance(signer, InProcessSigner):
+            return signer._private_key.public_key()
+        raise NotImplementedError(
+            "public_key property only available for InProcessSigner; "
+            "use public_key_bytes() for external signers."
+        )
+
+    def checkpoint(self) -> tuple[int, str]:
+        return (self._sequence, self._prior_hash)
+
+    def restore(self, checkpoint: tuple[int, str]) -> None:
+        self._sequence, self._prior_hash = checkpoint
 
     def _sign(self, fields: dict[str, Any]) -> str:
         canonical = json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()
-        sig_bytes = self._private_key.sign(canonical)
+        # Sign SHA3-256(canonical) — enables prehashed external signing
+        digest = hashlib.sha3_256(canonical).digest()
+        sig_bytes = self._signer.sign(digest)
         return base64.urlsafe_b64encode(sig_bytes).rstrip(b"=").decode()
 
     def new_event(
@@ -100,7 +132,7 @@ class Sigchain:
             "span_id": span_id,
             "payload_hash": payload_hash,
             "prior_hash": prior,
-            "signer_key_id": self._key_id,
+            "signer_key_id": self._signer.key_id,
         }
         signature = self._sign(signing_fields)
 
@@ -122,14 +154,17 @@ class Sigchain:
             payload_hash=payload_hash,
             prior_hash=prior,
             signature=signature,
-            signer_key_id=self._key_id,
+            signer_key_id=self._signer.key_id,
         )
         self._prior_hash = AuditEvent.hash_event_for_chain(event)
         return event
 
     def verify_chain(self, events: list[AuditEvent]) -> bool:
         """Verify entire chain from genesis. Returns True if intact."""
-        public_key = self.public_key
+        # Obtain public key bytes and reconstruct Ed25519PublicKey for verification
+        pub_key_bytes = self._signer.public_key_bytes()
+        public_key = Ed25519PublicKey.from_public_bytes(pub_key_bytes)
+
         expected_prior = GENESIS_HASH
         for event in events:
             if event.prior_hash != expected_prior:
@@ -157,9 +192,11 @@ class Sigchain:
             canonical = json.dumps(
                 signing_fields, sort_keys=True, separators=(",", ":")
             ).encode()
+            # Verify against SHA3-256 digest of canonical bytes
+            digest = hashlib.sha3_256(canonical).digest()
             try:
                 sig_bytes = base64.urlsafe_b64decode(event.signature + "==")
-                public_key.verify(sig_bytes, canonical)
+                public_key.verify(sig_bytes, digest)
             except Exception:
                 return False
             expected_prior = AuditEvent.hash_event_for_chain(event)

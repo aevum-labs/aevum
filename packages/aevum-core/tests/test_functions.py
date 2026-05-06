@@ -29,7 +29,7 @@ def test_commit_idempotency() -> None:
     r1 = e.commit(event_type="app.t", payload={}, actor="a", idempotency_key="k1")
     r2 = e.commit(event_type="app.t", payload={}, actor="a", idempotency_key="k1")
     assert r1.audit_id == r2.audit_id
-    assert e.ledger_count() == 1
+    assert e.ledger_count() == 2  # session.start + one deduplicated commit
 
 
 def test_commit_reserved_prefix() -> None:
@@ -180,3 +180,71 @@ def test_ingest_model_context_none_is_noop() -> None:
     last_event = e._ledger.all_events()[-1]
     for key in ("gen_ai.request.model", "gen_ai.system", "gen_ai.conversation.id"):
         assert key not in last_event.payload
+
+
+import pytest
+
+
+def test_record_capture_gap_writes_event() -> None:
+    """record_capture_gap() must write a signed capture.gap event."""
+    engine = Engine()
+    event = engine.record_capture_gap(
+        gap_type="llm",
+        actor="billing-agent",
+        episode_id="ep-001",
+        reason="direct_api_call",
+        model_hint="gpt-4.1",
+    )
+    assert event.event_type == "capture.gap"
+    assert event.actor == "billing-agent"
+    assert event.episode_id == "ep-001"
+    assert event.payload["gap_type"] == "llm"
+    assert event.payload["reason"] == "direct_api_call"
+    assert event.payload.get("model_hint") == "gpt-4.1"
+    assert engine.verify_sigchain() is True
+
+
+def test_record_capture_gap_invalid_type() -> None:
+    """gap_type must be one of the valid values."""
+    engine = Engine()
+    with pytest.raises(ValueError, match="gap_type must be one of"):
+        engine.record_capture_gap(gap_type="unknown", actor="a")
+
+
+def test_record_capture_gap_empty_actor() -> None:
+    engine = Engine()
+    with pytest.raises(ValueError, match="actor must be a non-empty string"):
+        engine.record_capture_gap(gap_type="llm", actor="")
+
+
+def test_record_capture_gap_in_chain() -> None:
+    """capture.gap events must appear in the sigchain between other events."""
+    engine = Engine()
+    engine.add_consent_grant(ConsentGrant(
+        grant_id="g1", subject_id="u1", grantee_id="agent",
+        operations=["ingest"], purpose="test",
+        classification_max=0,
+        granted_at="2026-01-01T00:00:00Z",
+        expires_at="2030-01-01T00:00:00Z",
+    ))
+    engine.ingest(
+        data={"x": 1},
+        provenance={"source_id": "s", "chain_of_custody": ["s"], "classification": 0},
+        purpose="test", subject_id="u1", actor="agent",
+    )
+    engine.record_capture_gap(gap_type="llm", actor="agent", episode_id=None)
+
+    entries = engine.get_ledger_entries()
+    event_types = [e["event_type"] for e in entries]
+    assert "capture.gap" in event_types
+    assert engine.verify_sigchain() is True
+
+
+def test_session_start_uses_complication_registry() -> None:
+    """session.start capture_surface must reflect registration, not installation."""
+    engine = Engine()
+    session = engine.get_ledger_entries()[0]
+    assert session["event_type"] == "session.start"
+    # Without any complications registered, both must be False
+    assert session["payload"]["capture_surface"]["llm"] is False
+    assert session["payload"]["capture_surface"]["mcp"] is False

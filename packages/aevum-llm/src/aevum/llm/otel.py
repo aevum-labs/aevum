@@ -13,6 +13,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+# ── OTel GenAI semantic conventions — version tracking ─────────────────────
+# These conventions are in Development/Experimental status as of May 2026.
+# NOT YET STABLE. Track the specific release tag used.
+# When conventions reach stable, update this constant and audit all
+# attribute names below against the new stable spec.
+# See: https://github.com/open-telemetry/semantic-conventions/releases
+# See: https://opentelemetry.io/docs/specs/semconv/gen-ai/
+OTEL_GENAI_SEMCONV_VERSION = "1.27.0-experimental"
+
+# Set this env var in production to opt into the latest experimental GenAI
+# attributes during OTel's stabilization period:
+# OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental
+OTEL_SEMCONV_STABILITY_OPT_IN_VALUE = "gen_ai_latest_experimental"
+
 if TYPE_CHECKING:
     from aevum.core.audit.event import AuditEvent
 

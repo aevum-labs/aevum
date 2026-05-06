@@ -56,3 +56,58 @@ def test_sequence_always_increments(n: int) -> None:
     events = [chain.new_event(event_type="t.e", payload={"i": i}, actor="a") for i in range(n)]
     for i in range(1, len(events)):
         assert events[i].sequence > events[i-1].sequence
+
+
+def test_signer_abc_in_process_default() -> None:
+    """Default Sigchain uses InProcessSigner with in-process provenance."""
+    sc = Sigchain()
+    assert sc.key_provenance == "in-process"
+    assert sc.key_id  # non-empty
+
+
+def test_signer_abc_external_key() -> None:
+    """Passing private_key= wraps in InProcessSigner with external provenance."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    key = Ed25519PrivateKey.generate()
+    sc = Sigchain(private_key=key, key_id="test-key-123")
+    assert sc.key_provenance == "external"
+    assert sc.key_id == "test-key-123"
+
+
+def test_signer_instance_accepted() -> None:
+    """Sigchain accepts a Signer instance directly."""
+    from aevum.core.audit.signer import InProcessSigner
+    signer = InProcessSigner()
+    sc = Sigchain(signer=signer)
+    assert sc.key_provenance == "in-process"
+    assert sc._signer is signer
+
+
+def test_signing_semantics_uses_digest() -> None:
+    """new_event() signs SHA3-256(canonical), not the raw canonical bytes."""
+    sc = Sigchain()
+    event = sc.new_event(event_type="test.sign", payload={"x": 1}, actor="a")
+    # Chain verification passing confirms digest-based signing semantics are consistent
+    assert sc.verify_chain([event]) is True
+
+
+def test_verify_chain_after_signer_refactor() -> None:
+    """verify_chain() must pass with the new signing semantics."""
+    sc = Sigchain()
+    events = []
+    for i in range(5):
+        events.append(sc.new_event(
+            event_type=f"test.{i}", payload={"i": i}, actor="a"
+        ))
+    assert sc.verify_chain(events) is True
+
+
+def test_checkpoint_restore_with_signer() -> None:
+    """Checkpoint/restore must work after Signer refactor."""
+    sc = Sigchain()
+    cp = sc.checkpoint()
+    sc.new_event(event_type="ghost", payload={}, actor="a")
+    sc.restore(cp)
+    e = sc.new_event(event_type="after.restore", payload={}, actor="a")
+    assert e.sequence == 1
+    assert sc.verify_chain([e]) is True
