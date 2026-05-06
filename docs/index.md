@@ -55,20 +55,30 @@ managed SaaS. See [fit assessment details in the Architecture page](/learn/archi
 
 ## Where to start
 
-**Understand it first**
+<div class="grid cards" markdown>
 
-→ [Architecture](/learn/architecture/) — how Aevum works: the governed
-membrane, the sigchain, the five barriers, and the consent model — one page.
+-   :material-book-open-variant:{ .lg } **Understand it first**
 
-**Build with it**
+    How Aevum works: the governed membrane, the sigchain, the five
+    barriers, and the consent model — in one page.
 
-→ [Quickstart](/getting-started/quickstart/) — first governed session in
-under 10 minutes. Works on Linux, macOS, and Windows.
+    [:octicons-arrow-right-24: Architecture](/learn/architecture/)
 
-**Evaluate it**
+-   :material-rocket-launch-outline:{ .lg } **Build with it**
 
-→ [Security](/learn/security/) — threat model, security architecture, and
-common security questions for engineers evaluating production deployment.
+    First governed session in under 10 minutes.
+    Works on Linux, macOS, and Windows.
+
+    [:octicons-arrow-right-24: Quickstart](/getting-started/quickstart/)
+
+-   :material-shield-search:{ .lg } **Evaluate it**
+
+    Threat model, security architecture, and common security questions
+    for engineers evaluating production deployment.
+
+    [:octicons-arrow-right-24: Security](/learn/security/)
+
+</div>
 
 ## Install
 
