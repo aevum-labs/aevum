@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from aevum.core.audit.event import AuditEvent
 from aevum.core.audit.ledger import InMemoryLedger
 from aevum.core.audit.sigchain import Sigchain
 from aevum.core.complications import (
@@ -66,6 +67,21 @@ class Engine:
         self._manifest_validator = ManifestValidator()
         self._conflict_detector = ConflictDetector()
         self._webhook_registry = WebhookRegistry(ledger=self._ledger)
+
+        self._write_session_start()
+
+    def _write_session_start(self) -> None:
+        registered = self._complication_registry.all_entries()
+        llm_active = any("llm" in name.lower() for name in registered)
+        mcp_active = any("mcp" in name.lower() for name in registered)
+        self._ledger.append(
+            event_type="session.start",
+            payload={
+                "capture_surface": {"llm": llm_active, "mcp": mcp_active},
+                "key_provenance": self._sigchain.key_provenance,
+            },
+            actor="aevum-core",
+        )
 
     # ── Consent management ────────────────────────────────────────────────────
 
@@ -301,6 +317,64 @@ class Engine:
             consent_ledger=self._consent_ledger, scope=scope,
             episode_id=episode_id, correlation_id=correlation_id,
             model_context=model_context,
+        )
+
+    def record_capture_gap(
+        self,
+        gap_type: str,
+        actor: str,
+        episode_id: str | None = None,
+        reason: str | None = None,
+        model_hint: str | None = None,
+        extra: dict[str, object] | None = None,
+    ) -> AuditEvent:
+        """
+        Declare that a capture-surface call (LLM, tool, MCP) was made
+        outside the complication framework.
+
+        This is the honest answer to the audit question: "an LLM was called
+        but aevum-llm was not registered — is this an error or a known gap?"
+        The developer calls this to make the gap auditable rather than invisible.
+
+        The call is recorded as a capture.gap AuditEvent in the sigchain.
+        An auditor can then see: "at this point in episode X, the operator
+        declared an out-of-band call was made."
+
+        Args:
+            gap_type: "llm" | "mcp" | "tool" | "custom"
+            actor:    The agent or component making the out-of-band call
+            episode_id: Link this gap to an episode for forensic grouping
+            reason:   Why the complication was bypassed (e.g. "direct_api_call",
+                      "complication_not_registered", "testing")
+            model_hint: Optional hint for what was called (e.g. "gpt-4.1")
+                        — for auditor context only, not validated
+            extra:    Additional structured context for the auditor
+
+        Returns:
+            The signed AuditEvent written to the sigchain
+        """
+        VALID_GAP_TYPES = ("llm", "mcp", "tool", "custom")
+        if gap_type not in VALID_GAP_TYPES:
+            raise ValueError(
+                f"gap_type must be one of {VALID_GAP_TYPES}, got {gap_type!r}"
+            )
+        if not actor or not actor.strip():
+            raise ValueError("actor must be a non-empty string")
+
+        payload: dict[str, object] = {
+            "gap_type": gap_type,
+            "reason": reason or "unspecified",
+        }
+        if model_hint is not None:
+            payload["model_hint"] = model_hint
+        if extra:
+            payload["extra"] = extra
+
+        return self._ledger.append(
+            event_type="capture.gap",
+            payload=payload,
+            actor=actor,
+            episode_id=episode_id,
         )
 
     # ── Internal / testing hooks ──────────────────────────────────────────────
