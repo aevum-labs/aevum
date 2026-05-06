@@ -1,0 +1,2006 @@
+# Aevum — Full Documentation
+
+> The governed context kernel for AI agents.
+> Replay-first. Policy-enforced. Cryptographically auditable.
+> Apache-2.0 — https://github.com/aevum-labs/aevum
+
+This file contains the complete Aevum documentation for LLM consumption.
+For a structured index, see https://aevum.build/llms.txt
+
+---
+
+## Architecture
+
+# Architecture
+
+Aevum is a replay-first, policy-governed context kernel. It sits between your
+AI agents and the data they reason over, enforcing consent, provenance, and
+classification on every operation before any data is read or written. Where
+observability tools log what happened after the fact, Aevum enforces governance
+before the agent acts — and records a cryptographically signed, hash-chained
+ledger that makes every past decision deterministically replayable.
+
+## The governed membrane
+
+Every piece of data entering Aevum passes through the same path:
+
+```
+Your data source
+      ↓
+  governed membrane  ← Barriers 3 (consent) and 5 (provenance) checked here
+      ↓
+  knowledge graph    ← urn:aevum:knowledge  (working data)
+      ↓
+  episodic ledger    ← urn:aevum:provenance (immutable audit, sigchain)
+      ↓
+  consent ledger     ← urn:aevum:consent    (OR-Set grants)
+```
+
+When an agent queries context, traversal goes through the same governed
+path in reverse — consent is checked before any graph traversal begins.
+
+Aevum maintains exactly three named graphs. These URIs are frozen invariants.
+
+| Graph URI | Contents | Mutable? |
+|---|---|---|
+| `urn:aevum:knowledge` | Working data — entities, relationships | Yes (via ingest) |
+| `urn:aevum:provenance` | Every audit event, sigchain | Never (append-only) |
+| `urn:aevum:consent` | Consent grants and revocations | Append-only |
+
+This is not middleware, not a wrapper, and not a logging sidecar. It is a
+kernel: all agent data access passes through it, and the kernel enforces
+the invariants unconditionally.
+
+## Five absolute barriers
+
+Absolute barriers are unconditional, hardcoded checks in `aevum-core`.
+They are not policies. They are not configurable. They cannot be bypassed.
+
+| | Absolute barrier | Policy (OPA / Cedar) |
+|---|---|---|
+| Location | `barriers.py` — hardcoded | OPA sidecar or cedarpy |
+| Configurable | Never | Yes |
+| Bypassable | Never | Via policy rules |
+| Fires even without Cedar | Yes | No (falls back to permissive) |
+| Audited | Yes — every check is logged | Yes |
+
+If you need a check that can be tuned per environment, use Cedar or OPA.
+If you need a check that must never be overridden, it belongs in `barriers.py`.
+
+### Barrier 1 — Crisis Detection
+
+**Applies to:** `ingest`
+
+**Behavior:** If the payload contains any crisis keyword (suicidal ideation,
+immediate physical danger, medical emergency), the operation is halted immediately
+and a `crisis` envelope is returned with safe messaging and crisis resources.
+
+```python
+result = engine.ingest(
+    data={"message": "I want to kill myself"},
+    provenance={"source_id": "chat", "chain_of_custody": ["chat"], "classification": 0},
+    purpose="support",
+    subject_id="user-1",
+    actor="support-agent",
+)
+
+result.status  # "crisis"
+result.data["safe_message"]  # "It sounds like you or someone you know..."
+result.data["resources"]     # ["988 Suicide & Crisis Lifeline: ...", ...]
+```
+
+The operation is not ingested. No data reaches the knowledge graph.
+The crisis event is logged to the episodic ledger.
+
+!!! warning
+    The crisis barrier is a first-line safety net, not a complete mental health
+    intervention. If your application serves vulnerable users, complement this
+    with human review and additional clinical safety measures.
+
+### Barrier 2 — Classification Ceiling
+
+**Applies to:** `query`
+
+**Behavior:** Results whose classification level exceeds `classification_max`
+are silently redacted from the response. The operation is not errored — the
+caller simply does not receive above-clearance data.
+
+```python
+result = engine.query(
+    purpose="billing-inquiry",
+    subject_ids=["user-1"],
+    actor="low-clearance-agent",
+    classification_max=1,  # can only see classification 0 and 1
+)
+
+result.status    # "ok"
+result.warnings  # ["user-1: redacted (classification 2 > ceiling 1)"]
+result.data["results"].get("user-1")  # None — redacted
+```
+
+Classification levels:
+
+| Level | Typical use |
+|---|---|
+| 0 | Public / de-identified |
+| 1 | Internal / limited |
+| 2 | Confidential / identified PII |
+| 3 | Highly sensitive (PHI, financial, legal) |
+
+### Barrier 3 — Consent
+
+**Applies to:** `ingest`, `query`, `replay`
+
+**Behavior:** If the actor does not hold an active consent grant authorizing
+the operation on the specified subject, the operation is blocked and an error
+envelope is returned.
+
+```python
+# No consent grant added — this will fail
+result = engine.ingest(
+    data={"note": "test"},
+    provenance={"source_id": "test", "chain_of_custody": ["test"], "classification": 0},
+    purpose="testing",
+    subject_id="user-1",
+    actor="my-agent",
+)
+
+result.status                    # "error"
+result.data["error_code"]        # "consent_required"
+result.data["error_detail"]      # "No active consent grant for operation 'ingest'..."
+```
+
+This is the consent fast-path denial. Even without Cedar installed, this check fires.
+
+### Barrier 4 — Audit Immutability
+
+**Applies to:** All operations (enforced by the ledger, not checked at call time)
+
+**Behavior:** The episodic ledger is append-only. No entry can be modified or
+deleted after it is written. `InMemoryLedger` (and all persistent backends)
+raise `ImmutabilityError` on any write to an existing entry.
+
+```python
+intact = engine.verify_sigchain()
+# True = all entries are valid and unmodified
+# False = tampering detected or key rotation issue
+```
+
+### Barrier 5 — Provenance
+
+**Applies to:** `ingest`
+
+**Behavior:** Every `ingest` call must include a provenance record with a
+non-empty `source_id`. If provenance is missing or incomplete, the operation
+is blocked.
+
+```python
+# Missing provenance — this will fail
+result = engine.ingest(
+    data={"note": "test"},
+    provenance={},  # no source_id
+    purpose="testing",
+    subject_id="user-1",
+    actor="my-agent",
+)
+
+result.status              # "error"
+result.data["error_code"]  # "provenance_required"
+```
+
+The canary tests in `packages/aevum-core/tests/test_canary.py` verify all
+five barriers unconditionally on every pull request.
+
+## The sigchain
+
+The sigchain is the mechanism that makes deterministic replay possible. Every
+entry in the episodic ledger is signed with Ed25519 and chained with SHA3-256,
+forming a tamper-evident sequence where any modification is immediately detectable.
+
+### The 18-field AuditEvent
+
+Every entry in the ledger is an `AuditEvent` with exactly 18 fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `event_id` | str | UUID v7 (time-ordered) |
+| `episode_id` | str | Groups related events into an "episode" |
+| `sequence` | int | Monotonically increasing, per-chain (starts at 1) |
+| `event_type` | str | e.g. `"ingest"`, `"query"`, `"credit.issued"` |
+| `schema_version` | str | Always `"1.0"` in this release |
+| `valid_from` | str | ISO 8601 — when the event became valid |
+| `valid_to` | str \| None | ISO 8601 — optional validity end |
+| `system_time` | int | Hybrid Logical Clock timestamp (nanoseconds) |
+| `causation_id` | str \| None | `audit_id` of the event that caused this one |
+| `correlation_id` | str \| None | Trace correlation across multiple events |
+| `actor` | str | Who performed the operation (required, non-empty) |
+| `trace_id` | str \| None | OpenTelemetry trace ID |
+| `span_id` | str \| None | OpenTelemetry span ID |
+| `payload` | dict | The operation's data (what was ingested, queried, etc.) |
+| `payload_hash` | str | SHA3-256 of the canonical JSON payload |
+| `prior_hash` | str | SHA3-256 hash of all fields of the previous event |
+| `signature` | str | Ed25519 signature over all fields except `signature` |
+| `signer_key_id` | str | UUID of the Ed25519 private key that signed this event |
+
+### How the chain works
+
+Each event includes the hash of the previous event. Modifying any event
+breaks the chain from that point forward, making tampering detectable.
+
+```
+Genesis hash = SHA3-256("aevum:genesis")
+     ↓
+Event 1:  prior_hash = genesis_hash
+          payload_hash = SHA3-256(event1.payload)
+          signature = Ed25519(all fields except signature)
+          chain_hash_1 = SHA3-256(all fields except signature)
+     ↓
+Event 2:  prior_hash = chain_hash_1
+          ...
+     ↓
+Event N:  prior_hash = chain_hash_{N-1}
+          ...
+```
+
+`verify_sigchain()` re-verifies:
+
+1. That `prior_hash` in each event matches the computed hash of the previous event
+2. That `payload_hash` in each event matches the SHA3-256 of the actual payload
+3. That the Ed25519 `signature` in each event is valid over the signing fields
+
+```python
+intact = engine.verify_sigchain()
+if not intact:
+    print("WARNING: sigchain integrity check failed")
+```
+
+### The audit_id format
+
+Every `OutputEnvelope` includes an `audit_id` that identifies the ledger entry:
+
+```
+urn:aevum:audit:0196f2a1-1234-7abc-8def-0123456789ab
+               ^         ^
+               |         UUID v7 (time-ordered, ~1ms resolution)
+               Namespace prefix (frozen invariant)
+```
+
+UUID v7 is time-ordered, which means audit IDs sort chronologically.
+
+### The "episode" concept
+
+An **episode** is a group of related audit events representing a complete AI
+decision or workflow:
+
+```
+episode_id: "ep-billing-INV-001"
+  event 1: ingest — invoice data ingested
+  event 2: query  — billing status retrieved
+  event 3: review — credit approval requested
+  event 4: review — credit approved by manager
+  event 5: commit — credit.issued recorded
+```
+
+Pass `episode_id` to each function call to group events:
+
+```python
+ep = "ep-billing-INV-001"
+engine.ingest(..., episode_id=ep)
+engine.query(..., episode_id=ep)
+engine.commit(..., episode_id=ep)
+```
+
+### Hybrid Logical Clock
+
+The `system_time` field uses a Hybrid Logical Clock (HLC), not wall time.
+HLC advances monotonically even if the system clock is adjusted, preventing
+sequence-ordering anomalies in distributed deployments.
+
+## Five public functions
+
+These are the complete public API of `aevum-core`. Their signatures and
+behavioral contracts are frozen at Phase 1.
+
+| Function | Internal verb | What it does |
+|---|---|---|
+| `ingest` | RELATE | Write data through the governed membrane |
+| `query` | NAVIGATE | Traverse the graph for a declared purpose |
+| `review` | GOVERN | Present context for human decision |
+| `commit` | REMEMBER | Append a named event to the episodic ledger |
+| `replay` | (REPLAY) | Reconstruct any past decision faithfully |
+
+All five functions return exactly one `OutputEnvelope`, write to the episodic
+ledger, enforce the five absolute barriers unconditionally, and require an
+`actor` parameter identifying the caller.
+
+### ingest — RELATE
+
+```python
+result = engine.ingest(
+    data={"invoice_id": "INV-001", "amount": 1500.00, "status": "paid"},
+    provenance={
+        "source_id": "billing-system",
+        "chain_of_custody": ["billing-system"],
+        "classification": 1,
+    },
+    purpose="billing-inquiry",
+    subject_id="customer-42",
+    actor="billing-agent",
+    idempotency_key="INV-001-ingest",  # optional
+)
+```
+
+**Barriers checked:** Provenance (5), Consent (3), Crisis (1)
+
+**Returns:** `OutputEnvelope` with `data={}` on success, `audit_id` always set.
+
+### query — NAVIGATE
+
+```python
+result = engine.query(
+    purpose="billing-inquiry",
+    subject_ids=["customer-42"],
+    actor="billing-agent",
+    classification_max=1,
+    constraints={"type": "invoice"},  # optional filter
+)
+
+if result.status == "ok":
+    data = result.data["results"]["customer-42"]
+```
+
+**Barriers checked:** Consent (3), Classification Ceiling (2)
+
+Results above `classification_max` are silently redacted (not errored).
+The `warnings` field lists redacted subject IDs.
+
+### review — GOVERN
+
+```python
+# Agent requests a review gate
+result = engine.review(
+    audit_id="urn:aevum:audit:...",
+    actor="billing-agent",
+)
+# status="pending_review" — operation is blocked
+
+# Human approves
+engine.review(
+    audit_id="urn:aevum:audit:...",
+    actor="billing-manager",
+    action="approve",
+)
+# status="ok"
+```
+
+**Default is veto.** If a deadline passes without a human decision, the action is blocked.
+
+### commit — REMEMBER
+
+```python
+result = engine.commit(
+    event_type="credit.issued",
+    payload={
+        "invoice_id": "INV-001",
+        "credit_amount": 150.00,
+        "reason": "billing-error",
+    },
+    actor="billing-agent",
+    idempotency_key="credit-INV-001",  # optional
+)
+```
+
+**No consent check.** `commit` records outcomes of already-approved operations.
+
+**Returns:** `OutputEnvelope` with `data={}`, `audit_id` set.
+
+### replay — REPLAY
+
+```python
+result = engine.replay(
+    audit_id="urn:aevum:audit:0196...",
+    actor="audit-agent",
+    scope=["payload"],  # optional — limit what is returned
+)
+
+if result.status == "ok":
+    original = result.data["replayed_payload"]
+    metadata = result.data["event_metadata"]
+```
+
+**Barriers checked:** Consent (3) — the actor must hold a grant with `"replay"` in operations.
+
+**Deterministic:** The same `audit_id` always returns the same payload, regardless
+of when it is called. This is the guarantee.
+
+The `OutputEnvelope` returned by every function:
+
+```python
+result.status      # "ok" | "error" | "pending_review" | "degraded" | "crisis"
+result.audit_id    # "urn:aevum:audit:<uuid7>"
+result.data        # function-specific payload
+result.confidence  # float [0.0, 1.0]
+result.provenance  # ProvenanceRecord
+result.warnings    # list[str]
+```
+
+Always check `result.status` before accessing `result.data`.
+See [API Reference](/reference/api/) for the full `OutputEnvelope` schema.
+
+### replay vs query — the distinction that matters
+
+| | `query` | `replay` |
+|---|---|---|
+| Reads from | `urn:aevum:knowledge` (current state) | `urn:aevum:provenance` (immutable history) |
+| Returns | Current entities matching criteria | Exact payload from a specific past event |
+| Changes with new data | Yes | Never |
+| Requires specific ID | No | Yes (`audit_id`) |
+| Use for | "What does my agent know now?" | "What did my agent see at decision time?" |
+
+### The HTTP surface
+
+When `aevum-server` is installed, the five functions are available over HTTP:
+
+| Endpoint | Function |
+|---|---|
+| `POST /ingest` | `engine.ingest()` |
+| `POST /query` | `engine.query()` |
+| `POST /review` | `engine.review()` |
+| `POST /commit` | `engine.commit()` |
+| `POST /replay` | `engine.replay()` |
+
+## Consent model
+
+Consent in Aevum is not a policy setting — it is a barrier. No traversal
+without consent; no ingestion without consent. This is unconditional.
+
+If consent were a Cedar or OPA policy, an administrator could write a rule
+that bypasses it. In Aevum, consent enforcement is hardcoded in `barriers.py`
+and fires before any policy evaluation. Even with Cedar not installed,
+the consent fast-path denial fires.
+
+The design intention: an AI agent must never be able to access data about a
+person without that person's active, specific consent — even if the operator
+misconfigures their policies.
+
+### Consent grant fields
+
+```python
+from aevum.core.consent.models import ConsentGrant
+
+grant = ConsentGrant(
+    grant_id="grant-001",           # unique ID for this grant
+    subject_id="customer-42",       # whose data is covered
+    grantee_id="billing-agent",     # which agent is covered
+    operations=["ingest", "query"], # permitted operations
+    purpose="billing-inquiry",      # must be specific
+    classification_max=1,           # ceiling: 0=public, 1=internal, 2=PII, 3=sensitive
+    granted_at="2026-01-01T00:00:00Z",
+    expires_at="2027-01-01T00:00:00Z",
+    authorization_ref="customer-consent-form-2026-01-01",  # optional reference
+)
+
+engine.add_consent_grant(grant)
+```
+
+**Valid operations:** `"ingest"`, `"query"`, `"replay"`, `"export"`
+
+Note: `"review"` and `"commit"` do not require consent grants — they record
+outcomes of already-consented operations.
+
+### The OR-Set CRDT — immediate revocation
+
+Aevum's consent ledger is modeled as an OR-Set (Observed-Remove Set) CRDT.
+When you call `engine.revoke_consent_grant(grant_id)`:
+
+1. The grant is marked revoked in the consent ledger
+2. Every subsequent operation that checks for this grant will see it as inactive
+3. The revocation is itself an append-only ledger entry — it cannot be undone
+
+```python
+engine.revoke_consent_grant("grant-001")
+
+# Subsequent ingest by billing-agent for customer-42 is now blocked
+result = engine.ingest(
+    data={"note": "test"},
+    provenance={"source_id": "billing", "chain_of_custody": ["billing"], "classification": 0},
+    purpose="billing-inquiry",
+    subject_id="customer-42",
+    actor="billing-agent",
+)
+result.status              # "error"
+result.data["error_code"]  # "consent_required"
+```
+
+This enables GDPR-style immediate revocation. The data remains in the
+knowledge graph (audit immutability: Barrier 4), but it is unreachable
+for any operation by any grantee until a new grant is added.
+
+### Purpose must be specific
+
+The `purpose` field must be specific and auditable. The kernel rejects
+generic purposes:
+
+```python
+# These raise ValidationError:
+ConsentGrant(..., purpose="any")
+ConsentGrant(..., purpose="all purposes")
+ConsentGrant(..., purpose="")
+
+# These are valid:
+ConsentGrant(..., purpose="billing-inquiry")
+ConsentGrant(..., purpose="care-coordination")
+ConsentGrant(..., purpose="fraud-detection")
+```
+
+Purpose must match between the grant and the operation.
+
+### The operations list
+
+| Operation | What it gates |
+|---|---|
+| `"ingest"` | Writing data through the governed membrane |
+| `"query"` | Reading context from the knowledge graph |
+| `"replay"` | Reconstructing past decisions from the episodic ledger |
+| `"export"` | Exporting data out of Aevum (future) |
+
+### Classification ceiling in grants
+
+The `classification_max` in a consent grant sets the ceiling for what the
+grantee can see, interacting with Barrier 2:
+
+- Data ingested at classification 2
+- Grant has `classification_max=1`
+- The grantee's query returns no results for that data (redacted by Barrier 2)
+
+### Consent and GDPR
+
+Aevum's consent model is designed to support GDPR Article 7 (conditions for consent):
+
+- **Specific** — purpose must be declared and auditable
+- **Informed** — `authorization_ref` links to the consent document
+- **Revocable** — OR-Set semantics, immediate effect
+- **Audited** — every grant and revocation is in the immutable episodic ledger
+
+Aevum does not generate GDPR compliance reports. The episodic ledger is
+evidence that can be used in a compliance audit, not a report generator.
+
+## Scalability and production considerations
+
+For production deployments at scale, the architectural choices that matter most:
+
+**Backend selection:** The default `Engine()` uses in-memory storage — no
+database required, but data does not persist across restarts. For production:
+use `aevum-store-postgres` (PostgreSQL 14+) for horizontal scaling and
+point-in-time recovery. Use `aevum-store-oxigraph` for single-node deployments
+without a database service.
+
+**Multi-tenant isolation:** Aevum supports multi-tenancy through `subject_id`
+and `grantee_id` scoping. Each tenant's data is tagged with their `subject_id`
+namespace; consent grants prevent cross-tenant data access. For strict process
+isolation, run separate Engine instances with separate storage backends.
+
+**OIDC integration:** Use `aevum-oidc` to validate JWTs from your identity
+provider and map claims to `grantee_id` values. Aevum does not implement
+authentication — it consumes verified identity from your IDP.
+
+**Horizontal scaling:** `aevum-server` is stateless — scale horizontally with
+your load balancer. All state is in PostgreSQL. For high-throughput ingestion,
+use connection pooling (PgBouncer) in front of PostgreSQL.
+
+See [Deployment](/learn/deployment/) for the full production guide including
+Docker Compose and configuration examples.
+
+## See also
+
+- [Quickstart](/getting-started/quickstart/) — run your first governed session
+- [Security](/learn/security/) — threat model and security architecture
+- [Replay vs. Observability](/concepts/replay-vs-observability/) — the distinction in detail
+- [API Reference](/reference/api/) — full schema for all types
+
+---
+
+## Security
+
+# Security
+
+## Authentication
+
+Aevum does not implement authentication. Every operation takes an `actor`
+parameter — a string identifier for the caller. Your application is responsible
+for verifying that the caller is who they say they are before calling Aevum.
+
+For production deployments with OIDC:
+
+```python
+# Validate JWT with aevum-oidc
+from aevum.oidc import OIDCComplication
+
+oidc = OIDCComplication(jwks_uri="https://your-idp/.well-known/jwks.json")
+engine.install_complication(oidc, auto_approve=True)
+
+# After validation, use the verified subject as actor
+actor = verified_token["sub"]  # e.g., "user:alice@example.com"
+```
+
+The `actor` field is immutable in the audit event once written.
+
+## Authorization
+
+Authorization operates at three layers:
+
+### Layer 1: Absolute barriers (unconditional)
+
+The five absolute barriers in `barriers.py` fire before any policy evaluation.
+They cannot be overridden by Cedar, OPA, or any configuration.
+
+See [Architecture](/learn/architecture/#five-absolute-barriers).
+
+### Layer 2: Cedar (in-process)
+
+Cedar handles consent and purpose policy decisions in-process.
+Install with: `pip install "aevum-core[cedar]"`
+
+Without Cedar, the kernel warns and falls back to permissive decisions
+(except for barrier fast-path denials, which still fire).
+
+### Layer 3: OPA (optional HTTP sidecar)
+
+For infrastructure policy (network access, resource limits, tenant isolation),
+an OPA sidecar can be configured:
+
+```bash
+export AEVUM_OPA_URL=http://your-opa-host:8181
+```
+
+Aevum fails closed — if OPA is configured but unreachable, all operations
+are denied.
+
+## Cryptographic audit trail
+
+Every operation is signed with Ed25519 and chained with SHA3-256:
+
+- **Ed25519** — 128-bit security, fast signing, compact signatures
+- **SHA3-256** — NIST-approved, resistance to length-extension attacks
+- **UUID v7** — time-ordered event IDs, sortable without timestamp metadata
+- **Hybrid Logical Clock** — monotonic timestamps, safe in distributed systems
+
+The signing key is generated at startup. For production:
+- Use your KMS to generate and store the key
+- Rotate keys on a schedule; Aevum records `signer_key_id` in every event
+- Back up the public key separately from the ledger
+
+## Data at rest
+
+Aevum does not encrypt data at rest directly. Encryption is handled by your
+storage layer:
+
+| Backend | Encryption approach |
+|---|---|
+| In-memory | N/A (process memory) |
+| Oxigraph | File system encryption (OS-level or LUKS) |
+| PostgreSQL | Transparent data encryption (pgcrypto, PGDATA encryption) |
+
+## Data in transit
+
+Aevum communicates over:
+- In-process function calls (no network) when using aevum-core directly
+- HTTP to OPA sidecar (use mTLS for production)
+- HTTP to OIDC JWKS endpoint (TLS required)
+
+`aevum-server` (FastAPI) serves over HTTP. Put it behind a TLS-terminating
+reverse proxy (nginx, Traefik, or your cloud load balancer) for production.
+
+## Secret management
+
+Aevum itself has no secrets to manage except the Ed25519 signing key.
+For production:
+1. Generate the key in your KMS
+2. Pass it to `Engine(sigchain=Sigchain(private_key=your_key))`
+3. Store the public key for verification
+
+Third-party dependencies (PostgreSQL credentials, OPA URL, OIDC JWKS URI)
+should be managed with your standard secrets management tooling
+(Vault, AWS Secrets Manager, Kubernetes Secrets, etc.).
+
+## Dependency security
+
+All dependencies are pinned in `uv.lock`. Security updates are applied
+by the maintainers and tagged as patch releases.
+
+Run `pip-audit` or `uv audit` against `requirements.txt` to check for
+known vulnerabilities in your deployment.
+
+OpenSSF Best Practices badge status:
+[aevum-labs/aevum on Best Practices](https://www.bestpractices.dev/projects/12630)
+
+## Threat model
+
+This section describes what Aevum protects against, what it does not
+protect against, and the residual risks in a production deployment.
+
+This threat model covers `aevum-core` and `aevum-server` in a production
+deployment with PostgreSQL backend, Cedar policy, and optional OPA sidecar.
+
+### Assets
+
+| Asset | Sensitivity | Protected by |
+|---|---|---|
+| Knowledge graph | High — contains personal data | Consent gates, classification ceiling |
+| Episodic ledger | Critical — tamper-evident audit | Sigchain, append-only storage |
+| Consent ledger | Critical — governs all access | Append-only, OR-Set semantics |
+| Ed25519 signing key | Critical — enables chain forgery | KMS, process isolation |
+| Application secrets (DB credentials, etc.) | High | Your secrets management |
+
+### T1: Unauthorized data access by agent
+
+**Threat:** An agent attempts to read or write data without a consent grant.
+
+**Mitigation:** Barrier 3 (Consent) blocks the operation before any data
+is accessed. Returns `error_code="consent_required"`.
+
+**Residual risk:** If the consent ledger itself is compromised (T5), grants
+could be fabricated.
+
+---
+
+### T2: Classification bypass
+
+**Threat:** An agent with a low-classification grant attempts to access
+high-classification data.
+
+**Mitigation:** Barrier 2 (Classification Ceiling) redacts results above
+the `classification_max` in the query. This fires in the kernel, not in policy.
+
+**Residual risk:** A misconfigured consent grant with a high `classification_max`
+grants access above the intended level. Principle of least privilege: set
+`classification_max` to the minimum needed.
+
+---
+
+### T3: Audit trail tampering
+
+**Threat:** An attacker modifies the episodic ledger to hide an operation
+or alter a past decision.
+
+**Mitigation:** The Ed25519 + SHA3-256 sigchain makes any modification
+detectable. `engine.verify_sigchain()` returns `False` if the chain is broken.
+
+**Residual risk:** The chain detects tampering but does not prevent it at
+the storage layer. Physical access to the database enables modification.
+Mitigate with: database access controls, write-once storage (S3 Object Lock),
+and regular `verify_sigchain()` runs.
+
+---
+
+### T4: Signing key compromise
+
+**Threat:** An attacker obtains the Ed25519 private key and forges valid
+audit events or rebuilds a tampered chain.
+
+**Mitigation:** Use a KMS for key storage. Rotate keys on a schedule.
+Each event records `signer_key_id` — a key rotation creates a detectable break.
+
+**Residual risk:** If the key is compromised before detection, the attacker
+can forge events that pass `verify_sigchain()`. Mitigate with: KMS HSM
+storage, key rotation monitoring, and out-of-band chain snapshots.
+
+---
+
+### T5: Consent ledger manipulation
+
+**Threat:** An attacker adds fraudulent consent grants or removes revocations.
+
+**Mitigation:** The consent ledger is append-only. Revocations are permanent
+entries — they cannot be deleted. Adding a fraudulent grant requires write
+access to the consent ledger, which requires database access.
+
+**Residual risk:** Database write access enables fraudulent grants.
+Mitigate with: strict PostgreSQL row-level security, audit of all database
+writes, and separate DB credentials for read-only components.
+
+---
+
+### T6: Denial of service via OPA unavailability
+
+**Threat:** An attacker takes down the OPA sidecar to block all operations.
+
+**Mitigation:** Aevum fails closed — unavailable OPA means denied operations.
+This prevents bypass but can be used as a DoS vector.
+
+Put OPA behind a load balancer with health checks. Use Cedar for all consent
+policy so OPA is only needed for infrastructure policy. Consider
+`AEVUM_OPA_URL` unset for deployments where Cedar suffices.
+
+---
+
+### T7: Crisis keyword evasion
+
+**Threat:** A user encodes crisis content in a way that evades Barrier 1
+(e.g., leetspeak, unicode substitution).
+
+**Mitigation:** Barrier 1 checks a defined keyword list. It is not a
+general-purpose content moderation system.
+
+**Residual risk:** Motivated evasion is possible. Aevum's crisis barrier
+is a safety net, not a complete solution. If your application serves
+vulnerable users, complement it with purpose-built content moderation.
+
+---
+
+### What Aevum does NOT protect against
+
+- **Compromised application code** — if your application is compromised,
+  an attacker can call any Aevum function with arbitrary parameters
+- **Insider threats with database access** — a DBA can modify the storage layer
+- **Key theft from process memory** — without KMS, the signing key is in RAM
+- **Malicious content in payloads** — Aevum stores what you ingest; scan for
+  malware before ingesting documents
+- **Supply chain attacks on Aevum dependencies** — mitigate with `uv audit`
+
+### Deployment security checklist
+
+- [ ] Ed25519 key stored in KMS, not generated at startup
+- [ ] PostgreSQL credentials use least-privilege role (no superuser)
+- [ ] `aevum-server` behind TLS-terminating reverse proxy
+- [ ] OPA behind health check and load balancer (or Cedar-only)
+- [ ] `verify_sigchain()` run on a scheduled basis (cron or CI)
+- [ ] Database write access restricted to application service account only
+- [ ] `AEVUM_OPA_URL` unset if OPA is not needed
+- [ ] `"aevum-core[cedar]"` installed (not permissive fallback)
+- [ ] Dependency audit: `uv audit` in CI pipeline
+
+## Common security questions
+
+**Does Aevum transmit any data to Anthropic or any external service?**
+
+No. Aevum is a self-hosted Python library. No telemetry, no analytics, no
+license checks. The only outbound connections Aevum makes are those you
+explicitly configure: OPA sidecar URL and OIDC JWKS URI.
+
+---
+
+**Does Aevum have a SaaS component?**
+
+No. There is no licensing server, no hosted API, and no data escrow.
+Everything runs in your infrastructure.
+
+---
+
+**What happens if the OPA sidecar is unavailable?**
+
+Aevum fails closed. All operations that require OPA evaluation are denied.
+This is intentional — Aevum does not fall back to permissive when an
+external security dependency is unavailable.
+
+To disable OPA and use Cedar only: unset `AEVUM_OPA_URL`.
+
+---
+
+**What happens if Cedar is not installed?**
+
+Aevum warns at startup and falls back to permissive consent decisions.
+The five absolute barriers still fire unconditionally. In production,
+install `"aevum-core[cedar]"` to avoid the permissive fallback.
+
+---
+
+**How is the signing key protected?**
+
+The default `Engine()` generates a fresh Ed25519 key at startup. This key
+exists only in process memory for the lifetime of the process.
+
+For production, supply your own key from a KMS:
+
+```python
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from aevum.core.audit.sigchain import Sigchain
+
+key = Ed25519PrivateKey.from_private_bytes(your_kms_key_bytes)
+engine = Engine(sigchain=Sigchain(private_key=key, key_id="kms-key-id-1"))
+```
+
+---
+
+**What is the attack surface of aevum-server?**
+
+`aevum-server` is a FastAPI application. Its attack surface is:
+- The five HTTP endpoints (`/ingest`, `/query`, `/review`, `/commit`, `/replay`)
+- Standard FastAPI/Starlette request parsing
+- Your authentication middleware (you implement this)
+
+Aevum does not implement rate limiting, IP filtering, or DDoS protection.
+Put it behind a reverse proxy with those controls.
+
+---
+
+**Can an attacker modify the audit trail?**
+
+Modifications are detectable but not prevented at the storage layer.
+`engine.verify_sigchain()` detects any modification because the SHA3-256
+hash chain breaks at the point of modification.
+
+For an attacker to forge a valid chain, they would need the Ed25519 private key.
+Protect the key with your KMS.
+
+---
+
+**Does Aevum support RBAC or ABAC?**
+
+Yes, via Cedar and OPA:
+- Cedar supports attribute-based policies (ABAC) expressed in the Cedar language
+- OPA supports any policy model you can express in Rego
+
+Aevum's consent grants are themselves a form of ABAC — grants are scoped by
+subject, grantee, purpose, operations, and classification ceiling.
+
+---
+
+**What are the CVE response times?**
+
+Security vulnerabilities are reported via
+[GitHub Security Advisories](https://github.com/aevum-labs/aevum/security/advisories/new)
+(private). The target response time is 72 hours for critical vulnerabilities.
+See [SECURITY.md](https://github.com/aevum-labs/aevum/blob/main/SECURITY.md).
+
+---
+
+**Is Aevum FedRAMP / SOC 2 certified?**
+
+No. Aevum is open source software. Certifications apply to your deployment
+of Aevum, not to the library itself. The cryptographic audit trail and
+access controls support compliance programs; they do not replace them.
+
+---
+
+**What data does Aevum log to stderr or stdout?**
+
+Only startup warnings (e.g., "cedarpy not installed"). No payload data,
+no PII, no audit events are logged to standard output. Audit events go
+exclusively to the episodic ledger.
+
+## Multi-tenancy and isolation
+
+Aevum supports multi-tenancy through `subject_id` and `grantee_id` scoping:
+- Each tenant's data is tagged with their `subject_id` namespace
+- Each tenant's agents have tenant-scoped `grantee_id` values
+- Consent grants prevent cross-tenant data access
+
+For strict process isolation between tenants, run separate Engine instances
+with separate storage backends.
+
+See [Deployment](/learn/deployment/) for storage backend configuration.
+
+## See also
+
+- [Architecture](/learn/architecture/) — the five absolute barriers
+- [Deployment](/learn/deployment/) — production configuration
+
+---
+
+## Deployment
+
+# Deployment
+
+## Install options
+
+All install options for Aevum. Start with the minimum and add what you need.
+
+### Requirements
+
+Python 3.11 or higher is required for all packages.
+
+### Minimum install
+
+```bash
+pip install aevum-core
+```
+
+Includes: five functions, five absolute barriers, consent ledger, episodic ledger,
+in-memory storage. No database required. Data does not persist across restarts.
+
+### With persistence
+
+```bash
+# Embedded RDF, single-node, no database service required
+pip install aevum-core aevum-store-oxigraph
+
+# PostgreSQL — recommended for production
+pip install aevum-core aevum-store-postgres
+```
+
+### With HTTP API
+
+```bash
+pip install aevum-server
+```
+
+FastAPI wrapper around the five functions. Exposes the same API over HTTP.
+
+### With MCP tools
+
+```bash
+pip install aevum-mcp
+```
+
+All five functions as tools for any MCP-compatible host (Claude Desktop, Cursor,
+VS Code Copilot, and others). See [MCP Setup](../getting-started/mcp-setup.md).
+
+### With CLI
+
+```bash
+pip install aevum-cli
+```
+
+Adds `aevum server start`, `aevum store migrate`, and more.
+
+### With Cedar policy enforcement
+
+```bash
+pip install "aevum-core[cedar]"
+```
+
+Adds real Cedar in-process policy evaluation. Recommended for production.
+
+Without this extra, consent decisions fall back to permissive. The five absolute
+barriers still fire unconditionally — crisis detection, classification ceiling,
+consent (fast-path denials), audit immutability, and provenance are not affected
+by whether Cedar is installed.
+
+### Full production install
+
+```bash
+pip install aevum-core aevum-server aevum-store-postgres aevum-cli "aevum-core[cedar]"
+```
+
+### Virtual environments
+
+Always install in a virtual environment:
+
+=== "Linux / macOS"
+
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install aevum-core
+    ```
+
+=== "Windows (PowerShell)"
+
+    ```powershell
+    python -m venv .venv
+    .venv\Scripts\Activate.ps1
+    pip install aevum-core
+    ```
+
+=== "uv"
+
+    ```bash
+    uv add aevum-core
+    ```
+
+### Verify installation
+
+```bash
+python -c "import aevum.core; print('aevum-core', aevum.core.__version__)"
+```
+
+### Platform notes
+
+#### ARM (Raspberry Pi, Apple Silicon)
+
+`aevum-core` works on ARM32 and ARM64. The Ed25519 and SHA3-256 operations
+used by the sigchain are fast on all modern ARM hardware.
+
+For Apple Silicon (M1/M2/M3):
+
+```bash
+pip install aevum-core
+```
+
+No special flags needed. The `cryptography` package ships universal wheels.
+
+#### Docker
+
+```dockerfile
+FROM python:3.11-slim
+RUN pip install aevum-core
+```
+
+For production with persistence:
+
+```dockerfile
+FROM python:3.11-slim
+RUN pip install aevum-core aevum-store-postgres aevum-server aevum-cli "aevum-core[cedar]"
+```
+
+#### RHEL / Fedora
+
+```bash
+sudo dnf install python3.11 python3.11-pip
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install aevum-core
+```
+
+### OPA sidecar (optional)
+
+Aevum supports an OPA HTTP sidecar for infrastructure policy decisions.
+It is optional — Cedar handles consent policy in-process.
+
+If you use OPA, set the environment variable:
+
+```bash
+export AEVUM_OPA_URL=http://your-opa-host:8181
+```
+
+If OPA is configured but unreachable, Aevum fails closed (all operations denied).
+
+## Backend selection
+
+| Backend | When to use |
+|---|---|
+| In-memory (default) | Development and testing — no database required |
+| `aevum-store-oxigraph` | Single-node production — embedded RDF, no database service |
+| `aevum-store-postgres` | Multi-node production — horizontal scaling, PITR |
+
+**In-memory:** The default `Engine()`. No persistence — data is lost on restart.
+Use for development, testing, and prototyping.
+
+**Oxigraph:** Embedded RDF store. Data persists to disk. No database service
+required. Good for single-node deployments, Raspberry Pi, and edge scenarios.
+
+**PostgreSQL:** Recommended for production. Supports horizontal scaling,
+connection pooling, point-in-time recovery, and standard database operations
+(backups, monitoring, replication).
+
+### Migration between backends
+
+```bash
+aevum store migrate --from oxigraph:/path --to postgres:postgresql://...
+```
+
+This migrates the knowledge graph, consent ledger, and episodic ledger.
+
+## Production configuration
+
+### Architecture overview
+
+```
+                   ┌──────────────────────────────────────────┐
+                   │              Your infrastructure          │
+                   │                                           │
+  AI Agents ──────>│  reverse proxy (TLS)                     │
+  MCP hosts ──────>│       │                                   │
+  Your app  ──────>│  aevum-server (FastAPI)                   │
+                   │       │                                   │
+                   │  aevum-core                               │
+                   │  ┌────┴────────────────────────────────┐  │
+                   │  │ Cedar (in-process)                   │  │
+                   │  │ OPA sidecar (optional, HTTP)         │  │
+                   │  │ PostgreSQL (aevum-store-postgres)    │  │
+                   │  └─────────────────────────────────────┘  │
+                   └──────────────────────────────────────────┘
+```
+
+### Prerequisites
+
+- Python 3.11+
+- PostgreSQL 14+
+- (Optional) OPA v0.60+
+
+### Database setup
+
+```bash
+# Create the database
+createdb aevum
+
+# Run migrations
+aevum store migrate --dsn postgresql://user:password@host:5432/aevum
+```
+
+Or with the environment variable:
+
+```bash
+export AEVUM_DSN=postgresql://user:password@host:5432/aevum
+aevum store migrate
+```
+
+### Configuring the Engine
+
+```python
+from aevum.core import Engine
+from aevum.core.audit.sigchain import Sigchain
+from aevum.store.postgres import PostgresGraphStore  # aevum-store-postgres
+
+# Production: key from KMS
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+key = Ed25519PrivateKey.from_private_bytes(kms_client.get_secret("aevum-signing-key"))
+
+engine = Engine(
+    graph_store=PostgresGraphStore(dsn="postgresql://..."),
+    sigchain=Sigchain(private_key=key, key_id="kms-key-2026-01"),
+    opa_url="http://opa:8181",  # optional
+)
+```
+
+### Running aevum-server
+
+```bash
+# Development
+aevum server start --host 0.0.0.0 --port 8000
+
+# Production (Gunicorn + Uvicorn workers)
+gunicorn aevum.server.app:app \
+  --workers 4 \
+  --worker-class uvicorn.workers.UvicornWorker \
+  --bind 0.0.0.0:8000
+```
+
+### Docker Compose example
+
+```yaml
+version: "3.9"
+services:
+  aevum:
+    image: python:3.11-slim
+    command: >
+      sh -c "pip install aevum-core aevum-server aevum-store-postgres 'aevum-core[cedar]' &&
+             gunicorn aevum.server.app:app
+             --workers 4
+             --worker-class uvicorn.workers.UvicornWorker
+             --bind 0.0.0.0:8000"
+    environment:
+      AEVUM_DSN: postgresql://aevum:secret@postgres:5432/aevum
+      AEVUM_OPA_URL: http://opa:8181
+    depends_on:
+      - postgres
+      - opa
+    ports:
+      - "8000:8000"
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: aevum
+      POSTGRES_USER: aevum
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  opa:
+    image: openpolicyagent/opa:latest
+    command: run --server --addr :8181 /policies
+    volumes:
+      - ./policies:/policies
+
+volumes:
+  pgdata:
+```
+
+### Scaling
+
+`aevum-server` is stateless — scale horizontally with your load balancer.
+All state is in PostgreSQL.
+
+For high-throughput ingestion, use connection pooling (PgBouncer) in front
+of PostgreSQL. Each Aevum operation makes 2-5 database calls.
+
+### Monitoring
+
+Aevum emits OpenTelemetry spans when a trace context is available.
+Set the standard `OTEL_*` environment variables to route spans to your
+observability backend.
+
+Recommended alerts:
+
+| Metric | Threshold | Meaning |
+|---|---|---|
+| `verify_sigchain()` failures | Any | Potential tampering |
+| OPA latency p99 | > 500ms | OPA under load |
+| `consent_required` rate | Spike | Misconfigured grants or attack |
+| PostgreSQL connection errors | Any | DB unavailable |
+
+### Backup and recovery
+
+Back up three things:
+1. **PostgreSQL database** — contains all three named graphs
+2. **Ed25519 public key** — needed to verify the chain offline
+3. **Consent grant records** — for GDPR right-to-erasure documentation
+
+For point-in-time recovery, use PostgreSQL's WAL archiving.
+
+### Upgrading
+
+```bash
+# Check current version
+python -c "import aevum.core; print(aevum.core.__version__)"
+
+# Upgrade
+pip install --upgrade aevum-core aevum-server aevum-store-postgres aevum-cli
+
+# Run migrations (new releases may add columns)
+aevum store migrate --dsn postgresql://...
+```
+
+Always run `aevum store migrate` after upgrading. It is idempotent —
+safe to run even if no migrations are needed.
+
+### Kubernetes (Helm) — coming soon
+
+A Helm chart is planned for a future release. Until then, use the
+Docker Compose reference architecture and adapt it to your Kubernetes setup.
+
+## OIDC and identity integration
+
+Aevum does not implement authentication. Use `aevum-oidc` to validate JWTs
+from your identity provider and map claims to `grantee_id` values:
+
+```python
+from aevum.oidc import OIDCComplication
+
+oidc = OIDCComplication(jwks_uri="https://your-idp/.well-known/jwks.json")
+engine.install_complication(oidc, auto_approve=True)
+
+# After validation, use the verified subject as actor
+actor = verified_token["sub"]  # e.g., "user:alice@example.com"
+```
+
+Common questions:
+
+- *"How does it integrate with our existing identity provider?"*
+  → via `aevum-oidc`. Your IDP issues the tokens; Aevum validates them.
+
+- *"What are the data residency implications?"*
+  → Aevum is self-hosted. Nothing leaves your infrastructure unless you configure
+  an external OPA sidecar or OIDC endpoint.
+
+## License
+
+All Aevum packages are licensed under Apache-2.0.
+The specification is licensed under CC-BY-4.0 + OWFa 1.0.1.
+
+### Aevum packages
+
+| Package | License | Notes |
+|---|---|---|
+| aevum-core | Apache-2.0 | Kernel, barriers, sigchain, consent |
+| aevum-server | Apache-2.0 | FastAPI HTTP wrapper |
+| aevum-sdk | Apache-2.0 | Complication developer kit |
+| aevum-store-oxigraph | Apache-2.0 | Oxigraph graph backend |
+| aevum-store-postgres | Apache-2.0 | PostgreSQL backend |
+| aevum-mcp | Apache-2.0 | MCP server |
+| aevum-oidc | Apache-2.0 | OIDC complication |
+| aevum-llm | Apache-2.0 | LLM complication |
+| aevum-cli | Apache-2.0 | CLI tool |
+
+### Key dependencies
+
+| Dependency | License | Used for |
+|---|---|---|
+| pydantic | MIT | Data validation (OutputEnvelope, ConsentGrant) |
+| cryptography | Apache-2.0 / BSD | Ed25519 signing |
+| fastapi | MIT | HTTP server (aevum-server) |
+| uvicorn | BSD | ASGI server (aevum-server) |
+| cedarpy | Apache-2.0 | Cedar policy evaluation (optional) |
+| requests | Apache-2.0 | OPA HTTP client (optional) |
+| click | BSD | CLI (aevum-cli) |
+| oxigraph | MIT / Apache-2.0 | Graph storage (aevum-store-oxigraph) |
+| psycopg2 / psycopg | LGPL-3 | PostgreSQL adapter (aevum-store-postgres) |
+
+### psycopg2 / psycopg LGPL note
+
+The PostgreSQL adapter (psycopg2 or psycopg3) is licensed under LGPL-3.
+LGPL permits use in proprietary software without requiring you to open-source
+your application, provided you:
+1. Do not modify the LGPL library itself (using it via the standard API satisfies this)
+2. Allow users to replace the LGPL library with a compatible version
+
+Using `aevum-store-postgres` in a closed-source application is permitted
+under standard LGPL-3 use terms.
+
+If your legal policy prohibits LGPL dependencies, use `aevum-store-oxigraph`
+(MIT / Apache-2.0) instead.
+
+### Specification licenses
+
+The Aevum protocol specification is dual-licensed:
+- **CC-BY-4.0** — allows use, sharing, and adaptation with attribution
+- **OWFa 1.0.1** (Open Web Foundation Agreement) — patent grant for implementors
+
+The OWFa ensures that any patents covering the specification are freely licensed
+to anyone who implements it. This is important for deployments that cannot accept
+patent risk.
+
+### Apache-2.0 obligations
+
+Apache-2.0 requires:
+1. Preserve the `LICENSE` file in distributions
+2. Include the `NOTICE` file if one exists (Aevum currently has none)
+3. State changes made to Apache-2.0 code (for modified distributions)
+
+Using Aevum as a library (the typical case) has no attribution requirement
+beyond preserving the license text.
+
+### Complete dependency license audit
+
+Run a full SBOM audit with:
+
+```bash
+pip install pip-licenses
+pip-licenses --format=json --output-file=sbom.json
+```
+
+Or with uv:
+
+```bash
+uv add --dev pip-licenses
+uv run pip-licenses --format=csv
+```
+
+This produces a complete software bill of materials for your security
+and legal teams.
+
+## See also
+
+- [Quickstart](/getting-started/quickstart/) — local development setup
+- [Security](/learn/security/) — security architecture for production
+
+---
+
+## Replay vs. Observability
+
+!!! tip "Prerequisite"
+    This page explains the replay distinction in depth.
+    For how the sigchain makes it possible, read
+    [Architecture](/learn/architecture/#the-sigchain) first.
+
+# Logs vs. Replay: What Reproducing an Agent Run Actually Requires
+
+Every major AI observability platform records what your agent did. None of them reproduce exactly what it did — same LLM responses, same tool outputs, same state at decision time. This page explains why that gap exists, what closing it actually requires, and how Aevum's `replay` function differs from checkpoint-based and trace-based approaches.
+
+## What observability tools give you
+
+| Tool | What it records | What "replay" means for it | What it cannot reproduce |
+|------|-----------------|---------------------------|--------------------------|
+| LangSmith / LangFuse | OpenTelemetry spans, observations, scores | Re-run a trace against a new model version | Original LLM sampling, tool-version state |
+| LangGraph Time Travel | Graph state checkpoints at each node | Fork execution from a saved checkpoint | Non-deterministic LLM sampling between checkpoints |
+| Docker Cagent | YAML cassettes of HTTP tool calls | Play back cassettes in testing | Production audit evidence, tamper-evident storage |
+| Arize / Phoenix | OpenInference traces, evals | Not offered — observability only | N/A by design |
+| Aevum | Sigchain-anchored episodic ledger | Exact payload reconstruction from any past `audit_id` | Real-time LLM token streaming (records result, not stream) |
+
+> **Note:** LangSmith's "replay" re-runs a trace against a new model version; it does not reconstruct the original execution. These are different operations with different guarantees.
+
+## What deterministic replay actually requires
+
+**Recorded outputs, not re-executed inputs.** Replay must return the stored result, not call the LLM again. If two calls to `engine.replay` with the same `audit_id` produce different data, the operation is re-execution, not replay. The Aevum specification is explicit on this point: "Two replay calls with the same audit_id and the same actor clearance MUST produce identical OutputEnvelopes." (Spec Section 8.7) This guarantee holds regardless of how much time has elapsed, what model version is currently deployed, or how the knowledge graph has changed since the original call.
+
+**Immutable storage.** The recording must be provably unmodified. A mutable log can be edited after the fact — a row can be updated, a file can be overwritten, a database can be dropped and reconstructed. A hash-chained, signed ledger cannot be silently altered: each entry includes the SHA3-256 digest of the preceding entry, forming a chain where any alteration invalidates all subsequent hashes. An auditor calling `engine.verify_sigchain()` detects the alteration immediately. This property is what distinguishes an episodic ledger from a conventional application log.
+
+**Scoped access control.** Not every identity should be able to replay every decision. A billing agent that made the original ingest call does not automatically gain access to replay it six months later in an audit context. An audit agent must hold an explicit consent grant with `"replay"` in its operations list and a purpose that matches the audit context. This separation ensures that operational access does not confer audit access, and that replay cannot be used as a covert read path by actors who lack query consent.
+
+**Separation from the live knowledge graph.** The `query` function reads from `urn:aevum:knowledge` — the working graph that changes as new data arrives. The `replay` function reads from `urn:aevum:provenance` — the immutable provenance graph that records what was true at ingestion time and never changes. A `query` call today returns the current state of the graph; a `replay` call for an `audit_id` from six months ago returns exactly what was recorded then, unaffected by any subsequent ingestion, revocation, or reclassification.
+
+## How Aevum replay works
+
+The following example shows the complete flow from ingest through replay and sigchain verification using the billing domain.
+
+```python
+from aevum.core import Engine
+from aevum.core.consent.models import ConsentGrant
+
+engine = Engine()
+
+# Grant the billing agent consent to ingest and query
+engine.add_consent_grant(ConsentGrant(
+    grant_id="billing-grant-001",
+    subject_id="customer-42",
+    grantee_id="billing-agent",
+    operations=["ingest", "query"],
+    purpose="billing-inquiry",
+    classification_max=1,
+    granted_at="2026-01-01T00:00:00Z",
+    expires_at="2030-01-01T00:00:00Z",
+))
+
+# Grant the audit agent consent to replay
+engine.add_consent_grant(ConsentGrant(
+    grant_id="audit-grant-001",
+    subject_id="customer-42",
+    grantee_id="audit-agent",
+    operations=["replay"],
+    purpose="billing-audit",
+    classification_max=1,
+    granted_at="2026-01-01T00:00:00Z",
+    expires_at="2030-01-01T00:00:00Z",
+))
+
+# Billing agent ingests a decision
+ingest_result = engine.ingest(
+    data={
+        "invoice_id": "INV-2026-001",
+        "amount": 1500.00,
+        "status": "flagged-for-review",
+        "reason": "amount exceeds threshold",
+    },
+    provenance={
+        "source_id": "billing-system",
+        "chain_of_custody": ["billing-system", "billing-agent"],
+        "classification": 1,
+        "model_id": "gpt-4o-2024-11-20",
+    },
+    purpose="billing-inquiry",
+    subject_id="customer-42",
+    actor="billing-agent",
+    idempotency_key="INV-2026-001-flag",
+)
+
+print(ingest_result.status)    # ok
+print(ingest_result.audit_id)  # urn:aevum:audit:0196...
+
+# Six months later — audit agent replays the exact decision
+replay_result = engine.replay(
+    audit_id=ingest_result.audit_id,
+    actor="audit-agent",
+)
+
+print(replay_result.status)                                # ok
+print(replay_result.data["replayed_payload"]["amount"])    # 1500.0
+print(replay_result.data["event_metadata"]["actor"])       # billing-agent
+
+# Verify the entire sigchain is intact
+print(engine.verify_sigchain())  # True
+```
+
+Each block demonstrates a distinct guarantee. The first `add_consent_grant` call establishes that `billing-agent` can ingest and query data for `customer-42` under the `billing-inquiry` purpose. The second establishes that `audit-agent` can replay under `billing-audit` — a separate purpose with no write access. The `ingest` call records both the data payload and its provenance chain. The `replay` call six months later returns the exact payload that was recorded, not the current state of the knowledge graph. The `audit-agent` cannot call `ingest` or `query` — its grant covers only `replay`; attempting either would produce `status="error"` with `error_code="consent_required"`.
+
+## See also
+
+- [The Sigchain](../learn/architecture.md#the-sigchain) — how the hash chain and Ed25519 signing work
+- [Audit Events](../reference/api.md#auditevent) — the AuditEvent schema
+- [Audit Trails and Article 12](audit-trails.md) — compliance implications
+
+---
+
+## EU AI Act Article 12
+
+# Audit Trails and EU AI Act Article 12: A Python Implementation Guide
+
+EU AI Act Article 12 mandates automatic logging for high-risk AI systems. High-risk obligations become enforceable on 2 August 2026 under Article 85. This guide maps each Article 12 sub-clause to a concrete implementation using Aevum's episodic ledger and sigchain.
+
+## What Article 12 requires
+
+The regulation text:
+
+> **Article 12(1):** High-risk AI systems shall technically allow for the automatic recording of events ('logs') throughout the lifetime of the system.
+
+> **Article 12(2):** In order to ensure a level of traceability of the AI system's functioning that is appropriate to the intended purpose of the system, logging capabilities shall enable the recording of events relevant for:
+>
+> (a) identifying situations that may result in the AI system presenting a risk within the meaning of Article 79(1) or lead to a substantial modification;
+>
+> (b) facilitating the post-market monitoring referred to in Article 72; and
+>
+> (c) monitoring the operation of high-risk AI systems referred to in Article 26(5).
+
+Source: [EU Artificial Intelligence Act, Article 12](https://artificialintelligenceact.eu/article/12/)
+
+This guide covers the technical implementation of 12(1) and 12(2). For high-risk system scope, see Annex III.
+
+## Engineering interpretation
+
+| Clause | What it requires technically | Aevum primitive |
+|--------|------------------------------|-----------------|
+| Article 12(1) | Automatic recording — fires on every operation without manual intervention | Every engine call appends to the episodic ledger unconditionally |
+| Article 12(2)(a) | Logs must enable identification of situations presenting risk or triggering a substantial modification | Every `AuditEvent` records `event_type`, `actor`, `timestamp`, and `status` — anomalous patterns are detectable via `get_ledger_entries()` |
+| Article 12(2)(b) | Logs must facilitate post-market monitoring by market surveillance authorities | The sigchain provides a complete, tamper-evident, replayable record accessible to authorised auditors via `replay` |
+| Article 12(2)(c) | Logs must support monitoring of deployer obligations under Article 26(5) | `get_ledger_entries()` gives deployers a full operational record; `verify_sigchain()` confirms integrity |
+| Article 26(6) | Minimum 6-month log retention | Ledger is append-only; entries are never deleted |
+
+## What Article 12 does not specify — and what that means
+
+Article 12 does not mandate a specific log format, a cryptographic signature scheme, or tamper-evident storage. But implementing those properties is the rational engineering choice: tamper-evident storage (hash chaining plus signatures) satisfies Article 15 (accuracy and robustness) simultaneously, an immutable signed ledger is the control that satisfies ISO/IEC 42001 Clause 10 and SOC 2 Trust Services Criterion PI1.2, and a mutable log that satisfies Article 12's letter but can be edited after the fact provides no actual audit value in a contested proceeding. The community demand for this implementation guidance is a matter of public record — LangChain GitHub issue #35357 ("Feature: Structured compliance audit logging for EU AI Act Article 12") documents practitioner requests for exactly this pattern.
+
+## Working implementation
+
+The following example demonstrates automatic recording, provenance, retention query, sigchain verification, and replay for regulatory audit. The healthcare domain is used because it represents the clearest regulated-industry case: PHI under classification level 3, a FHIR R4 source system, and a clinical AI agent acting as grantee.
+
+```python
+"""
+EU AI Act Article 12 — reference implementation using Aevum.
+
+Demonstrates: automatic recording, provenance, retention query,
+sigchain verification, and replay for regulatory audit.
+"""
+
+import datetime
+from aevum.core import Engine
+from aevum.core.consent.models import ConsentGrant
+
+engine = Engine()
+
+# Consent must precede any data operation — Barrier 3
+engine.add_consent_grant(ConsentGrant(
+    grant_id="care-coordination-grant-001",
+    subject_id="patient-8821",
+    grantee_id="clinical-ai-agent",
+    operations=["ingest", "query"],
+    purpose="care-coordination",
+    classification_max=3,              # sensitive — PHI
+    granted_at="2026-01-01T00:00:00Z",
+    expires_at="2027-01-01T00:00:00Z",
+    authorization_ref="signed-consent-form-8821-2026-01-01",
+))
+
+# Article 12(2)(b) — reference database: the FHIR R4 endpoint
+# Article 12(2)(c) — input data: the observation payload
+result = engine.ingest(
+    data={
+        "resourceType": "Observation",
+        "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "8867-4"}]},
+        "valueQuantity": {"value": 48, "unit": "beats/minute"},
+        "effectiveDateTime": "2026-05-01T14:32:00Z",
+    },
+    provenance={
+        "source_id": "fhir-r4-endpoint-prod",
+        "chain_of_custody": ["ehr-system", "fhir-r4-endpoint-prod", "clinical-ai-agent"],
+        "classification": 3,           # PHI — classification_max=3 required
+        "model_id": "clinical-triage-v2.1",
+    },
+    purpose="care-coordination",
+    subject_id="patient-8821",
+    actor="clinical-ai-agent",
+    idempotency_key="obs-8821-2026-05-01T14:32:00Z",  # prevents duplicate on retry
+)
+
+# Article 12(1) — automatic recording: audit_id is always returned
+print(f"Recorded: {result.audit_id}")   # urn:aevum:audit:0196...
+print(f"Status:   {result.status}")     # ok
+
+# Article 12(2)(a) — period of each use: inspect the ledger entry
+entries = engine.get_ledger_entries()
+latest = entries[-1]
+print(f"Timestamp: {latest['timestamp']}")    # UTC ISO 8601
+print(f"Actor:     {latest['actor']}")        # clinical-ai-agent
+print(f"Event:     {latest['event_type']}")   # ingest.accepted
+
+# Article 26(6) — 6-month retention: filter ledger by date range
+cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=180)
+retained = [
+    e for e in engine.get_ledger_entries()
+    if datetime.datetime.fromisoformat(e["timestamp"]) > cutoff
+]
+print(f"Entries within 6-month window: {len(retained)}")
+
+# Replay — deterministic reconstruction for regulatory audit
+# Same audit_id always returns same payload — Spec Section 8.7
+
+# Grant audit agent replay access
+engine.add_consent_grant(ConsentGrant(
+    grant_id="audit-grant-001",
+    subject_id="patient-8821",
+    grantee_id="compliance-auditor",
+    operations=["replay"],
+    purpose="regulatory-audit",
+    classification_max=3,
+    granted_at="2026-01-01T00:00:00Z",
+    expires_at="2027-01-01T00:00:00Z",
+))
+
+replay_result = engine.replay(
+    audit_id=result.audit_id,
+    actor="compliance-auditor",
+)
+original_value = replay_result.data["replayed_payload"]["valueQuantity"]["value"]
+print(f"Replayed heart rate: {original_value} bpm")   # 48
+
+# Tamper-evidence verification — Barrier 4 (audit immutability)
+chain_intact = engine.verify_sigchain()
+print(f"Sigchain intact: {chain_intact}")  # True
+```
+
+Each section of the example maps to a specific regulatory requirement. The `add_consent_grant` call at the top satisfies Barrier 3 (consent as precondition for any write) and simultaneously creates a ledger entry that can be replayed later under `regulatory-audit` purpose. The `ingest` call's `provenance` argument provides Article 12(2)(b) compliance: `source_id` identifies the reference database (`fhir-r4-endpoint-prod`) and `chain_of_custody` records every system the data passed through before reaching the kernel. The `data` payload is stored verbatim, satisfying 12(2)(c). The `get_ledger_entries()` call with a date filter demonstrates 6-month retention query — the ledger never deletes entries, so the filter is a view over the complete record. The `replay` call at the end provides deterministic reconstruction: the same `audit_id` will return the same heart-rate reading regardless of what the production FHIR endpoint contains today.
+
+## What Aevum does not cover
+
+Aevum produces the evidence; the compliance team interprets it. Aevum is not a compliance report generator. For Annex III high-risk scope assessment, technical documentation under Article 11, and conformity assessment procedures, see the [EU AI Act Service Desk](https://ai-act-support.ec.europa.eu) and the forthcoming prEN ISO/IEC 24970 AI system logging standard.
+
+## See also
+
+- [The Sigchain](../learn/architecture.md#the-sigchain)
+- [Replay vs. Observability](replay-vs-observability.md)
+- [Audit Events reference](../reference/api.md#auditevent)
+- [Deployment guide](../learn/deployment.md)
+
+---
+
+## Quickstart
+
+# Quickstart
+
+Get Aevum running in 10 minutes.
+
+## Prerequisites
+
+- Python 3.11 or higher
+- `pip` (comes with Python)
+
+Check your version:
+
+=== "Linux / macOS"
+
+    ```bash
+    python --version
+    # Python 3.11.x or higher
+    ```
+
+=== "Windows"
+
+    ```powershell
+    python --version
+    # Python 3.11.x or higher
+    ```
+
+    Windows users: install Python from [python.org](https://www.python.org/downloads/)
+    and tick **"Add Python to PATH"** during installation.
+
+## Step 1 — Create a virtual environment
+
+=== "Linux / macOS"
+
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate
+    ```
+
+=== "Windows"
+
+    ```powershell
+    python -m venv .venv
+    .venv\Scripts\Activate.ps1
+    ```
+
+    If you see a script execution policy error:
+
+    ```powershell
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+    .venv\Scripts\Activate.ps1
+    ```
+
+You should see `(.venv)` in your prompt.
+
+## Step 2 — Install aevum-core
+
+=== "Linux / macOS"
+
+    ```bash
+    pip install aevum-core
+    ```
+
+=== "Windows"
+
+    ```powershell
+    pip install aevum-core
+    ```
+
+Verify:
+
+```bash
+python -c "import aevum.core; print('aevum-core', aevum.core.__version__)"
+```
+
+## Step 3 — Create your first script
+
+Create a file called `demo.py`:
+
+```python
+from aevum.core import Engine
+from aevum.core.consent.models import ConsentGrant
+
+# Step 4: Create the engine (in-memory storage)
+engine = Engine()
+
+# Step 5: Grant an agent consent to operate
+engine.add_consent_grant(ConsentGrant(
+    grant_id="demo-grant",
+    subject_id="user-1",
+    grantee_id="demo-agent",
+    operations=["ingest", "query"],
+    purpose="product-demo",
+    classification_max=0,
+    granted_at="2026-01-01T00:00:00Z",
+    expires_at="2030-01-01T00:00:00Z",
+))
+
+# Step 6: Ingest data — every write is signed and chained
+result = engine.ingest(
+    data={"note": "User requested account review"},
+    provenance={
+        "source_id": "demo",
+        "chain_of_custody": ["demo"],
+        "classification": 0,
+    },
+    purpose="product-demo",
+    subject_id="user-1",
+    actor="demo-agent",
+)
+print("audit_id:", result.audit_id)  # urn:aevum:audit:<uuid7>
+print("status:  ", result.status)    # ok
+
+# Step 7: Query — returns results only with an active consent grant
+q = engine.query(
+    purpose="product-demo",
+    subject_ids=["user-1"],
+    actor="demo-agent",
+)
+print("results: ", list(q.data["results"].keys()))  # ['user-1']
+
+# Step 8: Replay any past decision deterministically
+r = engine.replay(audit_id=result.audit_id, actor="demo-agent")
+print("replayed:", r.data["replayed_payload"]["note"])
+
+# Step 9: Verify the sigchain is intact
+ok = engine.verify_sigchain()
+print("chain intact:", ok)  # True
+```
+
+## Step 4 — Run it
+
+=== "Linux / macOS"
+
+    ```bash
+    python demo.py
+    ```
+
+=== "Windows"
+
+    ```powershell
+    python demo.py
+    ```
+
+Expected output:
+
+```
+audit_id: urn:aevum:audit:0196...
+status:   ok
+results:  ['user-1']
+replayed: User requested account review
+chain intact: True
+```
+
+## What just happened
+
+Every step is governed:
+
+- **Ingest** — data was written through the governed membrane, signed with Ed25519, and chained with SHA3-256
+- **Query** — results were returned because `demo-agent` holds an active consent grant for `user-1`
+- **Replay** — the original payload was reconstructed from the immutable episodic ledger
+- **Verify** — the entire sigchain was verified from genesis
+
+Try removing the `add_consent_grant` call. `ingest` and `query` will both return `status="error"` with `error_code="consent_required"`. This is Barrier 3.
+
+## Windows-specific notes
+
+### CLI: command not found
+
+If `aevum` is not found after installing `aevum-cli`, use the module form:
+
+```powershell
+python -m aevum.cli --help
+python -m aevum.cli version
+```
+
+To add the Scripts directory to your PATH permanently:
+
+```powershell
+$p = python -c "import sys; print(sys.exec_prefix)"
+[Environment]::SetEnvironmentVariable(
+    "PATH",
+    [Environment]::GetEnvironmentVariable("PATH", "User") + ";$p\Scripts",
+    "User"
+)
+```
+
+Restart your terminal after running this.
+
+### Long path support
+
+Some paths inside virtualenvs can exceed 260 characters on Windows.
+Enable long path support (run as Administrator):
+
+```powershell
+New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+    -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+```
+
+### WSL recommendation
+
+For a smoother development experience on Windows, use WSL 2 (Ubuntu) and follow
+the Linux instructions above inside the WSL terminal.
+
+## Next steps
+
+- [Architecture](/learn/architecture/) — how the governed membrane, sigchain, barriers, and consent model work
+- [Security](/learn/security/) — threat model and production security architecture
+- [Deployment](/learn/deployment/) — all install options including persistence and HTTP API
+- [Billing Inquiry Walkthrough](../use-cases/billing-inquiry.md) — a real end-to-end example
+
+---
+
+## API Reference
+
+# API Reference
+
+## Engine
+
+The main entry point for all Aevum operations.
+
+`Engine` wires together the episodic ledger, consent ledger, graph store,
+policy bridge, complication registry, and the five governed functions.
+
+::: aevum.core.engine.Engine
+    options:
+      show_source: false
+      members:
+        - ingest
+        - query
+        - review
+        - commit
+        - replay
+        - add_consent_grant
+        - revoke_consent_grant
+        - verify_sigchain
+        - install_complication
+        - approve_complication
+        - suspend_complication
+        - resume_complication
+        - list_complications
+        - complication_state
+        - register_webhook
+        - deregister_webhook
+        - create_review
+        - get_ledger_entries
+        - ledger_count
+
+## OutputEnvelope
+
+Every function returns exactly one `OutputEnvelope`. No exceptions.
+
+Always check `result.status` before accessing `result.data`. The `audit_id`
+is always present, even on error.
+
+::: aevum.core.envelope.models.OutputEnvelope
+
+::: aevum.core.envelope.models.ProvenanceRecord
+
+::: aevum.core.envelope.models.ReviewContext
+
+::: aevum.core.envelope.models.UncertaintyAnnotation
+
+::: aevum.core.envelope.models.SourceHealthSummary
+
+::: aevum.core.envelope.models.ReasoningTrace
+
+::: aevum.core.envelope.models.ReasoningStep
+
+## ConsentGrant
+
+The unit of permission. Every `ingest`, `query`, and `replay` operation
+requires an active, non-expired `ConsentGrant` for the subject and operation.
+
+Valid operations: `"ingest"`, `"query"`, `"replay"`, `"export"`
+
+::: aevum.core.consent.models.ConsentGrant
+
+## AuditEvent
+
+The 18-field immutable episodic ledger entry. Every operation appends
+exactly one `AuditEvent` to `urn:aevum:provenance`. This is the information
+stored in each chain entry — the raw material for deterministic replay.
+
+::: aevum.core.audit.event.AuditEvent
+
+## See also
+
+- [Architecture](/learn/architecture/) — how these types are used
+- [CLI Reference](/reference/cli/)

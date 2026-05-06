@@ -38,9 +38,15 @@ theme:
     - navigation.footer
     - navigation.path
     - toc.follow
+    - navigation.instant.prefetch
+    - navigation.prune
+    - content.tooltips
 
 plugins:
   - search
+  - privacy:
+      assets_exclude:
+        - unpkg.com/*
   - git-revision-date-localized:
       enable_creation_date: true
       type: date
@@ -128,4 +134,5 @@ nav:
   - Reference:
     - API: reference/api.md
     - CLI: reference/cli.md
+    - Glossary: reference/glossary.md
     - Changelog: changelog.md

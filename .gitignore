@@ -16,6 +16,7 @@ site/
 .ruff_cache/
 .pytest_cache/
 .hypothesis/
+.cache/
 
 # IDE
 .vscode/
