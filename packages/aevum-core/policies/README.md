@@ -1,43 +1,44 @@
 # Aevum Reference Policy Bundles
 
-Example OPA (Rego) and Cedar policies demonstrating how Aevum's stable
-enforcement primitives can be combined with swappable policy definitions.
+**These are reference examples only. They have NOT been reviewed by legal counsel.
+Deployers MUST obtain qualified legal and compliance review before using any
+policy bundle in a production or regulated environment.**
 
-This is the architectural answer to regulatory churn: Aevum's five barriers
-and sigchain do not change when a new regulation lands. The *policies* below
-do. Updating a `.rego` or `.cedar` file requires no code change.
+Each bundle demonstrates how to implement compliance-relevant access controls
+using Aevum's Cedar and OPA policy layer. They are starting points, not
+production policies.
 
-## ⚠️ Important disclaimer
+## OPA (Rego) bundles
 
-These files are **reference examples only**. They illustrate the
-architectural pattern — they are not legal compliance advice and have not
-been reviewed by qualified legal counsel. Production compliance programs
-must be developed with appropriate legal and regulatory expertise.
+| Bundle | Standard | Location |
+|--------|----------|----------|
+| eu_ai_act_art12.rego | EU AI Act Art. 12 | policies/opa/ |
+| hipaa_security.rego | HIPAA §164.312(b) + NPRM | policies/opa/ |
+| pci_dss_v4_req10.rego | PCI DSS v4.0 Requirement 10 | policies/opa/ |
+| fda_21cfr_part11.rego | FDA 21 CFR Part 11 §11.10 | policies/opa/ |
+| nist_800_53_au.rego | NIST SP 800-53 AU Family / FedRAMP | policies/opa/ |
+| iso27001_a8_logging.rego | ISO/IEC 27001:2022 A.8.15-17 | policies/opa/ |
+| nydfs_part500.rego | NYDFS 23 NYCRR 500 §500.6 | policies/opa/ |
+| dora_art17.rego | DORA Art. 17 | policies/opa/ |
+| mifid2_rts6_algo_trading.rego | MiFID II RTS 6 | policies/opa/ |
+| sox_pcaob.rego | SOX / PCAOB AS 2201 | policies/opa/ |
+| nerc_cip007.rego | NERC CIP-007-6 R4 | policies/opa/ |
 
-## Files
+## Cedar bundles
 
-| File | Regulation | Standard |
-|---|---|---|
-| `opa/eu-ai-act-art12.rego` | EU AI Act Article 12 | Record-keeping posture |
-| `opa/gdpr-art7-consent.rego` | GDPR Article 7 | Consent conditions |
-| `opa/hipaa-minimum-necessary.rego` | 45 CFR § 164.502(b) | Minimum necessary |
-| `cedar/eu-ai-act-art12.cedar` | EU AI Act Article 12 | Cedar equivalent |
+| Bundle | Standard | Location |
+|--------|----------|----------|
+| gdpr_consent.cedar | GDPR Art. 7/30 | policies/cedar/ |
+| iso42001_lifecycle_logging.cedar | ISO/IEC 42001 A.6.2.8 | policies/cedar/ |
+| us_state_ai_acts.cedar | California ADMT + Colorado AI Act | policies/cedar/ |
 
-## Usage with OPA
+## Crossover map
 
-```bash
-opa eval -d policies/opa/eu-ai-act-art12.rego \
-         -i input.json \
-         "data.aevum.policies.eu_ai_act.art12.allow"
-```
+Many standards share requirements. A single Aevum deployment may need multiple
+bundles. Common stacks:
 
-## Usage with Cedar
-
-Cedar policies are evaluated by the aevum-core PolicyBridge when
-`policy_engine: cedar` is configured. Place `.cedar` files in your
-policy bundle directory.
-
-## Architecture note
-
-Aevum's five absolute barriers fire regardless of policy. Policies add
-*additional* constraints; they cannot disable barriers.
+- **US Healthcare AI:** hipaa_security + fda_21cfr_part11 + nist_800_53_au
+- **EU High-Risk AI:** eu_ai_act_art12 + gdpr_consent + iso42001_lifecycle_logging
+- **US Financial AI (NY):** nydfs_part500 + sox_pcaob + nist_800_53_au
+- **EU Financial AI:** dora_art17 + mifid2_rts6_algo_trading + gdpr_consent
+- **Energy Sector AI:** nerc_cip007 + nist_800_53_au

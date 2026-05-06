@@ -120,6 +120,7 @@ nav:
     - Deployment: learn/deployment.md
     - Deployment Patterns: learn/deployment-patterns.md
     - Standards Alignment: learn/standards-alignment.md
+    - Compliance Mapping: learn/compliance-mapping.md
     - Replay vs. Observability: concepts/replay-vs-observability.md
     - Audit Trails and Article 12: concepts/audit-trails.md
     - Memory Poisoning Defense: concepts/memory-poisoning.md
@@ -137,6 +138,12 @@ nav:
       - Healthcare (FHIR R4): domain-examples/healthcare.md
       - Finance (SOX): domain-examples/finance.md
       - Legal (GDPR): domain-examples/legal.md
+  - ADRs:
+    - adr-001 Single Sigchain: adrs/adr-001-single-sigchain.md
+    - adr-002 HLC Bounds: adrs/adr-002-hlc-bounds.md
+    - adr-003 OR-Set Consent: adrs/adr-003-or-set-consent.md
+    - adr-004 Signer Interface: adrs/adr-004-signer-interface.md
+    - adr-005 Policy Externalisation: adrs/adr-005-policy-externalisation.md
   - Reference:
     - API: reference/api.md
     - CLI: reference/cli.md
