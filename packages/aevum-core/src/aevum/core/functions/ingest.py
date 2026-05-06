@@ -5,6 +5,7 @@ Barrier order: 1 (crisis) → 5 (provenance) → 3 (consent) → graph write →
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from aevum.core.audit.sigchain import _uuid7
@@ -13,6 +14,32 @@ from aevum.core.envelope.models import OutputEnvelope, ProvenanceRecord
 from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
+
+logger = logging.getLogger(__name__)
+
+_OTEL_GENAI_KEYS: frozenset[str] = frozenset({
+    "gen_ai.request.model",
+    "gen_ai.response.model",
+    "gen_ai.system",
+    "gen_ai.conversation.id",
+    "gen_ai.operation.name",
+})
+
+
+def _merge_model_context(payload: dict[str, Any], model_context: dict[str, Any] | None) -> None:
+    """Merge allowed OTel GenAI keys from model_context into payload in-place."""
+    if not model_context:
+        return
+    for key in _OTEL_GENAI_KEYS:
+        if key in model_context:
+            val = model_context[key]
+            if isinstance(val, (str, int, float, bool)):
+                payload[key] = val
+            else:
+                logger.debug("model_context key %r has unsupported type %s — ignored", key, type(val))
+    for key in model_context:
+        if key not in _OTEL_GENAI_KEYS:
+            logger.debug("model_context key %r is not an allowed OTel GenAI key — ignored", key)
 
 
 def ingest(
@@ -29,6 +56,7 @@ def ingest(
     idempotency_cache: dict[str, OutputEnvelope] | None = None,
     episode_id: str | None = None,
     correlation_id: str | None = None,
+    model_context: dict[str, Any] | None = None,
 ) -> OutputEnvelope:
     if idempotency_key and idempotency_cache is not None and idempotency_key in idempotency_cache:
         return idempotency_cache[idempotency_key]
@@ -61,10 +89,15 @@ def ingest(
     classification = provenance.get("classification", 0)
     graph.store_entity(subject_id, data, classification=classification)
 
+    event_payload: dict[str, Any] = {
+        "subject_id": subject_id, "purpose": purpose,
+        "source_id": provenance.get("source_id", ""), "classification": classification,
+    }
+    _merge_model_context(event_payload, model_context)
+
     event = ledger.append(
         event_type="ingest.accepted",
-        payload={"subject_id": subject_id, "purpose": purpose,
-                 "source_id": provenance.get("source_id", ""), "classification": classification},
+        payload=event_payload,
         actor=actor, episode_id=episode_id, correlation_id=correlation_id,
     )
     audit_id = event.audit_id()

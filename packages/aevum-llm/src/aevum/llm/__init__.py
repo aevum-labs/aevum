@@ -17,7 +17,8 @@ Usage:
 """
 
 from aevum.llm.complication import LlmComplication
+from aevum.llm.otel import to_otel_attributes
 
 __version__ = "0.1.0"
 
-__all__ = ["LlmComplication"]
+__all__ = ["LlmComplication", "to_otel_attributes"]

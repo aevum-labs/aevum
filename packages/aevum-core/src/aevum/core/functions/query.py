@@ -6,6 +6,7 @@ Calls active complications and stores results in the ledger for faithful replay.
 from __future__ import annotations
 
 import json
+import logging
 from typing import TYPE_CHECKING, Any
 
 from aevum.core.audit.sigchain import _uuid7
@@ -17,6 +18,7 @@ from aevum.core.envelope.models import (
     SourceHealthSummary,
     UncertaintyAnnotation,
 )
+from aevum.core.functions.ingest import _merge_model_context
 from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
@@ -24,6 +26,8 @@ from aevum.core.protocols.graph_store import GraphStore
 if TYPE_CHECKING:
     from aevum.core.complications.circuit_breaker import CircuitBreaker
     from aevum.core.complications.registry import ComplicationRegistry
+
+logger = logging.getLogger(__name__)
 
 
 def _json_safe(value: Any) -> Any:
@@ -45,6 +49,7 @@ def query(
     circuit_breakers: dict[str, CircuitBreaker] | None = None,
     episode_id: str | None = None,
     correlation_id: str | None = None,
+    model_context: dict[str, Any] | None = None,
 ) -> OutputEnvelope:
     """
     Traverse the knowledge graph for a declared purpose.
@@ -124,15 +129,18 @@ def query(
         overall = "healthy"
 
     # Append to ledger — include complication results for replay faithfulness
+    query_payload: dict[str, Any] = {
+        "subject_ids": subject_ids,
+        "purpose": purpose,
+        "result_count": len(graph_results),
+        "redacted_count": len(redacted),
+        "complication_results": complication_results,  # stored for replay
+    }
+    _merge_model_context(query_payload, model_context)
+
     event = ledger.append(
         event_type="query.complete",
-        payload={
-            "subject_ids": subject_ids,
-            "purpose": purpose,
-            "result_count": len(graph_results),
-            "redacted_count": len(redacted),
-            "complication_results": complication_results,  # stored for replay
-        },
+        payload=query_payload,
         actor=actor, episode_id=episode_id, correlation_id=correlation_id,
     )
     audit_id = event.audit_id()
