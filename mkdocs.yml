@@ -144,6 +144,9 @@ nav:
     - adr-003 OR-Set Consent: adrs/adr-003-or-set-consent.md
     - adr-004 Signer Interface: adrs/adr-004-signer-interface.md
     - adr-005 Policy Externalisation: adrs/adr-005-policy-externalisation.md
+    - adr-006 SPIFFE Integration: adrs/adr-006-spiffe-integration.md
+    - adr-007 Transparency Log: adrs/adr-007-transparency-log.md
+    - adr-008 Multi-Agent Correlation: adrs/adr-008-multi-agent-correlation.md
   - Reference:
     - API: reference/api.md
     - CLI: reference/cli.md
