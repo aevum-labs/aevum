@@ -26,7 +26,7 @@ aevum-store-jena (stub)
 
 ---
 
-## v0.1.0 — 2026
+## v0.1.0 — April 2026
 
 Initial repository structure. `aevum-core` placeholder on PyPI.
 

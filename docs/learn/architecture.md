@@ -21,7 +21,7 @@ ledger that makes every past decision deterministically replayable.
 
     [:octicons-arrow-right-24: Read more](#five-absolute-barriers)
 
--   :material-link-chain:{ .lg } **The sigchain**
+-   :material-link-variant:{ .lg } **The sigchain**
 
     Ed25519 + SHA3-256 hash chain. The mechanism behind deterministic
     replay and tamper-evident audit.
