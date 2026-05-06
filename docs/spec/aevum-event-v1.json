@@ -34,7 +34,7 @@
     },
     "episode_id": {
       "type": "string",
-      "description": "Groups related events into a logical episode (e.g. one AI workflow run). Always present; generated as UUID v7 when not supplied by the caller."
+      "description": "Groups related events into a logical episode. Empty string ('') for kernel-generated events not associated with a specific episode (session.start, etc.). Never null."
     },
     "sequence": {
       "type": "integer",

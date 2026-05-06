@@ -1,7 +1,7 @@
 # ADR-007: External chain verification via Sigstore Rekor v2
 
 Date: 2026-05-06
-Status: Proposed
+Status: Accepted
 Deciders: Aevum Labs
 Confidence: Medium
 
