@@ -72,7 +72,7 @@ SIGNING_FIELDS = (
 )
 
 
-def _load_public_key(pem_path: Path):
+def _load_public_key(pem_path: Path) -> Any:
     """Load an Ed25519 public key from a PEM file."""
     try:
         from cryptography.hazmat.primitives.serialization import load_pem_public_key
@@ -200,8 +200,7 @@ def verify_chain(
         if prev_event is not None:
             prev_seq = prev_event.get("sequence", 0)
             curr_seq = event.get("sequence", 0)
-            if isinstance(prev_seq, int) and isinstance(curr_seq, int):
-                if curr_seq != prev_seq + 1:
+            if isinstance(prev_seq, int) and isinstance(curr_seq, int) and curr_seq != prev_seq + 1:
                     errors.append(
                         f"{prefix}: sequence gap — expected {prev_seq + 1}, got {curr_seq}"
                     )
@@ -322,7 +321,8 @@ Export public key from Python:
         raw_bytes = extract_public_key_from_chain(events_raw)
         if raw_bytes is None:
             print(
-                "ERROR: --public-key required. No signing_public_key found in session.start payload.",
+                "ERROR: --public-key required. "
+                "No signing_public_key found in session.start payload.",
                 file=sys.stderr,
             )
             sys.exit(2)
