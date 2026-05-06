@@ -622,10 +622,43 @@ use connection pooling (PgBouncer) in front of PostgreSQL.
 See [Deployment](/learn/deployment/) for the full production guide including
 Docker Compose and configuration examples.
 
+## What Aevum does not do
+
+Being precise about scope is a trust signal, not a weakness. Aevum is
+designed to do one thing well — consent enforcement, provenance capture,
+sigchain audit, and deterministic replay — and compose with the ecosystem
+around it.
+
+**Aevum does not prevent prompt injection.** Use a guardrail layer
+(Lakera Guard, NeMo Guardrails, LlamaFirewall) on the model boundary.
+Aevum records that a prompt was processed and signs its hash — it does
+not inspect or filter prompt content.
+
+**Aevum does not sandbox code execution.** Use gVisor, Firecracker
+microVMs, or NVIDIA OpenShell for process-level isolation. Aevum records
+tool invocations and enforces consent — it does not prevent the agent
+process from running arbitrary code.
+
+**Aevum does not provide mandatory network enforcement.** It is an
+in-process library. A developer who routes around the kernel routes around
+the barriers. Deploy behind an AI gateway or MCP gateway for mandatory
+interception. See [Deployment Patterns](/learn/deployment-patterns/).
+
+**Aevum does not redact PII at the model boundary.** The classification
+ceiling (Barrier 2) restricts data *access* — it does not transform or
+redact data flowing to the model. Use an AI gateway with a PII-redaction
+layer for that.
+
+**Aevum does not generate compliance reports.** The episodic ledger
+produces evidence. Your compliance team or a compliance-reporting tool
+interprets it.
+
 ## See also
 
 - [Quickstart](/getting-started/quickstart/) — run your first governed session
 - [Security](/learn/security/) — threat model and security architecture
+- [Deployment Patterns](/learn/deployment-patterns/) — patterns for production deployment
+- [Standards Alignment](/learn/standards-alignment/) — regulatory and standards mapping
 - [Replay vs. Observability](/concepts/replay-vs-observability/) — the distinction in detail
 - [API Reference](/reference/api/) — full schema for all types
 

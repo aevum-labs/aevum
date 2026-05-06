@@ -5,6 +5,14 @@
 Aevum gives every AI agent cryptographic audit trails, human-review gates,
 and consent-bound context assembly -- built into the kernel, not bolted on.
 
+Aevum is a context kernel in the microkernel sense: a minimal, stable
+enforcement primitive (consent, provenance, sigchain, deterministic
+replay) combined with externalized policy (Cedar, OPA). The five absolute
+barriers stay stable as regulations evolve — the Cedar/OPA policy bundles
+change with them. See
+[Standards and Regulatory Alignment](https://aevum.build/learn/standards-alignment/)
+for the regulatory mapping.
+
 Documentation: https://aevum.build
 
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12630/badge)](https://www.bestpractices.dev/projects/12630)
@@ -101,6 +109,18 @@ print("replayed:", r.data["replayed_payload"]["note"])  # User requested account
 EOF
 ```
 
+## What Aevum is not
+
+- **Not a prompt injection defense** — use a guardrail layer (Lakera Guard,
+  NeMo Guardrails) on the model boundary
+- **Not a code execution sandbox** — use gVisor, Firecracker, or NVIDIA
+  OpenShell for process isolation
+- **Not a mandatory network enforcement point** — deploy behind an AI gateway
+  or MCP gateway for that; see
+  [Deployment Patterns](https://aevum.build/learn/deployment-patterns/)
+- **Not a compliance report generator** — the episodic ledger produces
+  evidence; your compliance program interprets it
+
 ## Packages
 
 | Package | Purpose |
@@ -138,6 +158,14 @@ EOF
 │  aevum-store-oxigraph / -postgres   │  ← Graph backends
 └─────────────────────────────────────┘
 ```
+
+## Documentation
+
+- [Architecture](https://aevum.build/learn/architecture/)
+- [Quickstart](https://aevum.build/getting-started/quickstart/)
+- [Deployment Patterns](https://aevum.build/learn/deployment-patterns/)
+- [Standards Alignment](https://aevum.build/learn/standards-alignment/)
+- [Full documentation](https://aevum.build)
 
 ## Community
 
