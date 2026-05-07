@@ -249,8 +249,8 @@ Every entry in the ledger is an `AuditEvent` with exactly 18 fields:
 | `span_id` | str \| None | OpenTelemetry span ID |
 | `payload` | dict | The operation's data (what was ingested, queried, etc.) |
 | `payload_hash` | str | SHA3-256 of the canonical JSON payload |
-| `prior_hash` | str | SHA3-256 hash of all fields of the previous event |
-| `signature` | str | Ed25519 signature over all fields except `signature` |
+| `prior_hash` | str | SHA3-256 hash of the 16 signing fields of the previous event |
+| `signature` | str | Ed25519 signature over the 16 signing fields (all fields except `payload` and `signature`) |
 | `signer_key_id` | str | UUID of the Ed25519 private key that signed this event |
 
 ### How the chain works
@@ -263,8 +263,8 @@ Genesis hash = SHA3-256("aevum:genesis")
      ↓
 Event 1:  prior_hash = genesis_hash
           payload_hash = SHA3-256(event1.payload)
-          signature = Ed25519(all fields except signature)
-          chain_hash_1 = SHA3-256(all fields except signature)
+          signature = Ed25519(16 signing fields)
+          chain_hash_1 = SHA3-256(16 signing fields)
      ↓
 Event 2:  prior_hash = chain_hash_1
           ...
@@ -621,6 +621,43 @@ use connection pooling (PgBouncer) in front of PostgreSQL.
 
 See [Deployment](/learn/deployment/) for the full production guide including
 Docker Compose and configuration examples.
+
+## Complication framework
+
+Complications extend the kernel with optional capabilities (SPIFFE identity,
+transparency log publishing, LLM audit, MCP integration). Each complication
+goes through a 7-state lifecycle: DISCOVERED → PENDING → APPROVED → ACTIVE
+→ SUSPENDED → RETIRED → FAILED.
+
+The Engine does **not** invoke `on_approved()` automatically. Activation is
+always an explicit caller action:
+
+```python
+from aevum.spiffe import SpiffeComplication
+
+comp = SpiffeComplication()
+engine.install_complication(comp)           # registers — DISCOVERED
+engine.approve_complication("aevum-spiffe") # transitions state, writes ledger entry — APPROVED
+comp.on_approved(engine)                    # activates — ACTIVE (must be called explicitly)
+```
+
+This three-step pattern is intentional: activation may require configuration
+that the caller provides after approval. The approval itself is a signed
+ledger entry.
+
+### Optional capabilities (Part 2)
+
+**aevum-spiffe** — SPIFFE/SPIRE agent identity. When approved, emits a
+`spiffe.attested` event containing the cryptographically-attested SPIFFE ID.
+Requires a SPIFFE Workload API (SPIRE, Vault SPIFFE secrets engine, etc.).
+
+**aevum-publish** — Sigstore Rekor v2 transparency log. Submits periodic
+chain checkpoints to an external log, enabling adversarial-resistant
+verification. The inclusion proof is stored as `transparency.checkpoint`
+in the local sigchain.
+
+**aevum-sdk (correlation)** — W3C Trace Context helpers for multi-agent
+episode propagation and `cross_chain_ref` payload construction.
 
 ## What Aevum does not do
 

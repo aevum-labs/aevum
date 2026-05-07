@@ -117,6 +117,54 @@ tool call via the IETF Agent Audit Trail export in `aevum-sdk`.
 
 ---
 
+## Signing key tier
+
+The signing key placement is an independent dimension of your deployment:
+
+| Deployment | Signer | Compliance posture |
+|---|---|---|
+| Development | InProcessSigner (default) | Tamper-detectable |
+| Team / production | InProcessSigner | Tamper-detectable |
+| Regulated (FDA, HIPAA, EU AI Act) | VaultTransitSigner or PKCS11Signer | Tamper-prevented |
+
+See [SECURITY.md](/security/) and [ADR-004](/adrs/adr-004-signer-interface/)
+for the full trust-boundary analysis.
+
+---
+
+## Multi-agent deployment
+
+When multiple Aevum-governed agents cooperate:
+
+1. The calling agent propagates `episode_id` via W3C Trace Context:
+   ```python
+   from aevum.sdk.correlation import inject_traceparent
+   headers["traceparent"] = inject_traceparent(episode_id)
+   ```
+
+2. The receiving agent extracts and uses it:
+   ```python
+   from aevum.sdk.correlation import extract_episode_id_from_traceparent
+   episode_id = extract_episode_id_from_traceparent(
+       request.headers.get("traceparent", "")
+   )
+   ```
+
+3. Explicit causal links use `cross_chain_ref` in the event payload:
+   ```python
+   from aevum.sdk.correlation import build_cross_chain_ref
+   payload["cross_chain_ref"] = build_cross_chain_ref(
+       event=triggering_event,
+       trust_domain="spiffe://example.org",
+       agent_id="orchestrator",
+   )
+   ```
+
+For cross-chain link verification, use `aevum-publish` to submit checkpoints
+to Rekor so verifiers can confirm referenced events across agent boundaries.
+
+---
+
 ## Pattern comparison
 
 | Property | Standalone | AI gateway | MCP gateway |

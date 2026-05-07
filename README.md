@@ -121,6 +121,15 @@ EOF
 - **Not a compliance report generator** — the episodic ledger produces
   evidence; your compliance program interprets it
 
+**Signing key trust boundary:** The default `InProcessSigner` generates
+an Ed25519 key in process memory — the same process as the agent. This
+provides tamper-DETECTION (any modification is detectable) but not
+tamper-PREVENTION (a compromised process could theoretically forge entries).
+
+For regulated deployments requiring FDA §11.10(e) "independently record"
+or equivalent: use `VaultTransitSigner` (aevum-sdk) or a custom `Signer`
+implementation backed by a KMS or HSM outside the agent's trust boundary.
+
 ## Packages
 
 | Package | Purpose |
@@ -130,10 +139,29 @@ EOF
 | `aevum-sdk` | Complication developer kit |
 | `aevum-store-oxigraph` | Embedded RDF graph backend (single-node) |
 | `aevum-store-postgres` | PostgreSQL graph + consent + ledger backend |
+| `aevum-store-jena` | Apache Jena RDF backend (enterprise) |
 | `aevum-mcp` | MCP server for any MCP-compatible host (Claude Desktop, Cursor, and others) |
 | `aevum-oidc` | OIDC token validation complication |
 | `aevum-llm` | LiteLLM-backed LLM complication with audit trail |
 | `aevum-cli` | `aevum server start`, `aevum store migrate`, and more |
+| `aevum-spiffe` | Optional — SPIFFE/SPIRE agent identity complication |
+| `aevum-publish` | Optional — Rekor v2 transparency log complication |
+
+## Complication lifecycle
+
+Complications are registered and activated in three explicit steps:
+
+```python
+from aevum.spiffe import SpiffeComplication
+
+comp = SpiffeComplication()
+engine.install_complication(comp)      # registers the complication
+engine.approve_complication("aevum-spiffe")  # transitions state, writes ledger entry
+comp.on_approved(engine)               # activates — must be called explicitly
+```
+
+The Engine does not invoke `on_approved()` automatically. This is intentional:
+activation may require configuration that the caller provides after approval.
 
 ## Architecture
 
