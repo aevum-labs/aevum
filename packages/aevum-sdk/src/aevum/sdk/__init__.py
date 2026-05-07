@@ -12,7 +12,19 @@ Register in pyproject.toml:
 
 from aevum.sdk.agent import AgentComplication
 from aevum.sdk.base import Complication, Context
+from aevum.sdk.correlation import (
+    build_cross_chain_ref,
+    extract_episode_id_from_traceparent,
+    inject_traceparent,
+)
 
 __version__ = "0.1.0"
 
-__all__ = ["Complication", "Context", "AgentComplication"]
+__all__ = [
+    "Complication",
+    "Context",
+    "AgentComplication",
+    "build_cross_chain_ref",
+    "extract_episode_id_from_traceparent",
+    "inject_traceparent",
+]
