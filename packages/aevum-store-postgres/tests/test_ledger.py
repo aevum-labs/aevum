@@ -64,7 +64,7 @@ class FakeCursor:
                     self.description = [["audit_id"]]
                 else:
                     self._last_result = [list(last_row.values())]
-                    self.description = [[k] for k in last_row.keys()]
+                    self.description = [[k] for k in last_row]
             else:
                 self._last_result = []
                 self.description = []

@@ -135,23 +135,22 @@ class PostgresLedger:
 
         log = logging.getLogger(__name__)
         try:
-            with self._lock:
-                with self._conn.cursor(row_factory=dict_row) as cur:
-                    cur.execute(
-                        """
-                        SELECT sequence, event_id, audit_id,
-                               event_type, actor, system_time,
-                               episode_id, causation_id, correlation_id,
-                               prior_hash, payload_hash, signature,
-                               signer_key_id, schema_version,
-                               valid_from, valid_to,
-                               trace_id, span_id, payload
-                        FROM aevum_ledger
-                        ORDER BY sequence DESC
-                        LIMIT 1
-                        """
-                    )
-                    row = cur.fetchone()
+            with self._lock, self._conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT sequence, event_id, audit_id,
+                           event_type, actor, system_time,
+                           episode_id, causation_id, correlation_id,
+                           prior_hash, payload_hash, signature,
+                           signer_key_id, schema_version,
+                           valid_from, valid_to,
+                           trace_id, span_id, payload
+                    FROM aevum_ledger
+                    ORDER BY sequence DESC
+                    LIMIT 1
+                    """
+                )
+                row = cur.fetchone()
         except Exception as exc:
             log.debug(
                 "aevum-store-postgres: could not resume chain from DB (%s) "
@@ -229,12 +228,11 @@ class PostgresLedger:
         """Return the audit_id of the most recently appended event, or None."""
         from psycopg.rows import dict_row
 
-        with self._lock:
-            with self._conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(
-                    "SELECT audit_id FROM aevum_ledger ORDER BY sequence DESC LIMIT 1"
-                )
-                row = cur.fetchone()
+        with self._lock, self._conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                "SELECT audit_id FROM aevum_ledger ORDER BY sequence DESC LIMIT 1"
+            )
+            row = cur.fetchone()
         return row["audit_id"] if row else None
 
     def get(self, audit_id: str) -> AuditEvent:
