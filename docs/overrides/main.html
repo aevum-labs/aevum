@@ -3,6 +3,8 @@
   {{ super() }}
   {% if page %}
 
+  <link rel="apple-touch-icon" href="{{ config.site_url }}assets/apple-touch-icon.png">
+
   {# Canonical URL — required for site_url to work correctly in search #}
   <link rel="canonical" href="{{ page.canonical_url }}">
 
