@@ -659,6 +659,40 @@ in the local sigchain.
 **aevum-sdk (correlation)** — W3C Trace Context helpers for multi-agent
 episode propagation and `cross_chain_ref` payload construction.
 
+### WebhookRegistry
+
+`WebhookRegistry` delivers `review.approved` and `review.vetoed` events
+to registered HTTPS endpoints. It is part of `aevum-core` — not a separate
+package — and is available from `aevum.core.complications`.
+
+**Behaviour:**
+- HMAC-SHA256 signed payloads (header: `X-Aevum-Signature`)
+- Exponential backoff retry: 3 attempts at 1s, 5s, 25s
+- Dead-letter: on final failure, appends a `barrier.webhook_failed`
+  AuditEvent to the sigchain so the delivery failure is auditable
+- Thread-safe registration and dispatch
+- HTTPS required for all endpoints (http://localhost permitted for development)
+
+**Usage:**
+```python
+from aevum.core.complications import WebhookRegistry
+
+webhook = WebhookRegistry(http_client=httpx.Client())
+webhook.register(
+    "compliance-system",
+    "https://compliance.example.com/aevum-events",
+    secret="your-webhook-secret",
+    events=["review.approved", "review.vetoed"],
+)
+
+# Call after Engine operations that produce review events
+dispatched = webhook.dispatch("review.approved", {"audit_id": event["audit_id"]})
+```
+
+The `barrier.webhook_failed` event carries `webhook_id`, `original_event_type`,
+and `attempts` in its payload — giving auditors visibility into delivery
+failures without requiring external monitoring.
+
 ## What Aevum does not do
 
 Being precise about scope is a trust signal, not a weakness. Aevum is

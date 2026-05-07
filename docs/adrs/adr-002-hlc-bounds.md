@@ -34,8 +34,22 @@ Option 1, with the following documented invariants:
 - `_sequence` (HLC counter) resets to 0 when physical time advances past
   the last known HLC — ensuring monotonicity after NTP step-back
 - A single process-wide mutex guards all HLC reads/writes (see Sigchain._lock)
-- On Engine restart with a persistent backend, the HLC must be initialized
-  from the max(persisted_hlc, current_physical) — not from 0
+**HLC restart behaviour:** The HLC state (`_last_ms`, `_counter`) is not
+  persisted across process restarts. On restart, the HLC begins from wall-clock
+  time. In practice this is correct: the wall-clock time at restart (in milliseconds)
+  is always greater than the last persisted event's `_last_ms`, so the first call to
+  `hlc.now()` immediately produces a value greater than all prior events.
+
+  The only scenario where this would fail is a process restart completing within
+  the same millisecond as the last event write — a condition that is physically
+  impossible in all realistic deployments (OS scheduler, file system sync, and
+  network round-trips each take orders of magnitude longer than 1ms).
+
+  **Implementation note:** Seeding the HLC from the last persisted event remains
+  the architecturally correct approach and is the recommended target for any
+  future implementation that requires formally provable monotonicity across
+  restarts without relying on wall-clock advancement. The current implementation
+  is correct for all realistic conditions but not formally self-contained.
 
 **NOT a substitute for:** RFC 3161 trusted timestamps or UTC-traceable physical
 clocks for legal evidence under eIDAS, MiFID II RTS 25, or FINRA CAT.

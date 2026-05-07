@@ -20,7 +20,7 @@ Aevum implements all three properties in its episodic ledger. It is important no
 
 **Append-only:** the episodic ledger uses SQLite triggers that prevent UPDATE and DELETE operations on ledger rows. This holds against application-layer attacks and against any code that accesses the database through Aevum's API. A direct edit to the SQLite file bypasses the trigger — the append-only property at the storage layer requires that the SQLite file itself be protected by filesystem permissions or immutable storage.
 
-**Hash-chained:** each `AuditEvent` includes `previous_hash` — the SHA3-256 digest of the preceding event's canonical representation. `engine.verify_sigchain()` recomputes the full chain from the genesis entry and returns `False` if any hash does not match. Any modification to any field in any entry — including metadata fields like timestamps, actor identifiers, or event types — produces a hash mismatch that is detected on the next verification pass.
+**Hash-chained:** each `AuditEvent` includes `prior_hash` — the SHA3-256 digest of the preceding event's canonical representation. `engine.verify_sigchain()` recomputes the full chain from the genesis entry and returns `False` if any hash does not match. Any modification to any field in any entry — including metadata fields like timestamps, actor identifiers, or event types — produces a hash mismatch that is detected on the next verification pass.
 
 **Ed25519 signed:** each event is signed with the kernel's Ed25519 private key before being appended to the ledger. The public key is available for external verification.
 
@@ -59,7 +59,7 @@ for i in range(5):
 intact = engine.verify_sigchain()
 print(f"Chain intact: {intact}")  # True
 
-# Inspect the ledger — each entry includes previous_hash
+# Inspect the ledger — each entry includes prior_hash
 entries = engine.get_ledger_entries()
 for entry in entries[-3:]:  # last three entries
     print(f"event: {entry['event_type']:25} hash: {entry.get('hash', 'N/A')[:16]}...")
@@ -67,7 +67,7 @@ for entry in entries[-3:]:  # last three entries
 
 ## What verify_sigchain() actually checks
 
-`verify_sigchain()` traverses every entry in the episodic ledger from the genesis entry to the current tip. For each consecutive pair of entries, it recomputes the SHA3-256 hash of the earlier entry's canonical representation and checks it against the `previous_hash` field stored in the later entry. If any entry has been modified — including metadata fields like timestamps, actor identifiers, or event types — the recomputed hash will not match the stored `previous_hash`, and `verify_sigchain()` returns `False`. The method returns `True` only if every link in the chain from genesis to the current tip is valid. This means a single altered entry is detected regardless of its position in the chain, and the detection is guaranteed to fire on the next verification pass after the alteration occurs.
+`verify_sigchain()` traverses every entry in the episodic ledger from the genesis entry to the current tip. For each consecutive pair of entries, it recomputes the SHA3-256 hash of the earlier entry's canonical representation and checks it against the `prior_hash` field stored in the later entry. If any entry has been modified — including metadata fields like timestamps, actor identifiers, or event types — the recomputed hash will not match the stored `prior_hash`, and `verify_sigchain()` returns `False`. The method returns `True` only if every link in the chain from genesis to the current tip is valid. This means a single altered entry is detected regardless of its position in the chain, and the detection is guaranteed to fire on the next verification pass after the alteration occurs.
 
 ## Compliance relevance
 

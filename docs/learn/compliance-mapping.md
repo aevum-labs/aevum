@@ -137,6 +137,7 @@ compliance review before making regulatory assertions based on this content.*
 | SOC 2 CC4.1 | Ongoing monitoring of controls | REPLAY supports evidence | ✅ | |
 | SOC 2 CC7.1/7.2 | Anomaly detection | AuditEvent stream | ⚠️ | Detection logic external |
 | SOC 2 CC7.3/7.4 | Incident communication/response | AuditEvent substrate | ⚠️ | Workflow external |
+| WebhookRegistry dead-letter | Delivery failure visibility | barrier.webhook_failed AuditEvent | ✅ | Ensures review event delivery failures are auditable; supports SOC 2 CC7.4, PCI DSS 10.2.1 |
 | CIS Controls v8.1 #8 (all 12 safeguards) | Audit log management | Sigchain + config | ✅ | 90-day minimum retention (much shorter than financial sector) |
 | HITRUST CSF v11 09.ab | Monitoring system use | Sigchain | ✅ | |
 | OWASP ASI Top 10 ASI05 | Memory/state manipulation | Sigchain + replay() | ✅ | |
