@@ -411,6 +411,15 @@ The specification is licensed under CC-BY-4.0 + OWFa 1.0.1.
 | click | BSD | CLI (aevum-cli) |
 | oxigraph | MIT / Apache-2.0 | Graph storage (aevum-store-oxigraph) |
 | psycopg2 / psycopg | LGPL-3 | PostgreSQL adapter (aevum-store-postgres) |
+| httpx | BSD-3-Clause | HTTP client (aevum-oidc) |
+| PyJWT | MIT | JWT validation (aevum-oidc) |
+| litellm | MIT | LLM routing (aevum-llm) |
+| opentelemetry-sdk | Apache-2.0 | Tracing (aevum-sdk) |
+| opentelemetry-api | Apache-2.0 | Tracing (aevum-sdk) |
+| typer | MIT | CLI (aevum-cli) |
+| mcp | MIT | MCP protocol (aevum-mcp) |
+| aiohttp | Apache-2.0 | Async HTTP (aevum-llm) |
+| hatchling | MIT | Build system (all) |
 
 ### psycopg2 / psycopg LGPL note
 
@@ -440,11 +449,29 @@ patent risk.
 
 Apache-2.0 requires:
 1. Preserve the `LICENSE` file in distributions
-2. Include the `NOTICE` file if one exists (Aevum currently has none)
+2. Include the NOTICE file — Aevum ships a NOTICE file at
+   the repository root listing copyright and required
+   third-party attribution notices. Downstream distributors
+   must carry this file forward (Apache-2.0 Section 4d).
+   Library users (pip install aevum-core) are not
+   distributors and have no NOTICE obligation.
 3. State changes made to Apache-2.0 code (for modified distributions)
 
 Using Aevum as a library (the typical case) has no attribution requirement
 beyond preserving the license text.
+
+### Transitive dependencies
+
+The packages listed above have their own dependencies.
+The complete transitive tree is pinned in uv.lock.
+To audit the full tree:
+
+    pip install pip-licenses pip-audit
+    pip-licenses --format=csv
+    pip-audit
+
+No GPL or AGPL licenses were present in the dependency
+set as audited at v0.3.1. Re-audit before each release.
 
 ### Complete dependency license audit
 
@@ -464,6 +491,15 @@ uv run pip-licenses --format=csv
 
 This produces a complete software bill of materials for your security
 and legal teams.
+
+### Research citations
+
+The Research Foundations page (concepts/research-foundations.md)
+cites academic papers and standards that informed
+architectural decisions. Academic papers are not software
+and carry no license obligations. Standards cited (W3C,
+IETF, NIST, ISO) are referenced, not reproduced, and
+carry no redistribution requirements.
 
 ## See also
 
