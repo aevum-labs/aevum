@@ -14,6 +14,10 @@ dev-dependencies = [
     "ruff>=0.9",
     "rich>=13.0",
 ]
+# CVE GHSA-pp6c-gr5w-3c5g: python-multipart DoS fixed in 0.0.27 (transitive via mcp)
+constraint-dependencies = [
+    "python-multipart>=0.0.27",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["packages", "tests"]
