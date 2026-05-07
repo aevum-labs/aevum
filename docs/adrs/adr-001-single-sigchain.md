@@ -50,6 +50,13 @@ in the ledger implementation.
 **Residual risk:** The single chain is a single point of failure. Mitigation:
 persistent backends (PostgresLedger) + cross-session causation_id linking.
 
+**Additional integrity property (discovered implementation):** The signing
+digest covers 16 fields including `sequence`. This means events cannot be
+reordered within the chain without invalidating their signatures — insertion,
+deletion, and reordering attacks all break both the hash chain AND the
+per-event signatures. See `docs/spec/aevum-signing-v1.md` for the
+complete signing field set.
+
 ## Evidence
 
 - FINRA Consolidated Audit Trail (CAT) uses a single-chain audit record per

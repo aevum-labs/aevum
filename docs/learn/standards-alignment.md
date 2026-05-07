@@ -145,7 +145,7 @@ and "human-in-the-loop" controls.
 |---|---|---|
 | **Goal / task hijacking** (prompt injection) | Partial — records context, does not filter | Use Lakera Guard or NeMo Guardrails for content filtering |
 | **Tool misuse** (unauthorized tool calls) | Addresses — consent required per operation; denials logged | Combine with MCP gateway for mandatory enforcement |
-| **Identity / permission abuse** | Addresses — `actor` required; consent scoped by `grantee_id` and `purpose` | |
+| **Identity / permission abuse** | Addresses — `actor` required; consent scoped by `grantee_id` and `purpose` | **OWASP ASI03:** With `aevum-spiffe` (requires SPIFFE/SPIRE deployment), agent identity is cryptographically attested via JWT-SVID, recorded in `spiffe.attested` events. Coverage improves to 🔧 REQUIRES CONFIG. |
 | **Memory / knowledge poisoning** | Addresses — Barrier 3 blocks writes without consent; classification ceiling limits read access | |
 | **Code / plugin execution** | Out of scope | Use gVisor, Firecracker, NVIDIA OpenShell |
 | **Insecure agent communications** | Out of scope | Use TLS/mTLS on the transport layer |
@@ -153,6 +153,16 @@ and "human-in-the-loop" controls.
 | **Insufficient human oversight** | Addresses — `review` function (GOVERN verb) with configurable autonomy levels L1–L5 | |
 | **Supply chain compromise** | Out of scope | Use SBOM / SLSA / Sigstore on releases |
 | **Rogue / shadow agents** | Partial — consent required for all kernel operations; sigchain creates accountability trail | Does not prevent agents from bypassing the kernel |
+
+---
+
+## External chain verification
+
+**Sigstore Rekor v2 / Transparency logs:** With `aevum-publish`,
+chain checkpoints are submitted to an external Signed Tree Head log,
+enabling adversarial-resistant verification. Without this, tamper-detection
+requires the verifier to trust the operator. With this, tampering is
+detectable by any party with access to the Rekor log.
 
 ---
 

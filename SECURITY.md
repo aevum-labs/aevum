@@ -58,8 +58,8 @@ agent's trust boundary.
 | Configuration | Key location | Tamper-detectable | Tamper-prevented |
 |---|---|---|---|
 | `InProcessSigner` (default) | Agent heap memory | ✅ | ❌ |
-| `VaultTransitSigner` (aevum-sdk) | HashiCorp Vault Transit | ✅ | ✅ |
-| Custom `Signer` + KMS | External KMS/HSM | ✅ | ✅ |
+| `VaultTransitSigner` | HashiCorp Vault Transit | ✅ | ✅ |
+| `PKCS11Signer` | HSM / hardware key | ✅ | ✅ |
 
 **For regulated deployments** (FDA 21 CFR §11.10(e), EU AI Act Article 12,
 HIPAA §164.312(b) requiring independently-recorded audit trails): use an
@@ -104,7 +104,9 @@ The five barriers cannot be disabled by any policy, configuration, or complicati
 | GENESIS_HASH | SHA3-256("aevum:genesis") | — |
 
 For FIPS 140-3 strict environments: Ed25519 is FIPS 186-5 approved but not
-universally available in validated cryptographic modules. See ADR-004 for the
+universally available in validated cryptographic modules. Use `VaultTransitSigner`
+with a FIPS-validated Vault deployment, or implement a custom `Signer`
+against a FIPS 140-3 validated PKCS#11 module. See ADR-004 for the
 pluggable signer path.
 
 ## External transparency (aevum-publish)
