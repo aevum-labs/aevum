@@ -10,6 +10,7 @@ from aevum.core.audit.sigchain import _uuid7
 from aevum.core.barriers import check_crisis
 from aevum.core.envelope.models import OutputEnvelope, ProvenanceRecord
 from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
+from aevum.core.protocols.graph_store import GraphStore
 
 _RESERVED_PREFIXES = (
     "ingest.", "query.", "review.", "commit.",
@@ -23,6 +24,8 @@ def commit(
     payload: dict[str, Any],
     actor: str,
     ledger: AuditLedgerProtocol,
+    graph: GraphStore | None = None,
+    witness: dict[str, Any] | None = None,
     idempotency_key: str | None = None,
     idempotency_cache: dict[str, OutputEnvelope] | None = None,
     episode_id: str | None = None,
@@ -30,6 +33,36 @@ def commit(
 ) -> OutputEnvelope:
     if idempotency_key and idempotency_cache is not None and idempotency_key in idempotency_cache:
         return idempotency_cache[idempotency_key]
+
+    if witness is not None and graph is not None:
+        from aevum.core.witness import StaleContextError, Witness, revalidate
+
+        w = Witness.from_dict(witness)
+        current_results = graph.query_entities(list(w.subject_ids), classification_max=3)
+        try:
+            revalidate(w, current_results, ledger)
+        except StaleContextError as exc:
+            stale_event = ledger.append(
+                event_type="context.stale",
+                payload={
+                    "reason": exc.reason,
+                    "old_watermark": exc.old_watermark,
+                    "new_watermark": exc.new_watermark,
+                    "subject_ids": list(w.subject_ids),
+                },
+                actor=actor,
+                episode_id=episode_id,
+                correlation_id=correlation_id,
+            )
+            return OutputEnvelope.error(
+                audit_id=stale_event.audit_id(),
+                error_code="stale_context",
+                error_detail=(
+                    f"Context changed since witness captured: {exc.reason}. "
+                    "Re-query and resubmit for review."
+                ),
+                provenance=ProvenanceRecord.kernel(stale_event.audit_id()),
+            )
 
     provisional_id = f"urn:aevum:audit:{_uuid7()}"
 

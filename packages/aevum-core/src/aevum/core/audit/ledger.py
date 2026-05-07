@@ -64,6 +64,21 @@ class InMemoryLedger:
             return None
         return all_ev[-1].audit_id()
 
+    def max_sequence_for_subjects(self, subject_ids: list[str]) -> int:
+        """
+        Return the highest sequence number among all ingest events
+        whose payload["subject_id"] is in subject_ids.
+        Returns 0 if no matching events exist.
+        """
+        with self._lock:
+            best = 0
+            for event in self._events:
+                if event.event_type == "ingest.accepted":
+                    sid = event.payload.get("subject_id", "")
+                    if sid in subject_ids and event.sequence > best:
+                        best = event.sequence
+            return best
+
     def __delitem__(self, key: object) -> None:
         """Barrier 4: deletion forbidden."""
         raise BarrierViolationError(
