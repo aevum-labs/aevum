@@ -70,29 +70,29 @@ plugins:
             members_order: source
   - redirects:
       redirect_maps:
-        'concepts/how-it-works.md': 'learn/architecture.md'
-        'concepts/five-functions.md': 'learn/architecture.md'
-        'concepts/five-barriers.md': 'learn/architecture.md'
-        'concepts/consent-model.md': 'learn/architecture.md'
-        'concepts/sigchain.md': 'learn/architecture.md'
-        'enterprise/security-architecture.md': 'learn/security.md'
-        'enterprise/security-faq.md': 'learn/security.md'
-        'enterprise/threat-model.md': 'learn/security.md'
-        'enterprise/deployment-guide.md': 'learn/deployment.md'
-        'enterprise/license-analysis.md': 'learn/deployment.md'
-        'enterprise/overview.md': 'learn/deployment.md'
-        'getting-started/installation.md': 'learn/deployment.md'
-        'getting-started/faq.md': 'guides/troubleshooting-faq.md'
-        'getting-started/quickstart-windows.md': 'getting-started/quickstart.md'
-        'guides/troubleshooting.md': 'guides/troubleshooting-faq.md'
-        'product/what-is-aevum.md': 'index.md'
-        'guides/fit-assessment.md': 'index.md'
-        'use-cases/enterprise-scenarios.md': 'index.md'
-        'guides/non-enterprise.md': 'index.md'
-        'reference/engine.md': 'reference/api.md'
-        'reference/output-envelope.md': 'reference/api.md'
-        'reference/consent-grants.md': 'reference/api.md'
-        'reference/audit-events.md': 'reference/api.md'
+        concepts/how-it-works.md: learn/architecture.md
+        concepts/five-functions.md: learn/architecture.md
+        concepts/five-barriers.md: learn/architecture.md
+        concepts/consent-model.md: learn/architecture.md
+        concepts/sigchain.md: learn/architecture.md
+        enterprise/security-architecture.md: learn/security.md
+        enterprise/security-faq.md: learn/security.md
+        enterprise/threat-model.md: learn/security.md
+        enterprise/deployment-guide.md: learn/deployment.md
+        enterprise/license-analysis.md: learn/deployment.md
+        enterprise/overview.md: learn/deployment.md
+        getting-started/installation.md: learn/deployment.md
+        getting-started/faq.md: guides/troubleshooting-faq.md
+        getting-started/quickstart-windows.md: getting-started/quickstart.md
+        guides/troubleshooting.md: guides/troubleshooting-faq.md
+        product/what-is-aevum.md: index.md
+        guides/fit-assessment.md: index.md
+        use-cases/enterprise-scenarios.md: index.md
+        guides/non-enterprise.md: index.md
+        reference/engine.md: reference/api.md
+        reference/output-envelope.md: reference/api.md
+        reference/consent-grants.md: reference/api.md
+        reference/audit-events.md: reference/api.md
 
 markdown_extensions:
   - pymdownx.highlight:

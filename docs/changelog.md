@@ -1,5 +1,5 @@
 ---
-description: "Release history for Aevum v0.3.0: five governed functions, five absolute barriers, Ed25519 sigchain, Cedar policy, MCP integration, and 290+ tests."
+description: "Release history for Aevum v0.3.1: five governed functions, five absolute barriers, Ed25519 sigchain, Cedar policy, MCP integration, and 290+ tests."
 ---
 
 # Changelog
