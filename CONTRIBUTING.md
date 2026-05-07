@@ -53,6 +53,16 @@ cd ../aevum-conformance
 uv run pytest layer1_wire/ layer2_semantic/ layer3_invariants/ -v
 ```
 
+## Specification Changes
+
+The Aevum Protocol Specification is maintained in a separate
+repository: https://github.com/aevum-labs/aevum-spec
+
+Do not add spec/ content to this repository.
+Specification changes require a PR to aevum-spec first.
+Implementation changes that require a spec update should
+reference the aevum-spec PR in the commit message.
+
 ## License
 
 By contributing, you agree your contributions are licensed under Apache-2.0.
