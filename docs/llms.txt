@@ -17,10 +17,19 @@ It is the governance and auditability layer underneath both.
 ## Five public functions
 
 - ingest: policy-checked data ingestion with provenance and classification
-- query: consent-gated, classification-ceiling-enforced context retrieval
+- query: consent-gated context retrieval with optional witness
+  capture for stale-context detection at commit time
 - review: human-in-the-loop gate before irreversible agent actions
-- commit: episodic event recording in the immutable sigchain ledger
+- commit: episodic event recording; validates a query witness
+  if provided, blocking stale-context commits
 - replay: deterministic reconstruction of any past agent session
+
+## Context Witness (TOCTOU protection)
+
+query() captures a Witness snapshot (sigchain watermark + result digest).
+Passing this witness to commit() validates that context has not changed
+during a human review window. If stale, commit() returns error code
+"stale_context" and logs the drift. Restarts from query() with fresh data.
 
 ## Five absolute barriers (cannot be bypassed by any complication)
 
@@ -36,6 +45,8 @@ It is the governance and auditability layer underneath both.
 - ISO/IEC 42001: complication lifecycle and governance controls
 - SOC 2 PI1.2: provenance and classification ceiling enforcement
 - OWASP ASI06 (Memory Poisoning): policy-mediated writes prevent injection
+- TOCTOU protection: witness validation closes the gap between query
+  time and commit time in human-in-the-loop flows
 
 ## Agent autonomy levels
 
