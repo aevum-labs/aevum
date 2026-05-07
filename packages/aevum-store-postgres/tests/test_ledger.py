@@ -56,6 +56,18 @@ class FakeCursor:
             matches = [r for r in self._conn._rows if r.get("audit_id") == audit_id]
             self._last_result = [list(r.values()) for r in matches]
             self.description = [[k] for k in (matches[0].keys() if matches else [])]
+        elif "order by sequence desc" in sql_lower and "limit 1" in sql_lower:
+            if self._conn._rows:
+                last_row = max(self._conn._rows, key=lambda r: r.get("sequence", 0))
+                if "select audit_id" in sql_lower:
+                    self._last_result = [[last_row.get("audit_id", "")]]
+                    self.description = [["audit_id"]]
+                else:
+                    self._last_result = [list(last_row.values())]
+                    self.description = [[k] for k in last_row.keys()]
+            else:
+                self._last_result = []
+                self.description = []
         elif "order by sequence" in sql_lower:
             sorted_rows = sorted(self._conn._rows, key=lambda r: r.get("sequence", 0))
             self._last_result = [list(r.values()) for r in sorted_rows]
@@ -118,6 +130,73 @@ class TestPostgresLedger:
         assert row["event_type"] == "test.rt"
         assert row["actor"] == "a"
         assert "payload" in row
+
+
+def test_rollback_on_write_failure() -> None:
+    """Failed INSERT must not corrupt in-memory sigchain state."""
+    from aevum.core.audit.sigchain import GENESIS_HASH
+
+    class ExplodingCursor:
+        description: list = []
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def execute(self, sql: str, params=None) -> None:
+            if "INSERT" in sql.upper():
+                raise RuntimeError("simulated disk full")
+        def fetchone(self): return None
+        def fetchall(self): return []
+
+    class ExplodingConn:
+        _rows: list = []
+        _sequence: int = 0
+        def cursor(self, row_factory=None): return ExplodingCursor()
+        def commit(self): pass
+
+    sc = Sigchain()
+    ledger = PostgresLedger(ExplodingConn(), sc)
+
+    with pytest.raises(RuntimeError):
+        ledger.append(event_type="will.fail", payload={}, actor="a")
+
+    assert sc._sequence == 0, f"rollback failed: _sequence={sc._sequence}"
+    assert sc._prior_hash == GENESIS_HASH, "rollback failed: prior_hash changed"
+
+
+def test_chain_continuity_across_restart() -> None:
+    """New PostgresLedger on existing data must continue the chain."""
+    conn = FakeConn()
+    sc1 = Sigchain()
+    ledger1 = PostgresLedger(conn, sc1)
+    for i in range(3):
+        ledger1.append(event_type=f"s1.{i}", payload={"i": i}, actor="a")
+    assert sc1._sequence == 3
+
+    # Simulate restart: new sigchain + new ledger on same conn
+    sc2 = Sigchain()
+    assert sc2._sequence == 0  # starts fresh
+
+    ledger2 = PostgresLedger(conn, sc2)  # _resume_chain_from_db fires
+
+    assert sc2._sequence == 3, (
+        f"Expected sequence=3 after resume, got {sc2._sequence}. "
+        "Chain fork: each restart should CONTINUE, not start over."
+    )
+
+    e = ledger2.append(event_type="s2.first", payload={}, actor="b")
+    assert e.sequence == 4, f"Expected sequence=4, got {e.sequence}"
+
+
+def test_last_audit_id_empty() -> None:
+    conn = FakeConn()
+    ledger = PostgresLedger(conn, Sigchain())
+    assert ledger.last_audit_id() is None
+
+
+def test_last_audit_id_after_append() -> None:
+    conn = FakeConn()
+    ledger = PostgresLedger(conn, Sigchain())
+    e = ledger.append(event_type="test", payload={}, actor="a")
+    assert ledger.last_audit_id() == e.audit_id()
 
 
 # Integration tests -- require a real Postgres database

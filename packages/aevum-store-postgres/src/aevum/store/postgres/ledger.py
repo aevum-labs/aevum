@@ -11,6 +11,7 @@ The database table is INSERT-only -- no UPDATE or DELETE ever issued.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from typing import Any
 
@@ -118,6 +119,60 @@ class PostgresLedger:
         self._conn = conn
         self._sigchain = sigchain
         self._lock = lock or threading.Lock()
+        self._resume_chain_from_db()
+
+    def _resume_chain_from_db(self) -> None:
+        """
+        Seed the in-memory sigchain state from the last persisted event.
+
+        Without this, every Engine restart begins a new chain at
+        sequence=1 / prior_hash=GENESIS_HASH, silently forking the chain.
+        After this fix, the sigchain continues from where the last process left off.
+
+        Idempotent — safe to call on a fresh database (no-op if table empty).
+        """
+        from psycopg.rows import dict_row
+
+        log = logging.getLogger(__name__)
+        try:
+            with self._lock:
+                with self._conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(
+                        """
+                        SELECT sequence, event_id, audit_id,
+                               event_type, actor, system_time,
+                               episode_id, causation_id, correlation_id,
+                               prior_hash, payload_hash, signature,
+                               signer_key_id, schema_version,
+                               valid_from, valid_to,
+                               trace_id, span_id, payload
+                        FROM aevum_ledger
+                        ORDER BY sequence DESC
+                        LIMIT 1
+                        """
+                    )
+                    row = cur.fetchone()
+        except Exception as exc:
+            log.debug(
+                "aevum-store-postgres: could not resume chain from DB (%s) "
+                "— starting from genesis. Normal on a fresh database.",
+                exc,
+            )
+            return
+
+        if row is None:
+            return  # Fresh database — genesis is correct
+
+        last_event = _row_to_event(row)
+        continuation_hash = AuditEvent.hash_event_for_chain(last_event)
+        self._sigchain.restore((last_event.sequence, continuation_hash))
+
+        log.debug(
+            "aevum-store-postgres: resumed chain from DB "
+            "— sequence=%d prior_hash=%s…",
+            last_event.sequence,
+            continuation_hash[:12],
+        )
 
     def append(
         self,
@@ -130,6 +185,10 @@ class PostgresLedger:
         correlation_id: str | None = None,
     ) -> AuditEvent:
         with self._lock:
+            # Save sigchain state before advancing it.
+            # If the INSERT fails, restore prevents the chain from
+            # chaining from a ghost event that was never persisted.
+            checkpoint = self._sigchain.checkpoint()
             event = self._sigchain.new_event(
                 event_type=event_type,
                 payload=payload,
@@ -139,28 +198,44 @@ class PostgresLedger:
                 correlation_id=correlation_id,
             )
             row = _event_to_row(event)
-            with self._conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO aevum_ledger (
-                        event_id, audit_id, event_type, actor, system_time,
-                        episode_id, causation_id, correlation_id,
-                        prior_hash, payload_hash, signature, signer_key_id,
-                        schema_version, valid_from, valid_to,
-                        trace_id, span_id, payload
-                    ) VALUES (
-                        %(event_id)s, %(audit_id)s, %(event_type)s, %(actor)s,
-                        %(system_time)s, %(episode_id)s, %(causation_id)s,
-                        %(correlation_id)s, %(prior_hash)s, %(payload_hash)s,
-                        %(signature)s, %(signer_key_id)s, %(schema_version)s,
-                        %(valid_from)s, %(valid_to)s, %(trace_id)s,
-                        %(span_id)s, %(payload)s::jsonb
+            try:
+                with self._conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO aevum_ledger (
+                            event_id, audit_id, event_type, actor, system_time,
+                            episode_id, causation_id, correlation_id,
+                            prior_hash, payload_hash, signature, signer_key_id,
+                            schema_version, valid_from, valid_to,
+                            trace_id, span_id, payload
+                        ) VALUES (
+                            %(event_id)s, %(audit_id)s, %(event_type)s, %(actor)s,
+                            %(system_time)s, %(episode_id)s, %(causation_id)s,
+                            %(correlation_id)s, %(prior_hash)s, %(payload_hash)s,
+                            %(signature)s, %(signer_key_id)s, %(schema_version)s,
+                            %(valid_from)s, %(valid_to)s, %(trace_id)s,
+                            %(span_id)s, %(payload)s::jsonb
+                        )
+                        """,
+                        row,
                     )
-                    """,
-                    row,
-                )
-            self._conn.commit()
+                self._conn.commit()
+            except Exception:
+                self._sigchain.restore(checkpoint)
+                raise
             return event
+
+    def last_audit_id(self) -> str | None:
+        """Return the audit_id of the most recently appended event, or None."""
+        from psycopg.rows import dict_row
+
+        with self._lock:
+            with self._conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    "SELECT audit_id FROM aevum_ledger ORDER BY sequence DESC LIMIT 1"
+                )
+                row = cur.fetchone()
+        return row["audit_id"] if row else None
 
     def get(self, audit_id: str) -> AuditEvent:
         from psycopg.rows import dict_row
