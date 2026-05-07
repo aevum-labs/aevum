@@ -234,15 +234,16 @@ aevum store migrate
 ```python
 from aevum.core import Engine
 from aevum.core.audit.sigchain import Sigchain
-from aevum.store.postgres import PostgresGraphStore  # aevum-store-postgres
+from aevum.core.audit.signer import InProcessSigner
+from aevum.store.postgres import PostgresStore  # aevum-store-postgres
 
 # Production: key from KMS
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 key = Ed25519PrivateKey.from_private_bytes(kms_client.get_secret("aevum-signing-key"))
 
 engine = Engine(
-    graph_store=PostgresGraphStore(dsn="postgresql://..."),
-    sigchain=Sigchain(private_key=key, key_id="kms-key-2026-01"),
+    graph_store=PostgresStore(dsn="postgresql://..."),
+    sigchain=Sigchain(signer=InProcessSigner(private_key=key, key_id="kms-key-2026-01")),
     opa_url="http://opa:8181",  # optional
 )
 ```

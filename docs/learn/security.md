@@ -98,7 +98,7 @@ reverse proxy (nginx, Traefik, or your cloud load balancer) for production.
 Aevum itself has no secrets to manage except the Ed25519 signing key.
 For production:
 1. Generate the key in your KMS
-2. Pass it to `Engine(sigchain=Sigchain(private_key=your_key))`
+2. Pass it to `Engine(sigchain=Sigchain(signer=InProcessSigner(private_key=your_key)))`
 3. Store the public key for verification
 
 Third-party dependencies (PostgreSQL credentials, OPA URL, OIDC JWKS URI)
@@ -297,9 +297,10 @@ For production, supply your own key from a KMS:
 ```python
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from aevum.core.audit.sigchain import Sigchain
+from aevum.core.audit.signer import InProcessSigner
 
 key = Ed25519PrivateKey.from_private_bytes(your_kms_key_bytes)
-engine = Engine(sigchain=Sigchain(private_key=key, key_id="kms-key-id-1"))
+engine = Engine(sigchain=Sigchain(signer=InProcessSigner(private_key=key, key_id="kms-key-id-1")))
 ```
 
 ---
