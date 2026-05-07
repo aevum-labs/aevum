@@ -1,0 +1,7 @@
+/* ── Logo ───────────────────────────────────────────────────────────────── */
+/* Baked-in PNG transparency handles the circle; border-radius is a fallback
+   in case Material renders a background behind the img at any theme variant. */
+.md-logo img {
+  border-radius: 50%;
+  object-fit: cover;
+}
