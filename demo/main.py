@@ -31,8 +31,6 @@ Security:
   - Max 200 concurrent sessions
 """
 
-from __future__ import annotations
-
 import asyncio
 import os
 import time
@@ -156,6 +154,18 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                         "detail": "Demo request bodies must be under 32 KB.",
                     },
                 )
+            # Also enforce when Content-Length is absent (chunked/piped transfers)
+            if not cl:
+                body = await request.body()
+                if len(body) > self._MAX_BYTES:
+                    return JSONResponse(
+                        status_code=413,
+                        content={
+                            "error": "request_too_large",
+                            "max_bytes": self._MAX_BYTES,
+                            "detail": "Demo request bodies must be under 32 KB.",
+                        },
+                    )
         return await call_next(request)
 
 
