@@ -58,6 +58,12 @@ class InMemoryLedger:
         with self._lock:
             return len(self._events)
 
+    def last_audit_id(self) -> str | None:
+        all_ev = self.all_events()
+        if not all_ev:
+            return None
+        return all_ev[-1].audit_id()
+
     def __delitem__(self, key: object) -> None:
         """Barrier 4: deletion forbidden."""
         raise BarrierViolationError(

@@ -76,6 +76,8 @@ navigate (use query), write/insert/store (use ingest).
 | aevum-llm            | aevum.llm            | LLM adapter complication  |
 | aevum-oidc           | aevum.oidc           | OIDC federation           |
 | aevum-cli            | aevum.cli            | Command-line interface    |
+| aevum-spiffe         | aevum.spiffe         | SPIFFE agent identity complication (optional) |
+| aevum-publish        | aevum.publish        | Rekor v2 transparency log complication (optional) |
 
 ---
 
