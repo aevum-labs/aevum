@@ -133,6 +133,7 @@ nav:
     - Audit Trails and Article 12: concepts/audit-trails.md
     - Memory Poisoning Defense: concepts/memory-poisoning.md
     - Tamper-Evident Logging: concepts/tamper-evident-logs.md
+    - Research Foundations: concepts/research-foundations.md
   - Build:
     - Quickstart: getting-started/quickstart.md
     - MCP Setup: getting-started/mcp-setup.md
