@@ -11,10 +11,12 @@ import re
 import pytest
 
 from aevum.sdk.correlation import (
+    _SIGNING_FIELDS,
+    _compute_event_hash,
+    _normalise_to_trace_id,
     build_cross_chain_ref,
     extract_episode_id_from_traceparent,
     inject_traceparent,
-    _SIGNING_FIELDS,
 )
 
 
@@ -39,7 +41,7 @@ class TestExtractEpisodeIdFromTraceparent:
         assert extract_episode_id_from_traceparent(header) is None
 
     def test_version_ff_reserved_returns_none(self) -> None:
-        header = f"ff-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        header = "ff-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
         assert extract_episode_id_from_traceparent(header) is None
 
     def test_non_sampled_flag_still_extracts(self) -> None:
@@ -195,8 +197,6 @@ class TestBuildCrossChainRef:
 
     def test_event_hash_uses_signing_fields_only(self) -> None:
         """event_hash must match the signing-spec hash (not a full-event hash)."""
-        from aevum.sdk.correlation import _compute_event_hash, _SIGNING_FIELDS
-
         signing_obj = {f: self._sample_event.get(f) for f in _SIGNING_FIELDS}
         canonical = json.dumps(
             signing_obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False
@@ -229,17 +229,14 @@ class TestBuildCrossChainRef:
 class TestNormaliseToTraceId:
 
     def test_already_32_hex_passthrough(self) -> None:
-        from aevum.sdk.correlation import _normalise_to_trace_id
         trace = "4bf92f3577b34da6a3ce929d0e0e4736"
         assert _normalise_to_trace_id(trace) == trace
 
     def test_uuid_stripped_of_hyphens(self) -> None:
-        from aevum.sdk.correlation import _normalise_to_trace_id
         uuid = "4bf92f35-77b3-4da6-a3ce-929d0e0e4736"
         assert _normalise_to_trace_id(uuid) == "4bf92f3577b34da6a3ce929d0e0e4736"
 
     def test_non_hex_string_hashed(self) -> None:
-        from aevum.sdk.correlation import _normalise_to_trace_id
         result = _normalise_to_trace_id("ep-billing-INV-001")
         assert len(result) == 32
         assert re.match(r"^[0-9a-f]{32}$", result)
