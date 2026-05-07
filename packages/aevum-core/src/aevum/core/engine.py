@@ -249,6 +249,7 @@ class Engine:
         episode_id: str | None = None,
         correlation_id: str | None = None,
         model_context: dict[str, Any] | None = None,
+        capture_witness: bool = True,
     ) -> OutputEnvelope:
         return _query(
             purpose=purpose, subject_ids=subject_ids, actor=actor,
@@ -259,6 +260,7 @@ class Engine:
             circuit_breakers=self._circuit_breakers,
             episode_id=episode_id, correlation_id=correlation_id,
             model_context=model_context,
+            capture_witness=capture_witness,
         )
 
     def review(
@@ -291,13 +293,15 @@ class Engine:
         event_type: str,
         payload: dict[str, Any],
         actor: str,
+        witness: dict[str, Any] | None = None,
         idempotency_key: str | None = None,
         episode_id: str | None = None,
         correlation_id: str | None = None,
     ) -> OutputEnvelope:
         return _commit(
             event_type=event_type, payload=payload, actor=actor,
-            ledger=self._ledger, idempotency_key=idempotency_key,
+            ledger=self._ledger, graph=self._graph, witness=witness,
+            idempotency_key=idempotency_key,
             idempotency_cache=self._idempotency_cache,
             episode_id=episode_id, correlation_id=correlation_id,
         )

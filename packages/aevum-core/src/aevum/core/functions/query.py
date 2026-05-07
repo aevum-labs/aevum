@@ -22,6 +22,8 @@ from aevum.core.functions.ingest import _merge_model_context
 from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
+from aevum.core.witness import Witness
+from aevum.core.witness import capture as capture_witness_fn
 
 if TYPE_CHECKING:
     from aevum.core.complications.circuit_breaker import CircuitBreaker
@@ -50,6 +52,7 @@ def query(
     episode_id: str | None = None,
     correlation_id: str | None = None,
     model_context: dict[str, Any] | None = None,
+    capture_witness: bool = True,
 ) -> OutputEnvelope:
     """
     Traverse the knowledge graph for a declared purpose.
@@ -154,9 +157,24 @@ def query(
     if unavailable:
         warnings.append(f"Complications unavailable: {unavailable}")
 
+    witness_obj: Witness | None = None
+    if capture_witness:
+        witness_obj = capture_witness_fn(
+            subject_ids=list(subject_ids),
+            results=graph_results,
+            ledger=ledger,
+        )
+
+    data_payload: dict[str, Any] = {
+        "results": graph_results,
+        "complication_results": complication_results,
+    }
+    if witness_obj is not None:
+        data_payload["witness"] = witness_obj.as_dict()
+
     return OutputEnvelope(
         status=status,  # type: ignore[arg-type]
-        data={"results": graph_results, "complication_results": complication_results},
+        data=data_payload,
         audit_id=audit_id,
         confidence=0.9 if status == "ok" else 0.7,
         uncertainty=UncertaintyAnnotation.empty(),

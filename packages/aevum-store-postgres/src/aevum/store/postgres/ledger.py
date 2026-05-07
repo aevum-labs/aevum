@@ -260,6 +260,26 @@ class PostgresLedger:
             result = cur.fetchone()
         return result[0] if result else 0
 
+    def max_sequence_for_subjects(self, subject_ids: list[str]) -> int:
+        """
+        Return the highest sequence number among all ingest.accepted events
+        whose payload subject_id is in subject_ids. Returns 0 if none found.
+        """
+        if not subject_ids:
+            return 0
+        with self._lock, self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COALESCE(MAX(sequence), 0)
+                FROM aevum_ledger
+                WHERE event_type = 'ingest.accepted'
+                  AND payload->>'subject_id' = ANY(%s)
+                """,
+                (subject_ids,),
+            )
+            result = cur.fetchone()
+        return int(result[0]) if result else 0
+
     def __delitem__(self, key: object) -> None:
         raise BarrierViolationError(
             "Attempted to delete a ledger entry -- Barrier 4 (Audit Immutability) violated."
