@@ -10,8 +10,6 @@ import sys
 import time
 import unittest.mock
 
-import pytest
-
 
 def _make_mock_engine(entries: list[dict] | None = None) -> unittest.mock.MagicMock:
     """Minimal engine mock with configurable ledger entries."""
@@ -192,7 +190,7 @@ class TestPublishComplicationIntegration:
         # Callers must invoke comp.on_approved(engine) explicitly after
         # engine.approve_complication("aevum-publish"). Same pattern as aevum-spiffe.
         sys.path.insert(0, "packages/aevum-core/src")
-        from aevum.core import Engine
+        from aevum.core import Engine  # noqa: I001
         from aevum.publish import PublishComplication
 
         mock_resp = _make_mock_rekor_response(log_index=99, uuid="test-uuid-publish")
