@@ -159,6 +159,7 @@ nav:
     - aevum-spiffe: https://github.com/aevum-labs/aevum/tree/main/packages/aevum-spiffe
     - aevum-publish: https://github.com/aevum-labs/aevum/tree/main/packages/aevum-publish
   - Security: security.md
+  - Contributing: contributing.md
   - Reference:
     - API: reference/api.md
     - CLI: reference/cli.md
