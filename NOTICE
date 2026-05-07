@@ -1,0 +1,56 @@
+Aevum
+Copyright 2025-2026 bnyhil31 and the Aevum contributors
+
+Licensed under the Apache License, Version 2.0 (the
+"License"). A copy of the license is included in this
+repository as LICENSE, and is also available at:
+  http://www.apache.org/licenses/LICENSE-2.0
+
+==========================================================
+Third-Party Notices
+==========================================================
+
+This product includes software from third parties whose
+licenses are compatible with the Apache License 2.0.
+The complete dependency license list is at:
+  docs/learn/deployment.md (License section)
+
+Apache-2.0 dependencies that ship their own NOTICE files
+are listed below.
+
+---
+
+propcache 0.4.1
+License: Apache-2.0
+Copyright 2016-2021, Andrew Svetlov and aio-libs team
+
+---
+
+requests 2.33.1
+License: Apache-2.0
+Copyright 2019 Kenneth Reitz
+
+---
+
+yarl 1.23.0
+License: Apache-2.0
+Copyright 2016-2021, Andrew Svetlov and aio-libs team
+
+---
+
+==========================================================
+LGPL-3.0 Library Dependencies
+==========================================================
+
+The following dependencies are licensed under LGPL-3.0-only.
+They are used via their standard public APIs, are not
+modified, and can be replaced by users with any compatible
+implementation. These conditions satisfy LGPL-3.0 library
+use terms and are compatible with the Apache-2.0 license
+of this project.
+
+psycopg 3.3.3
+psycopg-binary 3.3.3
+License: LGPL-3.0-only
+Used by: aevum-store-postgres (PostgreSQL adapter)
+LGPL source: https://github.com/psycopg/psycopg
