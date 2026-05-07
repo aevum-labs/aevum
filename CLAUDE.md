@@ -78,6 +78,7 @@ navigate (use query), write/insert/store (use ingest).
 | aevum-cli            | aevum.cli            | Command-line interface    |
 | aevum-spiffe         | aevum.spiffe         | SPIFFE agent identity complication (optional) |
 | aevum-publish        | aevum.publish        | Rekor v2 transparency log complication (optional) |
+| WebhookRegistry      | aevum.core.complications | review event delivery with retry and dead-letter |
 
 ---
 

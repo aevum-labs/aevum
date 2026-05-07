@@ -139,7 +139,7 @@ implementation backed by a KMS or HSM outside the agent's trust boundary.
 | `aevum-sdk` | Complication developer kit |
 | `aevum-store-oxigraph` | Embedded RDF graph backend (single-node) |
 | `aevum-store-postgres` | PostgreSQL graph + consent + ledger backend |
-| `aevum-store-jena` | Apache Jena RDF backend (enterprise) |
+| `aevum-store-jena` | Apache Jena SPARQL backend _(in development)_ |
 | `aevum-mcp` | MCP server for any MCP-compatible host (Claude Desktop, Cursor, and others) |
 | `aevum-oidc` | OIDC token validation complication |
 | `aevum-llm` | LiteLLM-backed LLM complication with audit trail |
