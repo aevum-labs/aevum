@@ -34,24 +34,23 @@ Security:
 import asyncio
 import os
 import time
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, suppress
 from typing import Annotated, Any, Literal
 from uuid import uuid4
-
-from fastapi import FastAPI, Request, Response
-from fastapi.openapi.utils import get_openapi
-from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from aevum.core import Engine
 from aevum.core.consent.models import ConsentGrant
 from aevum.store.oxigraph import OxigraphStore
-
+from fastapi import FastAPI, Request, Response
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel, ConfigDict, Field
 from seed import seed_engine
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -127,14 +126,12 @@ async def _cleanup_loop() -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     task = asyncio.create_task(_cleanup_loop())
     yield
     task.cancel()
-    try:
+    with suppress(asyncio.CancelledError):
         await task
-    except asyncio.CancelledError:
-        pass
 
 
 # ── Security middleware ───────────────────────────────────────────────────────

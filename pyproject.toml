@@ -32,6 +32,9 @@ target-version = "py311"
 select = ["E", "F", "UP", "B", "SIM", "I", "TCH", "ANN"]
 ignore = ["ANN401"]
 
+[tool.ruff.lint.per-file-ignores]
+"demo/main.py" = ["E501"]  # long lines acceptable in embedded HTML template strings
+
 [tool.mypy]
 strict = true
 python_version = "3.11"

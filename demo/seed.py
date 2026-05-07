@@ -14,8 +14,12 @@ Scenario C uses engine.create_review() at request time, not at seed time.
 
 from __future__ import annotations
 
-from aevum.core import Engine
+from typing import TYPE_CHECKING
+
 from aevum.core.consent.models import ConsentGrant
+
+if TYPE_CHECKING:
+    from aevum.core import Engine
 
 
 _DEMO_OPS = ["ingest", "query", "replay", "export"]
