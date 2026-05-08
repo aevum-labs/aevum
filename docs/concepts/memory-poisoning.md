@@ -91,6 +91,6 @@ Aevum structurally addresses Layers 2 and 3. It enforces consent as a preconditi
 
 ## See also
 
-- [The Five Barriers](../learn/architecture.md#five-absolute-barriers)
+- [The Five Barriers](../learn/architecture.md#five-unconditional-barriers)
 - [Consent Model](../learn/architecture.md#consent-model)
 - [Audit Trails and Article 12](audit-trails.md)

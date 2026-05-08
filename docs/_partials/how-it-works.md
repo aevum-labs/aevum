@@ -1,5 +1,5 @@
 ---
-description: "Data flow through Aevum's five functions, three named graphs, five absolute barriers, and TOCTOU-closing query witness: from governed membrane ingest to deterministic replay."
+description: "Data flow through Aevum's five functions, three named graphs, five unconditional barriers, and TOCTOU-closing query witness: from governed membrane ingest to verifiable decision records."
 ---
 
 # How It Works
@@ -97,9 +97,9 @@ Use `commit` to record business events: "credit issued", "policy approved", "doc
 
 ### 5. Replay
 
-An agent calls `engine.replay(audit_id=...)` to deterministically reconstruct
-any past ledger entry. The payload is retrieved from `urn:aevum:provenance` and
-returned in `data["replayed_payload"]`.
+An agent calls `engine.replay(audit_id=...)` to retrieve and verify the exact
+signed record of any past ledger entry. The payload is retrieved from
+`urn:aevum:provenance` and returned in `data["replayed_payload"]`.
 
 Replay requires a consent grant with `"replay"` in the operations list.
 

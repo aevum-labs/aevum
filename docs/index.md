@@ -1,6 +1,6 @@
 ---
 description: "Aevum — the governed context kernel for AI agents.
-Cryptographic audit trails, consent enforcement, and deterministic replay."
+Cryptographic audit trails, consent enforcement, and verifiable decision records."
 ---
 
 # Aevum
@@ -8,7 +8,7 @@ Cryptographic audit trails, consent enforcement, and deterministic replay."
 **The Python library that makes your AI agent's memory accountable.**
 
 Aevum is a Python library that gives AI agents a signed audit trail,
-consent-checked data access, and deterministic replay of past decisions —
+consent-checked data access, and verifiable decision records —
 three problems that tend to surface together in production. The quickstart
 gets you to working code in ten minutes.
 
@@ -28,7 +28,7 @@ Three properties that AI agents do not have by default:
    a re-execution against a new model. Any modification to the ledger is
    immediately detectable.
 
-3. **Five absolute barriers** — crisis detection, classification ceiling, consent
+3. **Five unconditional barriers** — crisis detection, classification ceiling, consent
    enforcement, audit immutability, and provenance checks are hardcoded in
    `barriers.py`. They are not configurable. They cannot be bypassed by
    configuration, policy, or administrator override.

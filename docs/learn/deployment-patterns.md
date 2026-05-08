@@ -7,8 +7,8 @@ for tool-call gating. Each pattern maps to a different enforcement guarantee."
 # Deployment Patterns
 
 Aevum is an in-process Python library — a context kernel in the microkernel
-sense: minimal stable mechanism (consent, provenance, sigchain, deterministic
-replay) paired with externalized policy (Cedar, OPA). This means enforcement
+sense: minimal stable mechanism (consent, provenance, sigchain, verifiable
+decision records) paired with externalized policy (Cedar, OPA). This means enforcement
 operates at the application layer.
 
 !!! note "Honest scope"
@@ -78,7 +78,7 @@ flowchart LR
 ```
 
 **Aevum's role:** Captures and signs the pre-call context envelope before the
-gateway call. Records the consent receipt. Provides deterministic replay of
+gateway call. Records the consent receipt. Provides verifiable decision records of
 any past decision from the immutable sigchain.
 
 ---

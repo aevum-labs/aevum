@@ -110,7 +110,7 @@ retained = [
 ]
 print(f"Entries within 6-month window: {len(retained)}")
 
-# Replay — deterministic reconstruction for regulatory audit
+# Replay — verifiable retrieval for regulatory audit
 # Same audit_id always returns same payload — Spec Section 8.7
 
 # Grant audit agent replay access
@@ -137,7 +137,7 @@ chain_intact = engine.verify_sigchain()
 print(f"Sigchain intact: {chain_intact}")  # True
 ```
 
-Each section of the example maps to a specific regulatory requirement. The `add_consent_grant` call at the top satisfies Barrier 3 (consent as precondition for any write) and simultaneously creates a ledger entry that can be replayed later under `regulatory-audit` purpose. The `ingest` call's `provenance` argument provides Article 12(2)(b) compliance: `source_id` identifies the reference database (`fhir-r4-endpoint-prod`) and `chain_of_custody` records every system the data passed through before reaching the kernel. The `data` payload is stored verbatim, satisfying 12(2)(c). The `get_ledger_entries()` call with a date filter demonstrates 6-month retention query — the ledger never deletes entries, so the filter is a view over the complete record. The `replay` call at the end provides deterministic reconstruction: the same `audit_id` will return the same heart-rate reading regardless of what the production FHIR endpoint contains today.
+Each section of the example maps to a specific regulatory requirement. The `add_consent_grant` call at the top satisfies Barrier 3 (consent as precondition for any write) and simultaneously creates a ledger entry that can be replayed later under `regulatory-audit` purpose. The `ingest` call's `provenance` argument provides Article 12(2)(b) compliance: `source_id` identifies the reference database (`fhir-r4-endpoint-prod`) and `chain_of_custody` records every system the data passed through before reaching the kernel. The `data` payload is stored verbatim, satisfying 12(2)(c). The `get_ledger_entries()` call with a date filter demonstrates 6-month retention query — the ledger never deletes entries, so the filter is a view over the complete record. The `replay` call at the end provides verifiable retrieval: the same `audit_id` will return the same heart-rate reading regardless of what the production FHIR endpoint contains today.
 
 ## What Aevum does not cover
 

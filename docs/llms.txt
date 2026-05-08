@@ -6,7 +6,7 @@
 ## What Aevum is
 
 Aevum is a Python library that gives AI agents a signed audit trail,
-consent-checked data access, and deterministic replay of past decisions —
+consent-checked data access, and verifiable decision records —
 three problems that tend to surface together in production.
 
 It is not a memory framework. It does not replace Mem0, LangChain, or
@@ -19,9 +19,9 @@ you are using consent-gated and auditable.
 - query: consent-gated, classification-ceiling-enforced context retrieval
 - review: human-in-the-loop gate before irreversible agent actions
 - commit: episodic event recording in the immutable sigchain ledger
-- replay: deterministic reconstruction of any past agent session
+- replay: verifiable retrieval of any past agent session
 
-## Five absolute barriers (cannot be bypassed)
+## Five unconditional barriers (cannot be bypassed)
 
 1. Crisis detection — crisis content stops immediately, always
 2. Classification ceiling — agents cannot access data above their clearance

@@ -1,5 +1,5 @@
 ---
-description: "How Aevum works: the governed membrane, five absolute barriers,
+description: "How Aevum works: the governed membrane, five unconditional barriers,
 the sigchain, five public functions, and the consent model — in one page."
 ---
 
@@ -10,21 +10,21 @@ AI agents and the data they reason over, enforcing consent, provenance, and
 classification on every operation before any data is read or written. Where
 observability tools log what happened after the fact, Aevum enforces governance
 before the agent acts — and records a cryptographically signed, hash-chained
-ledger that makes every past decision deterministically replayable.
+ledger that produces verifiable decision records for every past operation.
 
 <div class="grid cards" markdown>
 
--   :material-lock-check:{ .lg } **Five absolute barriers**
+-   :material-lock-check:{ .lg } **Five unconditional barriers**
 
     Unconditional enforcement. Hardcoded in `barriers.py`. Not
     configurable, not bypassable.
 
-    [:octicons-arrow-right-24: Read more](#five-absolute-barriers)
+    [:octicons-arrow-right-24: Read more](#five-unconditional-barriers)
 
 -   :material-link-variant:{ .lg } **The sigchain**
 
-    Ed25519 + SHA3-256 hash chain. The mechanism behind deterministic
-    replay and tamper-evident audit.
+    Ed25519 + SHA3-256 hash chain. The mechanism behind verifiable
+    decision records and tamper-evident audit.
 
     [:octicons-arrow-right-24: Read more](#the-sigchain)
 
@@ -73,12 +73,12 @@ This is not middleware, not a wrapper, and not a logging sidecar. It is a
 kernel: all agent data access passes through it, and the kernel enforces
 the invariants unconditionally.
 
-## Five absolute barriers
+## Five unconditional barriers
 
-Absolute barriers are unconditional, hardcoded checks in `aevum-core`.
+Unconditional barriers are hardcoded checks in `aevum-core`.
 They are not policies. They are not configurable. They cannot be bypassed.
 
-| | Absolute barrier | Policy (OPA / Cedar) |
+| | Unconditional barrier | Policy (OPA / Cedar) |
 |---|---|---|
 | Location | `barriers.py` — hardcoded | OPA sidecar or cedarpy |
 | Configurable | Never | Yes |
@@ -224,7 +224,7 @@ five barriers unconditionally on every pull request.
 
 ## The sigchain
 
-The sigchain is the mechanism that makes deterministic replay possible. Every
+The sigchain is the mechanism that makes verifiable decision records possible. Every
 entry in the episodic ledger is signed with Ed25519 and chained with SHA3-256,
 forming a tamper-evident sequence where any modification is immediately detectable.
 
@@ -341,7 +341,7 @@ behavioral contracts are frozen at Phase 1.
 | `replay` | (REPLAY) | Reconstruct any past decision faithfully |
 
 All five functions return exactly one `OutputEnvelope`, write to the episodic
-ledger, enforce the five absolute barriers unconditionally, and require an
+ledger, enforce the five unconditional barriers unconditionally, and require an
 `actor` parameter identifying the caller.
 
 ### ingest — RELATE
@@ -687,7 +687,7 @@ failures without requiring external monitoring.
 
 Being precise about scope is a trust signal, not a weakness. Aevum is
 designed to do one thing well — consent enforcement, provenance capture,
-sigchain audit, and deterministic replay — and compose with the ecosystem
+sigchain audit, and verifiable decision records — and compose with the ecosystem
 around it.
 
 **Aevum does not prevent prompt injection.** Use a guardrail layer
@@ -725,6 +725,6 @@ interprets it.
 
 *[governed membrane]: The enforcement layer through which all data passes on ingest and query. Barriers 3 and 5 fire here unconditionally.
 *[episodic ledger]: The append-only, Ed25519-signed, SHA3-256 hash-chained record of all engine events.
-*[absolute barrier]: An unconditional, hardcoded enforcement check — not configurable, not bypassable.
+*[unconditional barrier]: An unconditional, hardcoded enforcement check — not configurable, not bypassable.
 *[consent grant]: A scoped, purpose-bound, time-limited access authorization required for ingest, query, and replay.
 *[episode]: A group of related AuditEvents representing one complete agent workflow.

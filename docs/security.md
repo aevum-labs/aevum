@@ -86,10 +86,10 @@ extend the kernel. Each complication:
 
 - Must be explicitly installed AND approved before activating
 - Writes audit events using the kernel's sigchain (tamper-evident)
-- Cannot disable or bypass the five absolute barriers
+- Cannot disable or bypass the five unconditional barriers
 - Cannot modify the existing chain (append-only)
 
-## Absolute barriers
+## Unconditional barriers
 
 The five barriers cannot be disabled or bypassed by any policy, configuration,
 or complication:
@@ -120,6 +120,6 @@ against a FIPS 140-3 validated PKCS#11 module.
 
 ## See also
 
-- [Architecture](/learn/architecture/) — the five absolute barriers
+- [Architecture](/learn/architecture/) — the five unconditional barriers
 - [ADR-004](/adrs/adr-004-signer-interface/) — signer trust-boundary analysis
 - [Deployment Patterns](/learn/deployment-patterns/) — signing key tier by deployment

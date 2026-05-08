@@ -116,7 +116,7 @@ A named business event was appended to the ledger.
 
 ### replay.started
 
-A past decision is being deterministically reconstructed.
+A past decision's signed record is being retrieved and verified.
 
 | Field | Type | Description |
 |---|---|---|
@@ -127,7 +127,7 @@ A past decision is being deterministically reconstructed.
 
 ### barrier.triggered
 
-An absolute barrier fired and halted the operation.
+An unconditional barrier fired and halted the operation.
 
 | Field | Type | Description |
 |---|---|---|
