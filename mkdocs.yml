@@ -160,9 +160,7 @@ nav:
     - adr-006 SPIFFE Integration: adrs/adr-006-spiffe-integration.md
     - adr-007 Transparency Log: adrs/adr-007-transparency-log.md
     - adr-008 Multi-Agent Correlation: adrs/adr-008-multi-agent-correlation.md
-  - Packages:
-    - aevum-spiffe: https://github.com/aevum-labs/aevum/tree/main/packages/aevum-spiffe
-    - aevum-publish: https://github.com/aevum-labs/aevum/tree/main/packages/aevum-publish
+  - Packages: packages/index.md
   - Security: security.md
   - Contributing: contributing.md
   - Reference:
