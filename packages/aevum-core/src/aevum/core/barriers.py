@@ -1,5 +1,5 @@
 """
-Absolute Barriers — hardcoded, unconditional, non-configurable.
+Unconditional Barriers — hardcoded, unconditional, non-configurable.
 Spec Section 09.3. Canary tests in tests/test_canary.py.
 """
 
@@ -42,7 +42,26 @@ def _kernel_provenance(audit_id: str) -> ProvenanceRecord:
 
 
 def check_crisis(data: dict[str, Any], audit_id: str) -> OutputEnvelope | None:
-    """Barrier 1 — CRISIS. Returns crisis envelope or None."""
+    """
+    Crisis pattern detection barrier (Barrier 1).
+
+    Screens ingested and queried content for crisis indicators before any
+    graph operation. If crisis content is detected, the operation is halted
+    and a crisis envelope is returned.
+
+    IMPORTANT LIMITATIONS:
+    - This is a content-screening mechanism, not a clinical safety system.
+    - It is not validated to any clinical standard (FDA, EU MDR, or similar).
+    - It is not a medical device.
+    - False negatives (missed crisis content) are possible.
+    - False positives (incorrectly flagged content) are possible.
+    - It does not replace human clinical judgment.
+    - It must not be used as the sole safety control for applications
+      serving users in mental-health, crisis, or vulnerable-population
+      contexts. Complement with human review and clinical-grade tooling.
+
+    See THREAT_MODEL.md — Crisis Detection Limitations.
+    """
     if any(kw in _text_from_data(data) for kw in _CRISIS_KEYWORDS):
         return OutputEnvelope.crisis(
             audit_id=audit_id,

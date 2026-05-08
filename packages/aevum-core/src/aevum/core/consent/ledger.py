@@ -24,6 +24,24 @@ class ConsentLedger:
             self._grants[grant.grant_id] = grant
 
     def revoke_grant(self, grant_id: str) -> None:
+        # DISTRIBUTED DEPLOYMENT NOTE:
+        # The consent ledger uses an OR-Set CRDT for grant management.
+        # OR-Set semantics: "add wins" on concurrent add/remove.
+        #
+        # In single-node deployments (the standard case), revocation is
+        # immediate and reliable.
+        #
+        # In distributed deployments with multiple Engine instances, if a
+        # grant-add and a grant-revoke for the same grant occur simultaneously
+        # on two nodes, the add will win on merge. This means consent may
+        # appear granted after a revocation in a concurrent multi-node scenario.
+        #
+        # Mitigation: Coordinate consent operations through a single
+        # authoritative node in distributed deployments, or implement
+        # application-level sequencing to ensure revocations are fully
+        # propagated before new operations are permitted.
+        #
+        # See THREAT_MODEL.md — Consent Revocation Semantic.
         with self._lock:
             if grant_id in self._grants:
                 g = self._grants[grant_id]
