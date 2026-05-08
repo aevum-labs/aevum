@@ -1,5 +1,5 @@
 ---
-description: "Observability tools record what an AI agent did. Verifiable decision records lets you reproduce it exactly. This page explains what that distinction requires architecturally."
+description: "Observability tools record what an AI agent did. Aevum's replay function lets you retrieve and verify the exact signed record of any past operation. This page explains what that distinction requires architecturally."
 ---
 
 !!! tip "Prerequisite"

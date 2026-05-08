@@ -97,9 +97,9 @@ Use `commit` to record business events: "credit issued", "policy approved", "doc
 
 ### 5. Replay
 
-An agent calls `engine.replay(audit_id=...)` to deterministically reconstruct
-any past ledger entry. The payload is retrieved from `urn:aevum:provenance` and
-returned in `data["replayed_payload"]`.
+An agent calls `engine.replay(audit_id=...)` to retrieve and verify the exact
+signed record of any past ledger entry. The payload is retrieved from
+`urn:aevum:provenance` and returned in `data["replayed_payload"]`.
 
 Replay requires a consent grant with `"replay"` in the operations list.
 

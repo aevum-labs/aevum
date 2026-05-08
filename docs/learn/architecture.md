@@ -10,7 +10,7 @@ AI agents and the data they reason over, enforcing consent, provenance, and
 classification on every operation before any data is read or written. Where
 observability tools log what happened after the fact, Aevum enforces governance
 before the agent acts — and records a cryptographically signed, hash-chained
-ledger that makes every past decision deterministically replayable.
+ledger that produces verifiable decision records for every past operation.
 
 <div class="grid cards" markdown>
 

@@ -6,7 +6,7 @@
 ## What Aevum is
 
 Aevum is a Python library that gives AI agents a signed audit trail,
-consent-checked data access, and verifiable decision records of past decisions —
+consent-checked data access, and verifiable decision records —
 three problems that tend to surface together in production.
 
 It is not a memory framework. It does not replace Mem0, LangChain, or

@@ -116,7 +116,7 @@ A named business event was appended to the ledger.
 
 ### replay.started
 
-A past decision is being deterministically reconstructed.
+A past decision's signed record is being retrieved and verified.
 
 | Field | Type | Description |
 |---|---|---|
