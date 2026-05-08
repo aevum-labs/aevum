@@ -26,4 +26,4 @@ pip install "aevum-core[cedar]"           # + Cedar policy enforcement
 pip install aevum-core aevum-store-postgres aevum-server aevum-cli "aevum-core[cedar]"  # production
 ```
 
-See [Installation](../getting-started/installation.md) for the full guide.
+See [Deployment](../learn/deployment.md) for the full installation guide.
