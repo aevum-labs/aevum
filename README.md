@@ -181,6 +181,13 @@ activation may require configuration that the caller provides after approval.
 - [Standards Alignment](https://aevum.build/learn/standards-alignment/)
 - [Full documentation](https://aevum.build)
 
+## Security and compliance
+
+- [Threat Model](THREAT_MODEL.md) — trust assumptions, limitations, and
+  deployment recommendations for regulated workloads
+- [Control Mapping](CONTROL_MAPPING.md) — how Aevum's controls map to
+  HIPAA, EU AI Act, GDPR, NIST AI RMF, OWASP, and other frameworks
+
 ## Community
 
 - **Questions and discussion:** [GitHub Discussions](https://github.com/aevum-labs/aevum/discussions)
