@@ -12,46 +12,6 @@ consent-checked data access, and verifiable decision records —
 three problems that tend to surface together in production. The quickstart
 gets you to working code in ten minutes.
 
-## Enforcement before the agent acts
-
-Three properties that AI agents do not have by default:
-
-1. **Consent enforced at the kernel level** — data cannot be accessed without
-   an active consent grant that specifies exactly who can access it, for what
-   purpose, and for how long. Revoking consent takes effect at the next operation.
-   No batch job, no delay. This fires before any policy evaluation, even without
-   Cedar installed.
-
-2. **Replay from an immutable sigchain** — every operation is signed with Ed25519
-   and hash-chained with SHA3-256. `engine.replay(audit_id=...)` reconstructs
-   any past decision exactly as it occurred — same payload, same metadata — not
-   a re-execution against a new model. Any modification to the ledger is
-   immediately detectable.
-
-3. **Five unconditional barriers** — crisis detection, classification ceiling, consent
-   enforcement, audit immutability, and provenance checks are hardcoded in
-   `barriers.py`. They are not configurable. They cannot be bypassed by
-   configuration, policy, or administrator override.
-
-## Who it is for
-
-**Individual developers and startups** building agents that access data about
-real people — healthcare, finance, legal, HR, customer support. Aevum gives
-you consent enforcement and a tamper-evident audit trail without building
-custom infrastructure. Minimum viable setup: one afternoon, no database.
-
-**Enterprise teams with compliance requirements** — HIPAA, GDPR Article 7,
-SOX, FCRA. The episodic ledger produces the evidence an auditor needs: every
-data access, every consent grant, every human approval, replayable on demand.
-Runs fully self-hosted — your data never leaves your infrastructure.
-
-**Anyone who needs to answer "what did the agent do, and why?"** — incident
-investigation, customer complaints, regulatory audit, internal review.
-
-Aevum is not for you if your agent generates content without accessing personal
-data, or if you need a streaming pipeline, an orchestration framework, or a
-managed SaaS. See [fit assessment details in the Architecture page](/learn/architecture/).
-
 ## Where to start
 
 <div class="grid cards" markdown>

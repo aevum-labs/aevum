@@ -60,22 +60,10 @@ for a detailed assessment.
 
 ## How it works
 
-Every piece of data that enters Aevum through `ingest` is:
-
-1. Checked against five unconditional barriers (crisis, classification,
-   consent, immutability, provenance)
-2. Validated against an active consent grant
-3. Written to the knowledge graph (`urn:aevum:knowledge`)
-4. Recorded as a signed, chained audit event (`urn:aevum:provenance`)
-
-Every `query` checks consent before returning any data.
-Every `commit` appends to the immutable ledger.
-Every `replay` retrieves and cryptographically verifies the signed record
-of a past operation from the ledger. It does not re-execute agent
-reasoning or reconstruct the full graph state at a past moment.
-
-The five governed functions are: `ingest`, `query`, `review`,
-`commit`, and `replay`.
+Every operation passes through five unconditional barriers, requires an
+active consent grant, and is recorded as a signed, chained audit event
+before anything is written. The consent ledger tracks every grant and
+revocation; the episodic ledger records every operation immutably.
 
 Read [How It Works](../learn/architecture.md) for the complete
 end-to-end data flow.

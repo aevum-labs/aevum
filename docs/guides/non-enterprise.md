@@ -113,3 +113,33 @@ If you are calling Aevum from an async Python application (FastAPI,
 asyncio, etc.), use a thread executor to avoid blocking the event loop.
 See [Building an Integration Layer](integration-layer.md) for the
 pattern.
+
+---
+
+## Compliance and legal team
+
+**You want:** To understand what evidence Aevum produces and how to use it.
+
+**What Aevum provides:**
+
+- A tamper-evident, signed record of every AI operation including who
+  acted, what data was accessed, and under what consent grant
+- Any past AI decision can be retrieved as a verified record showing
+  exactly what was recorded at the time
+- Every consent grant and revocation is permanently logged
+
+**What Aevum does not provide:**
+
+- Compliance reports — the ledger is evidence, not a report
+- Legal interpretation of regulations
+- Automated regulatory submissions
+
+**For a GDPR or HIPAA audit:**
+
+The episodic ledger (`urn:aevum:provenance`) contains every data access
+with actor, purpose, subject_id, and classification. The consent ledger
+(`urn:aevum:consent`) shows every grant and revocation. Both are
+tamper-evident and can be exported for auditors.
+
+See [CONTROL_MAPPING.md](https://github.com/aevum-labs/aevum/blob/main/CONTROL_MAPPING.md)
+for a regulation-by-regulation mapping of what Aevum's controls address.
