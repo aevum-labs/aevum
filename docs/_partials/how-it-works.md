@@ -1,5 +1,5 @@
 ---
-description: "Data flow through Aevum's five functions, three named graphs, five absolute barriers, and TOCTOU-closing query witness: from governed membrane ingest to deterministic replay."
+description: "Data flow through Aevum's five functions, three named graphs, five unconditional barriers, and TOCTOU-closing query witness: from governed membrane ingest to verifiable decision records."
 ---
 
 # How It Works

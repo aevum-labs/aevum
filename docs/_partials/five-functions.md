@@ -20,7 +20,7 @@ behavioral contracts are frozen at Phase 1.
 All five functions:
 - Return exactly one `OutputEnvelope`
 - Write to the episodic ledger (every call is audited)
-- Enforce the five absolute barriers unconditionally
+- Enforce the five unconditional barriers unconditionally
 - Require an `actor` parameter identifying the caller
 
 ## ingest — RELATE

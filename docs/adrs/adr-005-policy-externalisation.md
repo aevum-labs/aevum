@@ -7,7 +7,7 @@ Confidence: High
 
 ## Context and Problem Statement
 
-Aevum's five absolute barriers (crisis, classification ceiling, consent,
+Aevum's five unconditional barriers (crisis, classification ceiling, consent,
 audit immutability, provenance) are kernel-enforced and unconditional.
 Everything above those barriers — which actors can query which subject data,
 what purposes are allowed, what classification levels apply to which roles —
@@ -40,7 +40,7 @@ content-based rules (does this payload satisfy HIPAA minimum-necessary for
 this purpose?). Both are externalised — the kernel calls them, it does not
 embed them.
 
-The five absolute barriers are NOT policy-controlled. They cannot be
+The five unconditional barriers are NOT policy-controlled. They cannot be
 overridden by any Cedar or OPA policy. This is the Vault pattern: the
 audit broker is unconditional; policy governs everything above it.
 

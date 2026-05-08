@@ -45,7 +45,7 @@ Status precedence (when multiple conditions apply): `crisis` > `error` > `pendin
 | error_code | Meaning |
 |---|---|
 | `"stale_context"` | Witness validation failed at `commit()` time. Restart from `query()`. |
-| `"barrier_triggered"` | An absolute barrier fired and halted the operation. |
+| `"barrier_triggered"` | An unconditional barrier fired and halted the operation. |
 | `"consent_missing"` | No active consent grant for the operation and subject. |
 | `"provenance_missing"` | Provenance chain is incomplete. |
 | `"policy_denied"` | OPA or Cedar policy denied the operation. |

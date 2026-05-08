@@ -78,7 +78,7 @@ flowchart LR
 ```
 
 **Aevum's role:** Captures and signs the pre-call context envelope before the
-gateway call. Records the consent receipt. Provides deterministic replay of
+gateway call. Records the consent receipt. Provides verifiable decision records of
 any past decision from the immutable sigchain.
 
 ---

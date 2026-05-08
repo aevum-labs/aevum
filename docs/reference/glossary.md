@@ -8,7 +8,7 @@ including sigchain, governed membrane, complication, consent grant, and more."
 Hover tooltips for these terms appear throughout the documentation
 wherever the term is used in prose.
 
-**absolute barrier**
+**unconditional barrier**
 : An unconditional, hardcoded enforcement check in `barriers.py`.
   Cannot be disabled by configuration, policy, or administrator override.
 

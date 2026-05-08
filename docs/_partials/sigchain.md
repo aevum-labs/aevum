@@ -157,7 +157,7 @@ Application code MUST NOT use these prefixes:
 | `ingest.accepted` | Successful ingest through the governed membrane |
 | `ingest.rejected` | Ingest denied by policy or consent |
 | `query.accepted` | Graph traversal executed |
-| `barrier.triggered` | Any absolute barrier fired |
+| `barrier.triggered` | Any unconditional barrier fired |
 | `complication.installed` | Complication registered |
 | `complication.approved` | Complication moved to ACTIVE |
 | `complication.suspended` | Complication suspended by admin |

@@ -1,7 +1,7 @@
 # Aevum
 
 Aevum is a Python library that gives AI agents a signed audit trail,
-consent-checked data access, and deterministic replay of past decisions —
+consent-checked data access, and verifiable decision records —
 three problems that tend to surface together in production. The quickstart
 gets you to working code in ten minutes.
 
@@ -43,8 +43,8 @@ Every operation is signed, chained, and replayable. No consent grant = no operat
 | **Consent ledger** | OR-Set consent grants; revocation is immediate and propagates |
 | **Five functions** | `ingest` `query` `review` `commit` `replay` -- the governed API surface |
 | **Human review gates** | Veto-as-default HITL gates with deadline enforcement |
-| **Replay** | Deterministic reconstruction of any past decision |
-| **Five absolute barriers** | Crisis detection, classification ceiling, consent, audit immutability, provenance -- unconditional |
+| **Replay** | Retrieve and verify the exact signed record of any past operation |
+| **Five unconditional barriers** | Crisis detection, classification ceiling, consent, audit immutability, provenance -- unconditional |
 | **Complication framework** | Policy-governed plugin system with 7-state lifecycle |
 | **MCP integration** | All five functions available as tools for any MCP-compatible host |
 | **Agent autonomy levels** | L1-L5 DeepMind taxonomy with automatic review triggers |
@@ -166,7 +166,7 @@ activation may require configuration that the caller provides after approval.
 │  │ (sigchain)  │  │ (OR-Set)     │  │
 │  └─────────────┘  └──────────────┘  │
 │  ┌──────────────────────────────┐   │
-│  │ Five absolute barriers       │   │
+│  │ Five unconditional barriers       │   │
 │  └──────────────────────────────┘   │
 ├─────────────────────────────────────┤
 │  aevum-store-oxigraph / -postgres   │  ← Graph backends

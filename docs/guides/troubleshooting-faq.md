@@ -40,7 +40,7 @@ On Windows (PowerShell):
 ### "cedarpy not installed — consent decisions are permissive"
 
 This is a warning, not an error. Cedar is an optional dependency.
-The five absolute barriers still fire unconditionally.
+The five unconditional barriers still fire unconditionally.
 
 To install Cedar:
 
@@ -304,7 +304,7 @@ an active consent grant. This is unconditional.
 **What happens if I don't have cedarpy installed?**
 
 The kernel warns at startup and falls back to permissive consent
-decisions. The five absolute barriers still fire unconditionally —
+decisions. The five unconditional barriers still fire unconditionally —
 crisis detection, classification ceiling, consent (fast-path denials),
 audit immutability, and provenance are not affected.
 

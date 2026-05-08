@@ -51,12 +51,12 @@ This is not middleware, not a wrapper, and not a logging sidecar. It is a
 kernel: all agent data access passes through it, and the kernel enforces
 the invariants unconditionally.
 
-## Five absolute barriers
+## Five unconditional barriers
 
-Absolute barriers are unconditional, hardcoded checks in `aevum-core`.
+Unconditional barriers are hardcoded checks in `aevum-core`.
 They are not policies. They are not configurable. They cannot be bypassed.
 
-| | Absolute barrier | Policy (OPA / Cedar) |
+| | Unconditional barrier | Policy (OPA / Cedar) |
 |---|---|---|
 | Location | `barriers.py` — hardcoded | OPA sidecar or cedarpy |
 | Configurable | Never | Yes |
@@ -193,7 +193,7 @@ five barriers unconditionally on every pull request.
 
 ## The sigchain
 
-The sigchain is the mechanism that makes deterministic replay possible. Every
+The sigchain is the mechanism that makes verifiable decision records possible. Every
 entry in the episodic ledger is signed with Ed25519 and chained with SHA3-256,
 forming a tamper-evident sequence where any modification is immediately detectable.
 
@@ -310,7 +310,7 @@ behavioral contracts are frozen at Phase 1.
 | `replay` | (REPLAY) | Reconstruct any past decision faithfully |
 
 All five functions return exactly one `OutputEnvelope`, write to the episodic
-ledger, enforce the five absolute barriers unconditionally, and require an
+ledger, enforce the five unconditional barriers unconditionally, and require an
 `actor` parameter identifying the caller.
 
 ### ingest — RELATE
@@ -638,12 +638,12 @@ The `actor` field is immutable in the audit event once written.
 
 Authorization operates at three layers:
 
-### Layer 1: Absolute barriers (unconditional)
+### Layer 1: Unconditional barriers (unconditional)
 
-The five absolute barriers in `barriers.py` fire before any policy evaluation.
+The five unconditional barriers in `barriers.py` fire before any policy evaluation.
 They cannot be overridden by Cedar, OPA, or any configuration.
 
-See [Architecture](/learn/architecture/#five-absolute-barriers).
+See [Architecture](/learn/architecture/#five-unconditional-barriers).
 
 ### Layer 2: Cedar (in-process)
 
@@ -889,7 +889,7 @@ To disable OPA and use Cedar only: unset `AEVUM_OPA_URL`.
 **What happens if Cedar is not installed?**
 
 Aevum warns at startup and falls back to permissive consent decisions.
-The five absolute barriers still fire unconditionally. In production,
+The five unconditional barriers still fire unconditionally. In production,
 install `"aevum-core[cedar]"` to avoid the permissive fallback.
 
 ---
@@ -983,7 +983,7 @@ See [Deployment](/learn/deployment/) for storage backend configuration.
 
 ## See also
 
-- [Architecture](/learn/architecture/) — the five absolute barriers
+- [Architecture](/learn/architecture/) — the five unconditional barriers
 - [Deployment](/learn/deployment/) — production configuration
 
 ---
@@ -1006,7 +1006,7 @@ Python 3.11 or higher is required for all packages.
 pip install aevum-core
 ```
 
-Includes: five functions, five absolute barriers, consent ledger, episodic ledger,
+Includes: five functions, five unconditional barriers, consent ledger, episodic ledger,
 in-memory storage. No database required. Data does not persist across restarts.
 
 ### With persistence
@@ -1052,7 +1052,7 @@ pip install "aevum-core[cedar]"
 
 Adds real Cedar in-process policy evaluation. Recommended for production.
 
-Without this extra, consent decisions fall back to permissive. The five absolute
+Without this extra, consent decisions fall back to permissive. The five unconditional
 barriers still fire unconditionally — crisis detection, classification ceiling,
 consent (fast-path denials), audit immutability, and provenance are not affected
 by whether Cedar is installed.
@@ -1474,7 +1474,7 @@ Every major AI observability platform records what your agent did. None of them 
 
 > **Note:** LangSmith's "replay" re-runs a trace against a new model version; it does not reconstruct the original execution. These are different operations with different guarantees.
 
-## What deterministic replay actually requires
+## What verifiable decision records actually requires
 
 **Recorded outputs, not re-executed inputs.** Replay must return the stored result, not call the LLM again. If two calls to `engine.replay` with the same `audit_id` produce different data, the operation is re-execution, not replay. The Aevum specification is explicit on this point: "Two replay calls with the same audit_id and the same actor clearance MUST produce identical OutputEnvelopes." (Spec Section 8.7) This guarantee holds regardless of how much time has elapsed, what model version is currently deployed, or how the knowledge graph has changed since the original call.
 
@@ -1675,7 +1675,7 @@ retained = [
 ]
 print(f"Entries within 6-month window: {len(retained)}")
 
-# Replay — deterministic reconstruction for regulatory audit
+# Replay — verifiable retrieval for regulatory audit
 # Same audit_id always returns same payload — Spec Section 8.7
 
 # Grant audit agent replay access
@@ -1702,7 +1702,7 @@ chain_intact = engine.verify_sigchain()
 print(f"Sigchain intact: {chain_intact}")  # True
 ```
 
-Each section of the example maps to a specific regulatory requirement. The `add_consent_grant` call at the top satisfies Barrier 3 (consent as precondition for any write) and simultaneously creates a ledger entry that can be replayed later under `regulatory-audit` purpose. The `ingest` call's `provenance` argument provides Article 12(2)(b) compliance: `source_id` identifies the reference database (`fhir-r4-endpoint-prod`) and `chain_of_custody` records every system the data passed through before reaching the kernel. The `data` payload is stored verbatim, satisfying 12(2)(c). The `get_ledger_entries()` call with a date filter demonstrates 6-month retention query — the ledger never deletes entries, so the filter is a view over the complete record. The `replay` call at the end provides deterministic reconstruction: the same `audit_id` will return the same heart-rate reading regardless of what the production FHIR endpoint contains today.
+Each section of the example maps to a specific regulatory requirement. The `add_consent_grant` call at the top satisfies Barrier 3 (consent as precondition for any write) and simultaneously creates a ledger entry that can be replayed later under `regulatory-audit` purpose. The `ingest` call's `provenance` argument is designed to support EU AI Act Article 12(2)(b) — satisfying the EU AI Act depends on your deployment, configuration, jurisdiction, and surrounding controls: `source_id` identifies the reference database (`fhir-r4-endpoint-prod`) and `chain_of_custody` records every system the data passed through before reaching the kernel. The `data` payload is stored verbatim, designed to support EU AI Act Article 12(2)(c) — satisfying the EU AI Act depends on your deployment, configuration, jurisdiction, and surrounding controls. The `get_ledger_entries()` call with a date filter demonstrates 6-month retention query — the ledger never deletes entries, so the filter is a view over the complete record. The `replay` call at the end provides verifiable retrieval: the same `audit_id` will return the same heart-rate reading regardless of what the production FHIR endpoint contains today.
 
 ## What Aevum does not cover
 
@@ -1999,7 +1999,7 @@ Valid operations: `"ingest"`, `"query"`, `"replay"`, `"export"`
 
 The 18-field immutable episodic ledger entry. Every operation appends
 exactly one `AuditEvent` to `urn:aevum:provenance`. This is the information
-stored in each chain entry — the raw material for deterministic replay.
+stored in each chain entry — the raw material for verifiable decision records.
 
 ::: aevum.core.audit.event.AuditEvent
 

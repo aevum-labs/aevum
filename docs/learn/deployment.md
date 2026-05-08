@@ -19,7 +19,7 @@ Python 3.11 or higher is required for all packages.
 pip install aevum-core
 ```
 
-Includes: five functions, five absolute barriers, consent ledger, episodic ledger,
+Includes: five functions, five unconditional barriers, consent ledger, episodic ledger,
 in-memory storage. No database required. Data does not persist across restarts.
 
 ### With persistence
@@ -65,7 +65,7 @@ pip install "aevum-core[cedar]"
 
 Adds real Cedar in-process policy evaluation. Recommended for production.
 
-Without this extra, consent decisions fall back to permissive. The five absolute
+Without this extra, consent decisions fall back to permissive. The five unconditional
 barriers still fire unconditionally — crisis detection, classification ceiling,
 consent (fast-path denials), audit immutability, and provenance are not affected
 by whether Cedar is installed.

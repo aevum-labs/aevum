@@ -70,7 +70,7 @@ Valid operations: `"ingest"`, `"query"`, `"replay"`, `"export"`
 
 The 18-field immutable episodic ledger entry. Every operation appends
 exactly one `AuditEvent` to `urn:aevum:provenance`. This is the information
-stored in each chain entry — the raw material for deterministic replay.
+stored in each chain entry — the raw material for verifiable decision records.
 
 ::: aevum.core.audit.event.AuditEvent
 

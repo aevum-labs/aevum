@@ -39,12 +39,12 @@ The `actor` field is immutable in the audit event once written.
 
 Authorization operates at three layers:
 
-### Layer 1: Absolute barriers (unconditional)
+### Layer 1: Unconditional barriers (unconditional)
 
-The five absolute barriers in `barriers.py` fire before any policy evaluation.
+The five unconditional barriers in `barriers.py` fire before any policy evaluation.
 They cannot be overridden by Cedar, OPA, or any configuration.
 
-See [Architecture](/learn/architecture/#five-absolute-barriers).
+See [Architecture](/learn/architecture/#five-unconditional-barriers).
 
 ### Layer 2: Cedar (in-process)
 
@@ -290,7 +290,7 @@ To disable OPA and use Cedar only: unset `AEVUM_OPA_URL`.
 **What happens if Cedar is not installed?**
 
 Aevum warns at startup and falls back to permissive consent decisions.
-The five absolute barriers still fire unconditionally. In production,
+The five unconditional barriers still fire unconditionally. In production,
 install `"aevum-core[cedar]"` to avoid the permissive fallback.
 
 ---
@@ -384,5 +384,5 @@ See [Deployment](/learn/deployment/) for storage backend configuration.
 
 ## See also
 
-- [Architecture](/learn/architecture/) — the five absolute barriers
+- [Architecture](/learn/architecture/) — the five unconditional barriers
 - [Deployment](/learn/deployment/) — production configuration

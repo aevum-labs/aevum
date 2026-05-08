@@ -1,5 +1,5 @@
 ---
-description: "Release history for Aevum v0.3.1: five governed functions, five absolute barriers, Ed25519 sigchain, Cedar policy, MCP integration, and 290+ tests."
+description: "Release history for Aevum v0.3.1: five governed functions, five unconditional barriers, Ed25519 sigchain, Cedar policy, MCP integration, and 290+ tests."
 ---
 
 # Changelog
@@ -39,7 +39,7 @@ aevum-store-postgres, aevum-mcp, aevum-cli
 **What's in this release:**
 
 - Five governed functions: `ingest`, `query`, `review`, `commit`, `replay`
-- Five absolute barriers: crisis detection, classification ceiling, consent, audit immutability, provenance
+- Five unconditional barriers: crisis detection, classification ceiling, consent, audit immutability, provenance
 - Ed25519 sigchain + SHA3-256 hash chaining
 - Cedar in-process policy + OPA HTTP sidecar
 - Full test suite: 287 tests, mypy strict, ruff clean

@@ -127,7 +127,7 @@ A past decision is being deterministically reconstructed.
 
 ### barrier.triggered
 
-An absolute barrier fired and halted the operation.
+An unconditional barrier fired and halted the operation.
 
 | Field | Type | Description |
 |---|---|---|

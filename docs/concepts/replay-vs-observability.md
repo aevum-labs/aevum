@@ -1,5 +1,5 @@
 ---
-description: "Observability tools record what an AI agent did. Deterministic replay lets you reproduce it exactly. This page explains what that distinction requires architecturally."
+description: "Observability tools record what an AI agent did. Verifiable decision records lets you reproduce it exactly. This page explains what that distinction requires architecturally."
 ---
 
 !!! tip "Prerequisite"
@@ -23,7 +23,7 @@ Every major AI observability platform records what your agent did. None of them 
 
 > **Note:** LangSmith's "replay" re-runs a trace against a new model version; it does not reconstruct the original execution. These are different operations with different guarantees.
 
-## What deterministic replay actually requires
+## What verifiable decision records actually requires
 
 **Recorded outputs, not re-executed inputs.** Replay must return the stored result, not call the LLM again. If two calls to `engine.replay` with the same `audit_id` produce different data, the operation is re-execution, not replay. The Aevum specification is explicit on this point: "Two replay calls with the same audit_id and the same actor clearance MUST produce identical OutputEnvelopes." (Spec Section 8.7) This guarantee holds regardless of how much time has elapsed, what model version is currently deployed, or how the knowledge graph has changed since the original call.
 
