@@ -1,7 +1,7 @@
 site_name: Aevum
 site_url: https://aevum.build
-site_description: A Python library that gives AI agents a signed audit trail, consent-checked
-  data access, and verifiable decision records.
+site_description: A Python library that gives AI agents a signed audit trail,
+  consent-checked data access, and deterministic replay of past decisions.
 repo_url: https://github.com/aevum-labs/aevum
 repo_name: aevum-labs/aevum
 edit_uri: edit/main/docs/
@@ -9,7 +9,7 @@ edit_uri: edit/main/docs/
 theme:
   name: material
   logo: assets/logo.png
-  favicon: assets/favicon.ico
+  favicon: assets/logo.png
   custom_dir: docs/overrides
   palette:
     - scheme: default
@@ -45,6 +45,10 @@ theme:
 
 plugins:
   - search
+  - social:
+      cards_layout_options:
+        background_color: "#1a1a2e"
+        color: "#ffffff"
   - privacy:
       assets_exclude:
         - unpkg.com/*
@@ -114,6 +118,13 @@ extra:
   analytics:
     provider: google
     property: G-FHDQEMNCM2
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/aevum-labs/aevum
+      name: Aevum on GitHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/aevum-core/
+      name: aevum-core on PyPI
 
 extra_css:
   - stylesheets/extra.css
