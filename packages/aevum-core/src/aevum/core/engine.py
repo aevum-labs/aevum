@@ -98,7 +98,7 @@ class Engine:
         Install a complication: validate manifest, check conflicts, register.
 
         Args:
-            instance: A Complication instance (from aevum.sdk).
+            instance: A Complication instance.
             auto_approve: If True, immediately approve (for testing / trusted installs).
 
         Raises:
