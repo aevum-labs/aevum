@@ -11,12 +11,9 @@ import typer
 _PACKAGES = [
     "aevum-core",
     "aevum-server",
-    "aevum-sdk",
     "aevum-store-oxigraph",
     "aevum-store-postgres",
     "aevum-mcp",
-    "aevum-oidc",
-    "aevum-llm",
     "aevum-cli",
 ]
 
