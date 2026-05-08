@@ -5,6 +5,12 @@ setup, OIDC integration, and Apache-2.0 license analysis."
 
 # Deployment
 
+Before evaluating Aevum for a regulated deployment, read:
+- [Threat Model](https://github.com/aevum-labs/aevum/blob/main/THREAT_MODEL.md) — what Aevum protects, what it
+  does not, and trust assumptions
+- [Control Mapping](https://github.com/aevum-labs/aevum/blob/main/CONTROL_MAPPING.md) — Article-by-Article and
+  standard-by-standard coverage mapping
+
 ## Install options
 
 All install options for Aevum. Start with the minimum and add what you need.
