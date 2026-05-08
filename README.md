@@ -1,17 +1,9 @@
 # Aevum
 
-**The governed context kernel for AI agents.**
-
-Aevum gives every AI agent cryptographic audit trails, human-review gates,
-and consent-bound context assembly -- built into the kernel, not bolted on.
-
-Aevum is a context kernel in the microkernel sense: a minimal, stable
-enforcement primitive (consent, provenance, sigchain, deterministic
-replay) combined with externalized policy (Cedar, OPA). The five absolute
-barriers stay stable as regulations evolve — the Cedar/OPA policy bundles
-change with them. See
-[Standards and Regulatory Alignment](https://aevum.build/learn/standards-alignment/)
-for the regulatory mapping.
+Aevum is a Python library that gives AI agents a signed audit trail,
+consent-checked data access, and deterministic replay of past decisions —
+three problems that tend to surface together in production. The quickstart
+gets you to working code in ten minutes.
 
 Documentation: https://aevum.build
 
@@ -127,7 +119,7 @@ provides tamper-DETECTION (any modification is detectable) but not
 tamper-PREVENTION (a compromised process could theoretically forge entries).
 
 For regulated deployments requiring FDA §11.10(e) "independently record"
-or equivalent: use `VaultTransitSigner` (aevum-sdk) or a custom `Signer`
+or equivalent: implement a custom `Signer`
 implementation backed by a KMS or HSM outside the agent's trust boundary.
 
 ## Packages
@@ -136,27 +128,21 @@ implementation backed by a KMS or HSM outside the agent's trust boundary.
 |---|---|
 | `aevum-core` | Context kernel: five functions, sigchain, barriers, consent |
 | `aevum-server` | HTTP API wrapping the five functions |
-| `aevum-sdk` | Complication developer kit |
 | `aevum-store-oxigraph` | Embedded RDF graph backend (single-node) |
 | `aevum-store-postgres` | PostgreSQL graph + consent + ledger backend |
-| `aevum-store-jena` | Apache Jena SPARQL backend _(in development)_ |
-| `aevum-mcp` | MCP server for any MCP-compatible host (Claude Desktop, Cursor, and others) |
-| `aevum-oidc` | OIDC token validation complication |
-| `aevum-llm` | LiteLLM-backed LLM complication with audit trail |
+| `aevum-mcp` | MCP integration for any MCP-compatible host |
 | `aevum-cli` | `aevum server start`, `aevum store migrate`, and more |
-| `aevum-spiffe` | Optional — SPIFFE/SPIRE agent identity complication |
-| `aevum-publish` | Optional — Rekor v2 transparency log complication |
 
 ## Complication lifecycle
 
 Complications are registered and activated in three explicit steps:
 
 ```python
-from aevum.spiffe import SpiffeComplication
+from aevum.mcp import McpComplication
 
-comp = SpiffeComplication()
+comp = McpComplication()
 engine.install_complication(comp)      # registers the complication
-engine.approve_complication("aevum-spiffe")  # transitions state, writes ledger entry
+engine.approve_complication("aevum-mcp")  # transitions state, writes ledger entry
 comp.on_approved(engine)               # activates — must be called explicitly
 ```
 
@@ -169,7 +155,7 @@ activation may require configuration that the caller provides after approval.
 ┌─────────────────────────────────────┐
 │           Your application          │
 ├──────────────┬──────────────────────┤
-│  aevum-mcp   │  aevum-server        │  ← Entry points
+│  aevum-mcp   │  aevum-server        │  ← Integration surface
 │  (MCP tools) │  (HTTP API)          │
 ├──────────────┴──────────────────────┤
 │            aevum-core               │  ← Kernel

@@ -113,7 +113,8 @@ flowchart LR
 **Aevum's role:** Records the consent grants that the gateway enforces at the
 protocol level. Captures the pre-call tool invocation context and signs it
 into the sigchain. Provides the audit trail for every permitted and denied
-tool call via the IETF Agent Audit Trail export in `aevum-sdk`.
+tool call via the episodic ledger's AuditEvent format, which maps to
+IETF Agent Audit Trail fields.
 
 ---
 
@@ -138,30 +139,29 @@ When multiple Aevum-governed agents cooperate:
 
 1. The calling agent propagates `episode_id` via W3C Trace Context:
    ```python
-   from aevum.sdk.correlation import inject_traceparent
-   headers["traceparent"] = inject_traceparent(episode_id)
+   # Build a traceparent header from your trace_id and span_id
+   headers["traceparent"] = f"00-{trace_id}-{span_id}-01"
    ```
 
 2. The receiving agent extracts and uses it:
    ```python
-   from aevum.sdk.correlation import extract_episode_id_from_traceparent
-   episode_id = extract_episode_id_from_traceparent(
-       request.headers.get("traceparent", "")
-   )
+   # Extract trace-id from the traceparent header
+   traceparent = request.headers.get("traceparent", "")
+   trace_id = traceparent.split("-")[1] if traceparent else None
    ```
 
 3. Explicit causal links use `cross_chain_ref` in the event payload:
    ```python
-   from aevum.sdk.correlation import build_cross_chain_ref
-   payload["cross_chain_ref"] = build_cross_chain_ref(
-       event=triggering_event,
-       trust_domain="spiffe://example.org",
-       agent_id="orchestrator",
-   )
+   payload["cross_chain_ref"] = {
+       "agent_id": "orchestrator",
+       "episode_id": triggering_event.episode_id,
+       "system_time": triggering_event.system_time,
+       "event_hash": triggering_event.hash_event_for_chain(triggering_event),
+   }
    ```
 
-For cross-chain link verification, use `aevum-publish` to submit checkpoints
-to Rekor so verifiers can confirm referenced events across agent boundaries.
+For cross-chain link verification, submit chain checkpoints to a transparency
+log so verifiers can confirm referenced events across agent boundaries.
 
 ---
 

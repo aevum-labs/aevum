@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from aevum.core.audit.ledger import InMemoryLedger
 from aevum.core.audit.sigchain import Sigchain
 from aevum.core.complications.webhook import _RETRY_DELAYS, WebhookRegistry
@@ -78,31 +76,3 @@ class TestWebhookRetry:
             wr.dispatch("review.approved", {})
         # No exception raised
 
-    def test_jwks_cache_thread_safety(self) -> None:
-        """JwksCache lock prevents double-fetch under concurrency."""
-        import threading
-        from unittest.mock import patch
-
-        JwksCache = pytest.importorskip("aevum.oidc.jwks", reason="aevum-oidc not installed").JwksCache  # noqa: N806
-
-        fetch_count = 0
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"keys": [{"kid": "k1"}]}
-        mock_resp.raise_for_status.return_value = None
-
-        cache = JwksCache("https://ex.com/jwks", ttl_seconds=100)
-
-        def mock_http():
-            nonlocal fetch_count
-            fetch_count += 1
-            return MagicMock(get=lambda url: mock_resp)
-
-        with patch.object(cache, "_http", side_effect=mock_http):
-            threads = [threading.Thread(target=cache.get_keys) for _ in range(10)]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
-
-        # Should be 1 (locked) or a small number due to race at start
-        assert fetch_count <= 3, f"Too many fetches: {fetch_count} (locking not working)"

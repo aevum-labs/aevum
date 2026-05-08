@@ -5,13 +5,12 @@ Cryptographic audit trails, consent enforcement, and deterministic replay."
 
 # Aevum
 
-**The governed context kernel for AI agents.**
+**The Python library that makes your AI agent's memory accountable.**
 
-Aevum is an open-source Python library that sits between your AI agents and
-the data they reason over. Where observability tools log what happened after
-the fact, Aevum enforces governance before the agent acts — and records a
-cryptographically signed, hash-chained audit trail that makes every past
-decision deterministically replayable.
+Aevum is a Python library that gives AI agents a signed audit trail,
+consent-checked data access, and deterministic replay of past decisions —
+three problems that tend to surface together in production. The quickstart
+gets you to working code in ten minutes.
 
 ## Enforcement before the agent acts
 

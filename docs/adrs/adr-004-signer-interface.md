@@ -1,3 +1,8 @@
+> **Note (May 2026):** This ADR references packages that have since been
+> removed (aevum-sdk, aevum-oidc). The architectural decision recorded here
+> remains valid; the implementation approach has changed. See the current
+> documentation for updated integration guidance.
+
 # ADR-004: Pluggable Signer interface with in-process default
 
 Date: 2026-05-06

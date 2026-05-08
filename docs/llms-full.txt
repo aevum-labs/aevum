@@ -580,9 +580,10 @@ and `grantee_id` scoping. Each tenant's data is tagged with their `subject_id`
 namespace; consent grants prevent cross-tenant data access. For strict process
 isolation, run separate Engine instances with separate storage backends.
 
-**OIDC integration:** Use `aevum-oidc` to validate JWTs from your identity
-provider and map claims to `grantee_id` values. Aevum does not implement
-authentication — it consumes verified identity from your IDP.
+**OIDC integration:** Aevum does not implement authentication. Validate your token using any
+standard JWT library (e.g. PyJWT), extract the relevant claim (typically
+`sub` or a custom claim), and pass it as `actor` when calling the kernel.
+No Aevum-specific auth package is required.
 
 **Horizontal scaling:** `aevum-server` is stateless — scale horizontally with
 your load balancer. All state is in PostgreSQL. For high-throughput ingestion,
@@ -610,17 +611,25 @@ Aevum does not implement authentication. Every operation takes an `actor`
 parameter — a string identifier for the caller. Your application is responsible
 for verifying that the caller is who they say they are before calling Aevum.
 
-For production deployments with OIDC:
+Aevum does not implement authentication. Validate your token using any
+standard JWT library (e.g. PyJWT), extract the relevant claim (typically
+`sub` or a custom claim), and pass it as `actor` when calling the kernel.
+No Aevum-specific auth package is required.
 
 ```python
-# Validate JWT with aevum-oidc
-from aevum.oidc import OIDCComplication
+# Validate JWT with any standard library
+import jwt  # PyJWT
 
-oidc = OIDCComplication(jwks_uri="https://your-idp/.well-known/jwks.json")
-engine.install_complication(oidc, auto_approve=True)
+decoded = jwt.decode(token, public_key, algorithms=["RS256"])
+actor_id = decoded["sub"]  # or your custom claim
 
-# After validation, use the verified subject as actor
-actor = verified_token["sub"]  # e.g., "user:alice@example.com"
+result = engine.ingest(
+    data=payload,
+    provenance=provenance,
+    purpose=purpose,
+    subject_id=subject_id,
+    actor=actor_id,  # pass validated identity here
+)
 ```
 
 The `actor` field is immutable in the audit event once written.
@@ -1335,27 +1344,22 @@ Docker Compose reference architecture and adapt it to your Kubernetes setup.
 
 ## OIDC and identity integration
 
-Aevum does not implement authentication. Use `aevum-oidc` to validate JWTs
-from your identity provider and map claims to `grantee_id` values:
-
-```python
-from aevum.oidc import OIDCComplication
-
-oidc = OIDCComplication(jwks_uri="https://your-idp/.well-known/jwks.json")
-engine.install_complication(oidc, auto_approve=True)
-
-# After validation, use the verified subject as actor
-actor = verified_token["sub"]  # e.g., "user:alice@example.com"
-```
+Aevum does not implement authentication. Validate your token using any
+standard JWT library (e.g. PyJWT), extract the relevant claim (typically
+`sub` or a custom claim), and pass it as `actor` when calling the kernel.
+No Aevum-specific auth package is required.
 
 Common questions:
 
 - *"How does it integrate with our existing identity provider?"*
-  → via `aevum-oidc`. Your IDP issues the tokens; Aevum validates them.
+  → Aevum does not implement authentication. Validate your token using any
+  standard JWT library (e.g. PyJWT), extract the relevant claim (typically
+  `sub` or a custom claim), and pass it as `actor` when calling the kernel.
+  No Aevum-specific auth package is required.
 
 - *"What are the data residency implications?"*
   → Aevum is self-hosted. Nothing leaves your infrastructure unless you configure
-  an external OPA sidecar or OIDC endpoint.
+  an external OPA sidecar.
 
 ## License
 
@@ -1368,12 +1372,9 @@ The specification is licensed under CC-BY-4.0 + OWFa 1.0.1.
 |---|---|---|
 | aevum-core | Apache-2.0 | Kernel, barriers, sigchain, consent |
 | aevum-server | Apache-2.0 | FastAPI HTTP wrapper |
-| aevum-sdk | Apache-2.0 | Complication developer kit |
 | aevum-store-oxigraph | Apache-2.0 | Oxigraph graph backend |
 | aevum-store-postgres | Apache-2.0 | PostgreSQL backend |
 | aevum-mcp | Apache-2.0 | MCP server |
-| aevum-oidc | Apache-2.0 | OIDC complication |
-| aevum-llm | Apache-2.0 | LLM complication |
 | aevum-cli | Apache-2.0 | CLI tool |
 
 ### Key dependencies

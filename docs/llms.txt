@@ -1,37 +1,27 @@
 # Aevum
 
-> The governed context kernel for AI agents.
-> Replay-first. Policy-enforced. Cryptographically auditable.
+> The Python library that makes your AI agent's memory accountable.
 > Apache-2.0 — https://github.com/aevum-labs/aevum
 
 ## What Aevum is
 
-Aevum is an open-source AI context kernel that sits between AI agents and
-the data they access. It enforces policy on every memory read and write,
-records every decision in a tamper-evident sigchain, and makes any past
-agent session deterministically replayable.
+Aevum is a Python library that gives AI agents a signed audit trail,
+consent-checked data access, and deterministic replay of past decisions —
+three problems that tend to surface together in production.
 
-It is not a memory store. It is not an observability platform.
-It is the governance and auditability layer underneath both.
+It is not a memory framework. It does not replace Mem0, LangChain, or
+LlamaIndex. It sits below those tools and makes whatever memory layer
+you are using consent-gated and auditable.
 
 ## Five public functions
 
-- ingest: policy-checked data ingestion with provenance and classification
-- query: consent-gated context retrieval with optional witness
-  capture for stale-context detection at commit time
+- ingest: consent-checked data ingestion with provenance and classification
+- query: consent-gated, classification-ceiling-enforced context retrieval
 - review: human-in-the-loop gate before irreversible agent actions
-- commit: episodic event recording; validates a query witness
-  if provided, blocking stale-context commits
+- commit: episodic event recording in the immutable sigchain ledger
 - replay: deterministic reconstruction of any past agent session
 
-## Context Witness (TOCTOU protection)
-
-query() captures a Witness snapshot (sigchain watermark + result digest).
-Passing this witness to commit() validates that context has not changed
-during a human review window. If stale, commit() returns error code
-"stale_context" and logs the drift. Restarts from query() with fresh data.
-
-## Five absolute barriers (cannot be bypassed by any complication)
+## Five absolute barriers (cannot be bypassed)
 
 1. Crisis detection — crisis content stops immediately, always
 2. Classification ceiling — agents cannot access data above their clearance
@@ -39,24 +29,30 @@ during a human review window. If stale, commit() returns error code
 4. Audit immutability — the sigchain cannot be modified or deleted
 5. Provenance chain — every fact carries its full chain of custody
 
-## Compliance relevance
-
-- EU AI Act Article 12: sigchain provides automatic, tamper-evident recording
-- ISO/IEC 42001: complication lifecycle and governance controls
-- SOC 2 PI1.2: provenance and classification ceiling enforcement
-- OWASP ASI06 (Memory Poisoning): policy-mediated writes prevent injection
-- TOCTOU protection: witness validation closes the gap between query
-  time and commit time in human-in-the-loop flows
-
-## Agent autonomy levels
-
-Aevum enforces L1 (operator-controlled) through L5 (observer-only) autonomy
-levels as defined in the DeepMind taxonomy. Level is enforced by policy,
-not by the agent itself.
-
 ## Install
 
 pip install aevum-core
+
+## Minimum working example
+
+from aevum.core import Engine
+from aevum.core.consent.models import ConsentGrant
+
+engine = Engine()
+engine.add_consent_grant(ConsentGrant(
+    grant_id="g1", subject_id="user-1", grantee_id="my-agent",
+    operations=["ingest", "query"], purpose="demo",
+    classification_max=0,
+    granted_at="2026-01-01T00:00:00Z", expires_at="2030-01-01T00:00:00Z",
+))
+result = engine.ingest(
+    data={"note": "example"},
+    provenance={"source_id": "demo", "chain_of_custody": ["demo"],
+                "classification": 0},
+    purpose="demo", subject_id="user-1", actor="my-agent",
+)
+print(result.audit_id)   # urn:aevum:audit:<uuid7>
+print(result.status)     # ok
 
 ## Documentation
 
@@ -66,6 +62,3 @@ How it works:    https://aevum.build/concepts/how-it-works/
 API reference:   https://aevum.build/reference/engine/
 Enterprise:      https://aevum.build/enterprise/overview/
 GitHub:          https://github.com/aevum-labs/aevum
-
-## Full documentation
-https://aevum.build/llms-full.txt

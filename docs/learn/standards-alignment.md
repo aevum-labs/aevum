@@ -15,21 +15,21 @@ Aevum's primitives to the relevant standards.
 
 ## OpenTelemetry GenAI semantic conventions
 
-Aevum's `aevum-llm` package maps `AuditEvent` fields to the
-[OTel GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
-via `to_otel_attributes()`.
+Aevum's `AuditEvent` fields map to the
+[OTel GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/).
+Custom OTel integration can be built using the audit event structure.
+
+Map `AuditEvent` fields to OTel GenAI attributes in your custom integration:
 
 ```python
-from aevum.llm.otel import to_otel_attributes
-
-attrs = to_otel_attributes(audit_event)
-# attrs["gen_ai.request.model"]    → model requested
-# attrs["gen_ai.response.model"]   → model that responded
-# attrs["gen_ai.system"]           → provider ("openai", "anthropic", …)
-# attrs["gen_ai.operation.name"]   → operation type ("chat", …)
-# attrs["gen_ai.content.reference"]→ audit_id (external storage reference)
-# attrs["aevum.gen_ai.prompt_hash"]→ SHA3-256 of prompt (not the prompt)
-# attrs["aevum.gen_ai.response_hash"]→ SHA3-256 of response (not the response)
+# Example custom OTel mapping from AuditEvent fields
+attrs = {
+    "gen_ai.content.reference": audit_event.audit_id,
+    "aevum.gen_ai.prompt_hash": audit_event.payload.get("prompt_hash"),
+    "aevum.gen_ai.response_hash": audit_event.payload.get("response_hash"),
+    "gen_ai.operation.name": audit_event.payload.get("operation", "chat"),
+    "gen_ai.system": audit_event.payload.get("provider"),
+}
 ```
 
 **Privacy posture:** Aevum uses OTel's "external storage" mode. Raw prompts
@@ -57,20 +57,21 @@ The [IETF Agent Audit Trail draft](https://datatracker.ietf.org/doc/draft-sharif
 SHA-256 per RFC 8785 JCS canonicalization with optional ECDSA signatures.
 It explicitly cites EU AI Act Article 12 as motivation.
 
-Aevum's `aevum-sdk` exports a parallel IETF-format chain:
+The episodic ledger exports a parallel IETF-format chain:
 
 ```python
-from aevum.sdk.export.ietf_aat import export_sigchain
-
-events = engine.get_ledger_events()  # or equivalent
-records = export_sigchain(events)
-# records[0]["agent_id"]      → actor
-# records[0]["action_type"]   → event_type
-# records[0]["outcome"]       → "success" | "failure" | "pending"
-# records[0]["timestamp"]     → valid_from (ISO 8601)
-# records[0]["prior_hash"]    → SHA-256 JCS of previous record
-# records[0]["chain_hash"]    → SHA-256 JCS of this record
-# records[0]["aevum:audit_id"]→ internal audit_id (cross-reference)
+# Build IETF AAT records from AuditEvent fields (custom adapter)
+events = engine.get_ledger_events()
+records = [
+    {
+        "agent_id": e.actor,                  # → actor
+        "action_type": e.event_type,          # → event_type
+        "outcome": e.payload.get("outcome", "success"),
+        "timestamp": e.valid_from,            # ISO 8601
+        "aevum:audit_id": e.audit_id,         # cross-reference
+    }
+    for e in events
+]
 ```
 
 **Two chains coexist:** Aevum's internal sigchain uses SHA3-256 for
@@ -145,7 +146,7 @@ and "human-in-the-loop" controls.
 |---|---|---|
 | **Goal / task hijacking** (prompt injection) | Partial — records context, does not filter | Use Lakera Guard or NeMo Guardrails for content filtering |
 | **Tool misuse** (unauthorized tool calls) | Addresses — consent required per operation; denials logged | Combine with MCP gateway for mandatory enforcement |
-| **Identity / permission abuse** | Addresses — `actor` required; consent scoped by `grantee_id` and `purpose` | **OWASP ASI03:** With `aevum-spiffe` (requires SPIFFE/SPIRE deployment), agent identity is cryptographically attested via JWT-SVID, recorded in `spiffe.attested` events. Coverage improves to 🔧 REQUIRES CONFIG. |
+| **Identity / permission abuse** | Addresses — `actor` required; consent scoped by `grantee_id` and `purpose` | **OWASP ASI03:** Cryptographic agent identity can be implemented via a custom SPIFFE complication using a SPIFFE Workload API. |
 | **Memory / knowledge poisoning** | Addresses — Barrier 3 blocks writes without consent; classification ceiling limits read access | |
 | **Code / plugin execution** | Out of scope | Use gVisor, Firecracker, NVIDIA OpenShell |
 | **Insecure agent communications** | Out of scope | Use TLS/mTLS on the transport layer |
@@ -158,8 +159,8 @@ and "human-in-the-loop" controls.
 
 ## External chain verification
 
-**Sigstore Rekor v2 / Transparency logs:** With `aevum-publish`,
-chain checkpoints are submitted to an external Signed Tree Head log,
+**Sigstore Rekor v2 / Transparency logs:** Chain checkpoints can be submitted
+to an external Signed Tree Head log via a custom integration,
 enabling adversarial-resistant verification. Without this, tamper-detection
 requires the verifier to trust the operator. With this, tampering is
 detectable by any party with access to the Rekor log.

@@ -33,9 +33,6 @@ from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
 
-# Check for AgentComplication dynamically to avoid circular import
-# (aevum-sdk is not a dependency of aevum-core)
-
 
 class Engine:
     """
@@ -337,7 +334,7 @@ class Engine:
         outside the complication framework.
 
         This is the honest answer to the audit question: "an LLM was called
-        but aevum-llm was not registered — is this an error or a known gap?"
+        but no LLM complication was registered — is this an expected gap?"
         The developer calls this to make the gap auditable rather than invisible.
 
         The call is recorded as a capture.gap AuditEvent in the sigchain.

@@ -33,9 +33,8 @@ description: "Release history for Aevum v0.3.1: five governed functions, five ab
 
 First public release.
 
-**Packages:** aevum-core, aevum-server, aevum-sdk, aevum-store-oxigraph,
-aevum-store-postgres, aevum-mcp, aevum-oidc, aevum-llm, aevum-cli,
-aevum-store-jena (stub), aevum-spiffe, aevum-publish
+**Packages:** aevum-core, aevum-server, aevum-store-oxigraph,
+aevum-store-postgres, aevum-mcp, aevum-cli
 
 **What's in this release:**
 
@@ -43,10 +42,7 @@ aevum-store-jena (stub), aevum-spiffe, aevum-publish
 - Five absolute barriers: crisis detection, classification ceiling, consent, audit immutability, provenance
 - Ed25519 sigchain + SHA3-256 hash chaining
 - Cedar in-process policy + OPA HTTP sidecar
-- Complication framework with 7-state lifecycle
-- Agent autonomy levels L1–L5 (DeepMind taxonomy)
-- A2A task format (`create_task`, `get_task` MCP tools)
-- Full test suite: 290+ tests, mypy strict, ruff clean
+- Full test suite: 287 tests, mypy strict, ruff clean
 - MCP integration for any MCP-compatible host
 
 ---

@@ -249,8 +249,8 @@ with:
 
 **Does Aevum send any data outside my environment?**
 
-No. By default, nothing leaves your process. Optional complications
-(`aevum-oidc`, `aevum-llm`) make outbound calls only when configured.
+No. Nothing leaves your process. If you configure an optional OPA
+sidecar, it runs in your own infrastructure.
 
 ---
 

@@ -1,8 +1,8 @@
 """
 Authentication — X-Aevum-Key header validation.
 
-API key authentication only. For OIDC bearer token support install
-the aevum-oidc complication and add it to the Engine.
+API key authentication only. For JWT validation, use any standard library (e.g. PyJWT)
+and pass the validated actor identity via the X-Actor header.
 """
 
 from __future__ import annotations

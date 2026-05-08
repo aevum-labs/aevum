@@ -611,9 +611,10 @@ and `grantee_id` scoping. Each tenant's data is tagged with their `subject_id`
 namespace; consent grants prevent cross-tenant data access. For strict process
 isolation, run separate Engine instances with separate storage backends.
 
-**OIDC integration:** Use `aevum-oidc` to validate JWTs from your identity
-provider and map claims to `grantee_id` values. Aevum does not implement
-authentication — it consumes verified identity from your IDP.
+**OIDC integration:** Aevum does not implement authentication. Validate your token using any
+standard JWT library (e.g. PyJWT), extract the relevant claim (typically
+`sub` or a custom claim), and pass it as `actor` when calling the kernel.
+No Aevum-specific auth package is required.
 
 **Horizontal scaling:** `aevum-server` is stateless — scale horizontally with
 your load balancer. All state is in PostgreSQL. For high-throughput ingestion,
@@ -633,31 +634,20 @@ The Engine does **not** invoke `on_approved()` automatically. Activation is
 always an explicit caller action:
 
 ```python
-from aevum.spiffe import SpiffeComplication
+from aevum.mcp import McpComplication
 
-comp = SpiffeComplication()
-engine.install_complication(comp)           # registers — DISCOVERED
-engine.approve_complication("aevum-spiffe") # transitions state, writes ledger entry — APPROVED
-comp.on_approved(engine)                    # activates — ACTIVE (must be called explicitly)
+comp = McpComplication()
+engine.install_complication(comp)        # registers — DISCOVERED
+engine.approve_complication("aevum-mcp") # transitions state, writes ledger entry — APPROVED
+comp.on_approved(engine)                 # activates — ACTIVE (must be called explicitly)
 ```
 
 This three-step pattern is intentional: activation may require configuration
 that the caller provides after approval. The approval itself is a signed
 ledger entry.
 
-### Optional capabilities (Part 2)
-
-**aevum-spiffe** — SPIFFE/SPIRE agent identity. When approved, emits a
-`spiffe.attested` event containing the cryptographically-attested SPIFFE ID.
-Requires a SPIFFE Workload API (SPIRE, Vault SPIFFE secrets engine, etc.).
-
-**aevum-publish** — Sigstore Rekor v2 transparency log. Submits periodic
-chain checkpoints to an external log, enabling adversarial-resistant
-verification. The inclusion proof is stored as `transparency.checkpoint`
-in the local sigchain.
-
-**aevum-sdk (correlation)** — W3C Trace Context helpers for multi-agent
-episode propagation and `cross_chain_ref` payload construction.
+**W3C Trace Context** — pass `correlation_id` directly in engine
+calls. The Engine accepts correlation_id on all five functions.
 
 ### WebhookRegistry
 
