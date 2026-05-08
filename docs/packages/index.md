@@ -2,20 +2,25 @@
 
 Aevum is a monorepo. Each package is independently installable.
 
-| Package | Purpose | Source |
-|---|---|---|
-| `aevum-core` | Context kernel: five functions, sigchain, barriers, consent | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-core) |
-| `aevum-server` | HTTP API wrapping the five functions | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-server) |
-| `aevum-sdk` | Complication developer kit | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-sdk) |
-| `aevum-store-oxigraph` | Embedded RDF graph backend (single-node) | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-store-oxigraph) |
-| `aevum-store-postgres` | PostgreSQL graph + consent + ledger backend | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-store-postgres) |
-| `aevum-mcp` | MCP server for any MCP-compatible host | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-mcp) |
-| `aevum-oidc` | OIDC token validation complication | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-oidc) |
-| `aevum-llm` | LiteLLM-backed LLM complication with audit trail | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-llm) |
-| `aevum-cli` | `aevum server start`, `aevum store migrate`, and more | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-cli) |
-| `aevum-store-jena` | Apache Jena RDF backend (enterprise) | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-store-jena) |
-| `aevum-spiffe` | SPIFFE/SPIRE agent identity complication | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-spiffe) |
-| `aevum-publish` | Rekor v2 transparency log complication | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-publish) |
+!!! note "Release status"
+    Packages marked 🔧 install successfully but contain stub implementations
+    pending a future release. Packages marked 🚧 are in active development
+    and not yet available on PyPI.
+
+| Package | Purpose | Status | Source |
+|---|---|---|---|
+| `aevum-core` | Context kernel: five functions, sigchain, barriers, consent | ✅ Available | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-core) |
+| `aevum-server` | HTTP API wrapping the five functions | ✅ Available | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-server) |
+| `aevum-sdk` | Complication developer kit | ✅ Available | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-sdk) |
+| `aevum-store-oxigraph` | Embedded RDF graph backend (single-node) | ✅ Available | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-store-oxigraph) |
+| `aevum-store-postgres` | PostgreSQL graph + consent + ledger backend | ✅ Available | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-store-postgres) |
+| `aevum-mcp` | MCP server for any MCP-compatible host | ✅ Available | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-mcp) |
+| `aevum-oidc` | OIDC token validation complication | ✅ Available | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-oidc) |
+| `aevum-llm` | LiteLLM-backed LLM complication with audit trail | ✅ Available | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-llm) |
+| `aevum-cli` | `aevum server start`, `aevum store migrate`, and more | ✅ Available | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-cli) |
+| `aevum-store-jena` | Apache Jena RDF backend (enterprise) | 🔧 Stub | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-store-jena) |
+| `aevum-spiffe` | SPIFFE/SPIRE agent identity complication | 🚧 Not yet released | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-spiffe) |
+| `aevum-publish` | Rekor v2 transparency log complication | 🚧 Not yet released | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-publish) |
 
 ## Install
 
