@@ -4,6 +4,7 @@ Engine — wires all kernel components together.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from aevum.core.audit.event import AuditEvent
@@ -33,6 +34,8 @@ from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
 
+_logger = logging.getLogger(__name__)
+
 
 class Engine:
     """
@@ -55,6 +58,15 @@ class Engine:
         self._ledger = ledger or InMemoryLedger(self._sigchain)
         self._consent_ledger: ConsentLedgerProtocol = consent_ledger or ConsentLedger()
         self._graph: GraphStore = graph_store or InMemoryGraphStore()
+        if graph_store is None:
+            _logger.warning(
+                "Engine initialized with in-memory storage. "
+                "All data, the sigchain, and consent records will be lost on "
+                "process restart. "
+                "Use aevum-store-oxigraph or aevum-store-postgres for any "
+                "persistent workload. "
+                "See THREAT_MODEL.md — Assumption 4."
+            )
         self._policy = PolicyBridge(opa_url=opa_url)
         self._review_store = ReviewStore()
         self._idempotency_cache: dict[str, OutputEnvelope] = {}

@@ -8,7 +8,7 @@ class AevumError(Exception):
 
 
 class BarrierViolationError(AevumError):
-    """A hardcoded absolute barrier was violated."""
+    """A hardcoded unconditional barrier was violated."""
 
 
 class ConsentRequiredError(AevumError):

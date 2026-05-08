@@ -12,7 +12,7 @@ OPA (external sidecar via HTTP) handles infrastructure policy:
   - Disabled (permissive) when opa_url is None or empty
 
 Both engines are optional. Without either, Aevum runs with built-in
-barrier enforcement only -- the five absolute barriers remain unconditional.
+barrier enforcement only -- the five unconditional barriers remain unconditional.
 """
 
 from __future__ import annotations
