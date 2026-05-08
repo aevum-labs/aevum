@@ -1,7 +1,7 @@
 site_name: Aevum
 site_url: https://aevum.build
-site_description: The governed context kernel for AI agents.
-  Cryptographic audit trails, consent enforcement, and deterministic replay.
+site_description: A Python library that gives AI agents a signed audit trail, consent-checked
+  data access, and deterministic replay of past decisions.
 repo_url: https://github.com/aevum-labs/aevum
 repo_name: aevum-labs/aevum
 edit_uri: edit/main/docs/
@@ -57,10 +57,7 @@ plugins:
         python:
           paths:
             - packages/aevum-core/src
-            - packages/aevum-sdk/src
-            - packages/aevum-llm/src
             - packages/aevum-mcp/src
-            - packages/aevum-oidc/src
             - packages/aevum-store-postgres/src
             - packages/aevum-store-oxigraph/src
           options:

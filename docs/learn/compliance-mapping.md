@@ -48,7 +48,7 @@ compliance review before making regulatory assertions based on this content.*
 | HIPAA 2024 NPRM (LIVE) | Proposed: tamper-evident audit logs | Sigchain (hash-chain) | ✅ | Final rule not yet published (May 2026) |
 | HIPAA 2024 NPRM | Proposed: encryption at rest | AES-256 at storage layer | 🔧 | Deployer configures storage encryption |
 | HIPAA §164.316(b)(2) | Documentation retention 6 years | Append-only ledger | 🔧 | Retention config |
-| FDA 21 CFR §11.10(e) | Independently record, time-stamped | Sigchain + external signer | 🔧 | InProcessSigner: partial (tamper-detectable not tamper-prevented); VaultTransitSigner or PKCS11Signer via aevum-sdk: full |
+| FDA 21 CFR §11.10(e) | Independently record, time-stamped | Sigchain + external signer | 🔧 | InProcessSigner: partial (tamper-detectable not tamper-prevented); Custom VaultTransitSigner or PKCS11Signer via custom Signer impl: full |
 | FDA 21 CFR §11.10(c) | Protection of records from tampering | Barrier 4 (Audit Immutability) | ✅ | |
 | FDA 21 CFR Part 820 / QMSR | §820.180 Record retention 2 yr post-life | Append-only ledger | 🔧 | Retention config; eQMS integration external |
 | FDA PCCP Final (Dec 2024) | Modification protocol logging | Provenance barrier + commit() | ✅ | |
@@ -143,7 +143,7 @@ compliance review before making regulatory assertions based on this content.*
 | OWASP ASI Top 10 ASI05 | Memory/state manipulation | Sigchain + replay() | ✅ | |
 | OWASP ASI Top 10 ASI07 | Sensitive data disclosure | Classification ceiling (Barrier 2) | ✅ | |
 | OWASP ASI Top 10 ASI10 | Insufficient observability | Five functions + sigchain | ✅ | |
-| OWASP ASI Top 10 ASI03 | Identity/privilege abuse | Consent model + aevum-spiffe | 🔧 | SPIFFE agent identity requires SPIRE deployment; see aevum-spiffe package |
+| OWASP ASI Top 10 ASI03 | Identity/privilege abuse | Consent model | 🔧 | SPIFFE agent identity can be implemented via a custom complication |
 | OWASP ASI Top 10 ASI08 | Cascading failure | — | ❌ | SRE/circuit-breaker; out of scope |
 
 ---
@@ -159,11 +159,11 @@ compliance review before making regulatory assertions based on this content.*
 | RFC 3161 (TSA) | Trusted timestamping | TSA hook (Part 2) | 🔧 | Part 2 capability; required for eIDAS qualified timestamps |
 | W3C PROV-O | Provenance ontology | Provenance barrier | 🔧 | PROV-O serialiser is Part 2 capability |
 | W3C VC-DM 2.0 | Verifiable Credentials | OR-Set consent receipts | 🔧 | VC-DM 2.0 integration is Part 2 |
-| IETF AAT draft | Agent audit trail format | IETF AAT export adapter (aevum-sdk) | ✅ | Draft; not yet RFC |
-| OTel GenAI semconv | AI event telemetry | aevum-llm OTel mapper | ⚠️ | Spec in Development (not stable); tracked at v1.27.0-experimental |
+| IETF AAT draft | Agent audit trail format | IETF AAT export (custom adapter via AuditEvent structure) | ✅ | Draft; not yet RFC |
+| OTel GenAI semconv | AI event telemetry | custom OTel integration | ⚠️ | Spec in Development (not stable); tracked at v1.27.0-experimental |
 | NERC CIP-007-6 R4 | Security event monitoring, 90-day online retention | AuditEvent stream | ⚠️ | 90-day retention config; 1-hour incident reporting external |
 | FERPA §99.32 | Disclosure log for educational records | Sigchain (ingest/query events) | ✅ | |
-| Sigstore Rekor v2 | External chain witnessing | aevum-publish complication | 🔧 | Requires SPIFFE/Rekor deployment; hashedrekord API format should be verified against rekor-tiles CLIENTS.md before production use |
+| Sigstore Rekor v2 | External chain witnessing | custom transparency log integration | 🔧 | Requires Rekor deployment; hashedrekord API format should be verified against rekor-tiles CLIENTS.md before production use |
 
 ---
 

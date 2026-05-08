@@ -74,35 +74,55 @@ def sync_invoice(invoice_id: str, customer_id: str) -> None:
 
 Call this from a cron job, a webhook handler, or wherever your data changes.
 
-## Option B: Aevum Complication (native integration)
-
-For tighter integration, build a complication using `aevum-sdk`:
+**Async Python note.** The Engine's five functions are synchronous. If you
+are calling Aevum from an async Python application (FastAPI, asyncio, etc.),
+use a thread executor to avoid blocking the event loop:
 
 ```python
-from aevum.sdk import AgentComplication
+import asyncio
 
-class BillingComplication(AgentComplication):
-    def manifest(self):
-        return {
-            "name": "billing-connector",
-            "version": "1.0.0",
-            "capabilities": ["billing.ingest", "billing.sync"],
-        }
-
-    def on_event(self, event_type: str, payload: dict) -> None:
-        if event_type == "invoice.updated":
-            self._sync_invoice(payload["invoice_id"], payload["customer_id"])
-
-    def _sync_invoice(self, invoice_id: str, customer_id: str) -> None:
-        # ... your sync logic ...
-        pass
+loop = asyncio.get_event_loop()
+result = await loop.run_in_executor(
+    None,
+    lambda: engine.ingest(
+        data=invoice,
+        provenance=provenance,
+        purpose="billing-inquiry",
+        subject_id=customer_id,
+        actor=agent_id,
+    )
+)
 ```
 
-Complications go through Aevum's 7-state lifecycle (DISCOVERED → PENDING →
-APPROVED → ACTIVE → ...) and are themselves logged in the episodic ledger.
+## Option B: HTTP API (language-agnostic)
 
-Use Option B when: the integration needs to be governed, versioned, and
-auditable as a first-class part of your Aevum deployment.
+For non-Python applications or services that cannot import aevum-core directly,
+use the HTTP API:
+
+```bash
+pip install aevum-server
+aevum server start --host 0.0.0.0 --port 8000
+```
+
+Then call the five functions from any language or framework:
+
+```python
+import httpx
+
+response = httpx.post("http://localhost:8000/v1/ingest", json={
+    "data": {"note": "User requested account review"},
+    "provenance": {
+        "source_id": "billing-system",
+        "chain_of_custody": ["billing-system"],
+        "classification": 1,
+    },
+    "purpose": "billing-inquiry",
+    "subject_id": customer_id,
+}, headers={"X-Actor": agent_id})
+```
+
+Use Option B when your integration code is not Python, or when you need
+to call Aevum from multiple services without sharing a library dependency.
 
 ## Option C: Message Queue (enterprise scale)
 
@@ -231,5 +251,4 @@ signature before processing.
 | HTTP API | aevum-server (FastAPI) |
 | MCP tools | aevum-mcp |
 | Policy | Cedar in-process + OPA HTTP sidecar (optional) |
-| Identity | aevum-oidc (optional) |
 | Your integration | Python, your message queue, your DB client |

@@ -12,17 +12,25 @@ Aevum does not implement authentication. Every operation takes an `actor`
 parameter — a string identifier for the caller. Your application is responsible
 for verifying that the caller is who they say they are before calling Aevum.
 
-For production deployments with OIDC:
+Aevum does not implement authentication. Validate your token using any
+standard JWT library (e.g. PyJWT), extract the relevant claim (typically
+`sub` or a custom claim), and pass it as `actor` when calling the kernel.
+No Aevum-specific auth package is required.
 
 ```python
-# Validate JWT with aevum-oidc
-from aevum.oidc import OIDCComplication
+# Validate JWT with any standard library
+import jwt  # PyJWT
 
-oidc = OIDCComplication(jwks_uri="https://your-idp/.well-known/jwks.json")
-engine.install_complication(oidc, auto_approve=True)
+decoded = jwt.decode(token, public_key, algorithms=["RS256"])
+actor_id = decoded["sub"]  # or your custom claim
 
-# After validation, use the verified subject as actor
-actor = verified_token["sub"]  # e.g., "user:alice@example.com"
+result = engine.ingest(
+    data=payload,
+    provenance=provenance,
+    purpose=purpose,
+    subject_id=subject_id,
+    actor=actor_id,  # pass validated identity here
+)
 ```
 
 The `actor` field is immutable in the audit event once written.

@@ -357,27 +357,22 @@ Docker Compose reference architecture and adapt it to your Kubernetes setup.
 
 ## OIDC and identity integration
 
-Aevum does not implement authentication. Use `aevum-oidc` to validate JWTs
-from your identity provider and map claims to `grantee_id` values:
-
-```python
-from aevum.oidc import OIDCComplication
-
-oidc = OIDCComplication(jwks_uri="https://your-idp/.well-known/jwks.json")
-engine.install_complication(oidc, auto_approve=True)
-
-# After validation, use the verified subject as actor
-actor = verified_token["sub"]  # e.g., "user:alice@example.com"
-```
+Aevum does not implement authentication. Validate your token using any
+standard JWT library (e.g. PyJWT), extract the relevant claim (typically
+`sub` or a custom claim), and pass it as `actor` when calling the kernel.
+No Aevum-specific auth package is required.
 
 Common questions:
 
 - *"How does it integrate with our existing identity provider?"*
-  → via `aevum-oidc`. Your IDP issues the tokens; Aevum validates them.
+  → Aevum does not implement authentication. Validate your token using any
+  standard JWT library (e.g. PyJWT), extract the relevant claim (typically
+  `sub` or a custom claim), and pass it as `actor` when calling the kernel.
+  No Aevum-specific auth package is required.
 
 - *"What are the data residency implications?"*
   → Aevum is self-hosted. Nothing leaves your infrastructure unless you configure
-  an external OPA sidecar or OIDC endpoint.
+  an external OPA sidecar.
 
 ## License
 
@@ -390,12 +385,9 @@ The specification is licensed under CC-BY-4.0 + OWFa 1.0.1.
 |---|---|---|
 | aevum-core | Apache-2.0 | Kernel, barriers, sigchain, consent |
 | aevum-server | Apache-2.0 | FastAPI HTTP wrapper |
-| aevum-sdk | Apache-2.0 | Complication developer kit |
 | aevum-store-oxigraph | Apache-2.0 | Oxigraph graph backend |
 | aevum-store-postgres | Apache-2.0 | PostgreSQL backend |
 | aevum-mcp | Apache-2.0 | MCP server |
-| aevum-oidc | Apache-2.0 | OIDC complication |
-| aevum-llm | Apache-2.0 | LLM complication |
 | aevum-cli | Apache-2.0 | CLI tool |
 
 ### Key dependencies
@@ -411,14 +403,10 @@ The specification is licensed under CC-BY-4.0 + OWFa 1.0.1.
 | click | BSD | CLI (aevum-cli) |
 | oxigraph | MIT / Apache-2.0 | Graph storage (aevum-store-oxigraph) |
 | psycopg2 / psycopg | LGPL-3 | PostgreSQL adapter (aevum-store-postgres) |
-| httpx | BSD-3-Clause | HTTP client (aevum-oidc) |
-| PyJWT | MIT | JWT validation (aevum-oidc) |
-| litellm | MIT | LLM routing (aevum-llm) |
-| opentelemetry-sdk | Apache-2.0 | Tracing (aevum-sdk) |
-| opentelemetry-api | Apache-2.0 | Tracing (aevum-sdk) |
+| httpx | BSD-3-Clause | HTTP client |
+| PyJWT | MIT | JWT validation |
 | typer | MIT | CLI (aevum-cli) |
 | mcp | MIT | MCP protocol (aevum-mcp) |
-| aiohttp | Apache-2.0 | Async HTTP (aevum-llm) |
 | hatchling | MIT | Build system (all) |
 
 ### psycopg2 / psycopg LGPL note

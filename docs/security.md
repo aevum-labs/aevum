@@ -81,7 +81,7 @@ trust-boundary analysis.
 
 ## Complication security model
 
-Optional complications (aevum-spiffe, aevum-publish, aevum-llm, aevum-mcp)
+Optional complications (aevum-mcp and custom LLM integration layer)
 extend the kernel. Each complication:
 
 - Must be explicitly installed AND approved before activating
@@ -117,14 +117,6 @@ For FIPS 140-3 strict environments: Ed25519 is FIPS 186-5 approved but
 not yet in all validated cryptographic modules. Use `VaultTransitSigner`
 with a FIPS-validated Vault deployment, or implement a custom `Signer`
 against a FIPS 140-3 validated PKCS#11 module.
-
-## External transparency
-
-With `aevum-publish`, chain checkpoints are submitted to Sigstore Rekor v2.
-Note: the Rekor v2 (rekor-tiles) hashedrekord API format should be verified
-against [CLIENTS.md](https://github.com/sigstore/rekor-tiles/blob/main/CLIENTS.md)
-before production use. The submission format in the current implementation
-targets the Rekor v1 hashedrekord spec.
 
 ## See also
 

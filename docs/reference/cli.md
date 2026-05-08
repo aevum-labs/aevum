@@ -34,8 +34,10 @@ Output:
 Aevum package versions:
   aevum-core: 0.3.0
   aevum-server: 0.3.0
-  aevum-sdk: 0.3.0
-  ...
+  aevum-store-oxigraph: 0.3.0
+  aevum-store-postgres: 0.3.0
+  aevum-mcp: 0.3.0
+  aevum-cli: 0.3.0
 ```
 
 ---

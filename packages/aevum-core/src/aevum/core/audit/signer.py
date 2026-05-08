@@ -7,8 +7,8 @@ The signing key MUST live outside the agent's trust boundary for:
   - HIPAA §164.312(b) audit control integrity
 
 The default InProcessSigner auto-generates an Ed25519 key at startup.
-For regulated deployments: use VaultTransitSigner (aevum-sdk) or implement
-this ABC against your KMS / PKCS#11 HSM.
+For regulated deployments: implement a custom Signer (see Signer protocol)
+against your KMS / PKCS#11 HSM.
 
 Signing semantics: sign(digest) where digest = SHA3-256(canonical_payload).
 The signer receives a 32-byte digest — NOT the raw message. This enables

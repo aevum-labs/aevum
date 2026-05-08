@@ -65,20 +65,14 @@ navigate (use query), write/insert/store (use ingest).
 
 ## Package Structure
 
-| PyPI name            | Import path          | Role                      |
+| PyPI name            | Import path          | Role                        |
 |---|---|---|
-| aevum-core           | aevum.core           | The kernel                |
-| aevum-sdk            | aevum.sdk            | Complication dev kit      |
-| aevum-store-oxigraph | aevum.store.oxigraph | Small deployments         |
-| aevum-store-postgres | aevum.store.postgres | Team deployments          |
-| aevum-store-jena     | aevum.store.jena     | Enterprise deployments    |
-| aevum-mcp            | aevum.mcp            | MCP server complication   |
-| aevum-llm            | aevum.llm            | LLM adapter complication  |
-| aevum-oidc           | aevum.oidc           | OIDC federation           |
-| aevum-cli            | aevum.cli            | Command-line interface    |
-| aevum-spiffe         | aevum.spiffe         | SPIFFE agent identity complication (optional) |
-| aevum-publish        | aevum.publish        | Rekor v2 transparency log complication (optional) |
-| WebhookRegistry      | aevum.core.complications | review event delivery with retry and dead-letter |
+| aevum-core           | aevum.core           | The kernel                  |
+| aevum-store-oxigraph | aevum.store.oxigraph | Small deployments           |
+| aevum-store-postgres | aevum.store.postgres | Team/production deployments |
+| aevum-mcp            | aevum.mcp            | MCP integration             |
+| aevum-server         | aevum.server         | HTTP API                    |
+| aevum-cli            | aevum.cli            | Command-line interface      |
 
 ---
 
