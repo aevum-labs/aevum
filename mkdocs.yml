@@ -1,7 +1,7 @@
 site_name: Aevum
 site_url: https://aevum.build
 site_description: A Python library that gives AI agents a signed audit trail, consent-checked
-  data access, and deterministic replay of past decisions.
+  data access, and verifiable decision records.
 repo_url: https://github.com/aevum-labs/aevum
 repo_name: aevum-labs/aevum
 edit_uri: edit/main/docs/
@@ -80,13 +80,10 @@ plugins:
         enterprise/license-analysis.md: learn/deployment.md
         enterprise/overview.md: learn/deployment.md
         getting-started/installation.md: learn/deployment.md
-        getting-started/faq.md: guides/troubleshooting-faq.md
         getting-started/quickstart-windows.md: getting-started/quickstart.md
         guides/troubleshooting.md: guides/troubleshooting-faq.md
-        product/what-is-aevum.md: index.md
         guides/fit-assessment.md: index.md
         use-cases/enterprise-scenarios.md: index.md
-        guides/non-enterprise.md: index.md
         reference/engine.md: reference/api.md
         reference/output-envelope.md: reference/api.md
         reference/consent-grants.md: reference/api.md
@@ -123,6 +120,7 @@ extra_css:
 
 nav:
   - Home: index.md
+  - What is Aevum?: product/what-is-aevum.md
   - Learn:
     - Architecture: learn/architecture.md
     - Security: learn/security.md
@@ -139,10 +137,12 @@ nav:
     - Quickstart: getting-started/quickstart.md
     - MCP Setup: getting-started/mcp-setup.md
     - Guides:
+      - Guide by User Type: guides/non-enterprise.md
       - Integration Layer: guides/integration-layer.md
       - Billing Walkthrough: use-cases/billing-inquiry.md
       - MCP Audit Trail: guides/mcp-audit-trail.md
       - Troubleshooting and FAQ: guides/troubleshooting-faq.md
+    - FAQ: getting-started/faq.md
     - Domain Examples:
       - Overview: domain-examples/index.md
       - Healthcare (FHIR R4): domain-examples/healthcare.md
