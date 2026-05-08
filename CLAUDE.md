@@ -13,7 +13,7 @@ conversation (Claude.ai project).
 Aevum is a replay-first, policy-governed context kernel. It sits between raw
 data sources and AI consumers. It ingests data through a governed membrane,
 records canonical truth in an append-only episodic ledger, assembles bounded
-context through graph traversal, and enables deterministic replay of any past
+context through graph traversal, and enables verifiable decision records of any past
 decision.
 
 It is NOT: a data integration platform, an AI orchestration framework, a
@@ -107,7 +107,7 @@ Run `python scripts/check_namespace.py` to verify. Exits 1 on violation.
 | commit (function)              | save, persist, log, record             |
 | canonical truth                | source of truth (ledger concept only)  |
 | standard relationship vocabulary | canonical vocabulary                 |
-| absolute barrier               | policy rule, circuit breaker           |
+| unconditional barrier          | policy rule, circuit breaker           |
 | sigchain                       | signed chain, audit chain, hash chain  |
 
 ---
@@ -117,7 +117,7 @@ Run `python scripts/check_namespace.py` to verify. Exits 1 on violation.
 1. The four function verbs: ingest=RELATE, query=NAVIGATE, review=GOVERN, commit=REMEMBER
 2. The replay function signature and guarantee
 3. All OutputEnvelope mandatory fields
-4. The absolute barriers (hardcoded in barriers.py — NOT policy)
+4. The unconditional barriers (hardcoded in barriers.py — NOT policy)
 5. The append-only property of the episodic ledger
 6. Consent as precondition (no traversal without consent)
 7. Provenance as precondition (no ingestion without chain of custody)

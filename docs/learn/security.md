@@ -6,6 +6,13 @@ production deployment."
 
 # Security
 
+!!! note
+    This page covers the security architecture and deployment-specific threats.
+    For the complete library trust model — including trust assumptions,
+    known limitations, and regulated-workload recommendations — see
+    [THREAT_MODEL.md](https://github.com/aevum-labs/aevum/blob/main/THREAT_MODEL.md)
+    in the repository root.
+
 ## Authentication
 
 Aevum does not implement authentication. Every operation takes an `actor`
@@ -229,11 +236,13 @@ policy so OPA is only needed for infrastructure policy. Consider
 **Threat:** A user encodes crisis content in a way that evades Barrier 1
 (e.g., leetspeak, unicode substitution).
 
-**Mitigation:** Barrier 1 checks a defined keyword list. It is not a
-general-purpose content moderation system.
+**Mitigation:** Barrier 1 (Crisis) is a content-screening mechanism, not a
+clinical safety system. It checks a defined keyword list. It is not validated
+to any clinical standard, is not a medical device, and false negatives are
+possible. See [THREAT_MODEL.md](https://github.com/aevum-labs/aevum/blob/main/THREAT_MODEL.md)
+for the complete limitations statement.
 
-**Residual risk:** Motivated evasion is possible. Aevum's crisis barrier
-is a safety net, not a complete solution. If your application serves
+**Residual risk:** Motivated evasion is possible. If your application serves
 vulnerable users, complement it with purpose-built content moderation.
 
 ---
