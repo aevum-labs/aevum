@@ -38,7 +38,6 @@ jobs:
         run: |
           pip install -e packages/aevum-core
           pip install -e packages/aevum-server
-          pip install -e packages/aevum-sdk
           pip install -e packages/aevum-mcp
           pip install -e packages/aevum-cli
 
