@@ -53,7 +53,7 @@ Aevum is worth evaluating if one or more of these applies:
 - You have enterprise customers who ask about data governance
 
 If none of those apply to your current project, Aevum is probably not
-the right tool yet. See [Is It Right for You?](../guides/fit-assessment.md)
+the right tool yet. See [Is It Right for You?](../index.md#who-it-is-for)
 for a detailed assessment.
 
 ---
@@ -77,7 +77,7 @@ reasoning or reconstruct the full graph state at a past moment.
 The five governed functions are: `ingest`, `query`, `review`,
 `commit`, and `replay`.
 
-Read [How It Works](../concepts/how-it-works.md) for the complete
+Read [How It Works](../learn/architecture.md) for the complete
 end-to-end data flow.
 
 ---
@@ -89,5 +89,5 @@ pip install aevum-core
 ```
 
 - [Quickstart](../getting-started/quickstart.md) — working code in ten minutes
-- [Installation](../getting-started/installation.md) — all platforms including Docker
+- [Installation](../learn/deployment.md) — all platforms including Docker
 - [GitHub](https://github.com/aevum-labs/aevum) — Apache-2.0, source available
