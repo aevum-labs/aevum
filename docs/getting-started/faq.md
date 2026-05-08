@@ -68,7 +68,7 @@ reconstruct the full graph state at a past moment — it returns the
 exact signed record of what was recorded at the time of the original
 operation.
 
-See [The Five Functions](../concepts/five-functions.md) for the full
+See [The Five Functions](../learn/architecture.md#five-public-functions) for the full
 distinction.
 
 ---

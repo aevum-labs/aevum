@@ -9,10 +9,10 @@ user type needs to know.
 your project.
 
 **Start here:**
-1. Read the [fit assessment](fit-assessment.md) — 5 minutes
+1. Read the [fit assessment](../index.md#who-it-is-for) — 5 minutes
 2. If it's a fit, run the [quickstart](../getting-started/quickstart.md)
    — 10 minutes
-3. Read [The Five Functions](../concepts/five-functions.md) — 15 minutes
+3. Read [The Five Functions](../learn/architecture.md#five-public-functions) — 15 minutes
 
 **Minimum install:**
 
@@ -39,7 +39,7 @@ building custom audit infrastructure.
    a real pattern
 3. [Building an Integration Layer](integration-layer.md) — connect your
    data sources
-4. [Installation](../getting-started/installation.md) — add persistence
+4. [Installation](../learn/deployment.md) — add persistence
    when ready
 
 **Recommended install for early production:**
@@ -64,11 +64,11 @@ policy enforcement. No database service required.
 adoption.
 
 **Start here:**
-1. [Fit Assessment](fit-assessment.md)
-2. [Enterprise Evaluation Package](../enterprise/overview.md)
-3. [Security Architecture](../enterprise/security-architecture.md)
-4. [Threat Model](../enterprise/threat-model.md)
-5. [Production Deployment](../enterprise/deployment-guide.md)
+1. [Fit Assessment](../index.md#who-it-is-for)
+2. [Enterprise Evaluation Package](../learn/deployment.md)
+3. [Security Architecture](../learn/security.md)
+4. [Threat Model](../learn/security.md)
+5. [Production Deployment](../learn/deployment.md)
 
 **Typical questions:**
 
@@ -100,11 +100,11 @@ controls. Consult qualified legal counsel.
 **You want:** The API details and integration patterns.
 
 **Start here:**
-1. [The Five Functions](../concepts/five-functions.md) — the complete API
-2. [The Five Barriers](../concepts/five-barriers.md) — what you cannot
+1. [The Five Functions](../learn/architecture.md#five-public-functions) — the complete API
+2. [The Five Barriers](../learn/architecture.md#five-unconditional-barriers) — what you cannot
    override
-3. [Consent Model](../concepts/consent-model.md) — grant semantics
-4. [The Sigchain](../concepts/sigchain.md) — audit trail mechanics
+3. [Consent Model](../learn/architecture.md#consent-model) — grant semantics
+4. [The Sigchain](../learn/architecture.md#the-sigchain) — audit trail mechanics
 5. [Integration Layer](integration-layer.md) — connecting your data
    sources
 
