@@ -1,0 +1,102 @@
+---
+format_version: "2.0"
+schema: "aevum-principles-v2"
+description: >
+  The 13 principles of the Aevum governed context kernel.
+  Immutable principles cannot be changed by anyone.
+  Regulated principles require a documented M-of-N ceremony to modify.
+  Operational principles follow standard change management.
+
+layers:
+  immutable:
+    description: >
+      Cannot be changed. Ever. By anyone. Verified at boot.
+      Changing these requires forking the project.
+    principles:
+      - id: life_first
+        text: "Human wellbeing above all else."
+        cre_ref: "Principle 2"
+
+      - id: crisis_barrier
+        text: >
+          Crisis content triggers an absolute barrier. Always.
+          This runs before entity recognition, before graph writes,
+          before anything. It is not configurable.
+        cre_ref: "Principle 2"
+
+      - id: audit_trail
+        text: >
+          Everything is recorded. The record cannot be modified.
+          The audit trail is append-only at the storage layer.
+          No UPDATE or DELETE is permitted on audit event records.
+        cre_ref: "Principle 13"
+
+      - id: govern_mandatory
+        text: >
+          Consequential, irreversible actions require a human checkpoint.
+          This checkpoint cannot be bypassed or made optional by
+          configuration, extension, or policy. Veto is the default
+          outcome if no input is received within the timeout window.
+        cre_ref: "CRE-SPEC-001 GOVERN"
+
+  regulated:
+    description: >
+      Requires documented M-of-N ceremony to modify.
+      Changes are recorded in the signed principles chain.
+    principles:
+      - id: consent
+        text: >
+          Nothing without agreement. No implicit consent.
+          No perpetual grants. Revocation is immediate.
+          Crypto-shredding is the erasure mechanism.
+        cre_ref: "Principle 12"
+
+      - id: uncertainty
+        text: >
+          Uncertainty is a first-class output. A system that presents
+          complete-seeming answers without visible uncertainty is
+          non-compliant. The ContextBundle.uncertainty field is mandatory
+          and enforced at construction time.
+        cre_ref: "Principle 9"
+
+      - id: provenance
+        text: >
+          Every fact carries proof of where it came from.
+          Provenance cannot be stripped from context.
+          The provenance named graph is append-only.
+        cre_ref: "CRE-SPEC-001 RELATE"
+
+      - id: minimum_necessary
+        text: >
+          Context is assembled for a declared purpose.
+          No context is constructed without a stated reason.
+          Purpose is mandatory in every NAVIGATE call.
+        cre_ref: "CRE-SPEC-001 NAVIGATE"
+
+  operational:
+    description: >
+      Standard change management. Document and communicate changes.
+    principles:
+      - id: humility
+        text: >
+          The system presents candidates, not conclusions.
+          Reasoning traces are mandatory output.
+          ContextBundle.reasoning_trace is never empty.
+        cre_ref: "Principle 9"
+
+      - id: openness
+        text: "The system is transparent about what it sees and how it works."
+        cre_ref: "Principle 6"
+
+      - id: purpose
+        text: "To help, not to control."
+        cre_ref: "Principle 1"
+
+      - id: dignity
+        text: "Every person deserves respect."
+        cre_ref: "Principle 11"
+
+      - id: do_no_harm
+        text: "Active avoidance of harm, not merely passive avoidance."
+        cre_ref: "Principle 5"
+...

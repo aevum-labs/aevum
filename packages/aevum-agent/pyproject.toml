@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aevum-agent"
+version = "0.4.0"
+description = "Aevum — A2A v1.0 agent protocol interceptor and governance layer."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["../../LICENSE"]
+keywords = ["aevum", "agents", "a2a", "governance", "audit"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "aevum-core>=0.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "mypy>=1.9",
+    "ruff>=0.4",
+]
+
+[project.urls]
+Homepage = "https://aevum.build"
+Repository = "https://github.com/aevum-labs/aevum"
+Issues = "https://github.com/aevum-labs/aevum/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aevum"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+
+[tool.uv.sources]
+aevum-core = { workspace = true }

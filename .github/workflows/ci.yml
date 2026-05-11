@@ -30,11 +30,31 @@ jobs:
           version: "latest"
       - name: Install dependencies
         run: uv sync --frozen
-      - name: Run mypy
+      - name: Run mypy (per-package — standing rule 02)
         run: |
           uv run mypy --package aevum.core --config-file packages/aevum-core/pyproject.toml
           uv run mypy --package aevum.server --config-file packages/aevum-server/pyproject.toml
           uv run mypy --package aevum.store.oxigraph --config-file packages/aevum-store-oxigraph/pyproject.toml
+          uv run mypy --package aevum.mcp --config-file packages/aevum-mcp/pyproject.toml
+          uv run mypy --package aevum.cli --config-file packages/aevum-cli/pyproject.toml
+          uv run mypy --package aevum.agent --config-file packages/aevum-agent/pyproject.toml
+
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: pip-audit
+        run: |
+          uv run pip-audit --desc on || true
+      - name: bandit
+        run: |
+          uv run bandit -r packages/ -ll -q
 
   namespace-check:
     name: Namespace discipline

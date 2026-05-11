@@ -5,6 +5,7 @@ description = "Aevum — the sealed movement. Replay-first, policy-governed cont
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
+license-files = ["../../LICENSE"]
 keywords = ["ai", "governance", "provenance", "audit", "context", "replay"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -24,12 +25,44 @@ dependencies = [
 [project.optional-dependencies]
 default = ["aevum-store-oxigraph"]
 cedar = ["cedarpy>=0.3"]
+server = [
+    "aevum-server>=0.3.0",
+    # aevum-oidc added back in Phase 1 when OIDC package is restored
+]
+mcp = [
+    "aevum-mcp>=0.3.0",
+]
+a2a = [
+    "aevum-agent>=0.3.0",
+]
+oxigraph = [
+    "aevum-store-oxigraph>=0.3.0",
+]
+postgres = [
+    "aevum-store-postgres>=0.3.0",
+]
+langgraph = [
+    # populated in Phase 7
+]
+crewai = [
+    # populated in Phase 7
+]
+openai-agents = [
+    # populated in Phase 7
+]
+all = [
+    "aevum-core[server]",
+    "aevum-core[mcp]",
+    "aevum-core[a2a]",
+    "aevum-core[oxigraph]",
+    "aevum-core[postgres]",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
-    "hypothesis>=6.100",
-    "mypy>=1.10",
-    "ruff>=0.9",
+    "mypy>=1.9",
+    "ruff>=0.4",
+    "cyclonedx-bom>=4.0",
 ]
 
 [project.urls]
@@ -45,8 +78,11 @@ build-backend = "hatchling.build"
 packages = ["src/aevum"]
 
 [tool.uv.sources]
-# aevum-core has no workspace dependencies — it IS the foundation
 aevum-store-oxigraph = { workspace = true }
+aevum-server = { workspace = true }
+aevum-mcp = { workspace = true }
+aevum-agent = { workspace = true }
+aevum-store-postgres = { workspace = true }
 
 [tool.mypy]
 mypy_path = "src"

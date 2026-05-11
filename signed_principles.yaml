@@ -1,0 +1,102 @@
+content:
+  description: 'The 13 principles of the Aevum governed context kernel. Immutable
+    principles cannot be changed by anyone. Regulated principles require a documented
+    M-of-N ceremony to modify. Operational principles follow standard change management.
+
+    '
+  format_version: '2.0'
+  layers:
+    immutable:
+      description: 'Cannot be changed. Ever. By anyone. Verified at boot. Changing
+        these requires forking the project.
+
+        '
+      principles:
+      - cre_ref: Principle 2
+        id: life_first
+        text: Human wellbeing above all else.
+      - cre_ref: Principle 2
+        id: crisis_barrier
+        text: 'Crisis content triggers an absolute barrier. Always. This runs before
+          entity recognition, before graph writes, before anything. It is not configurable.
+
+          '
+      - cre_ref: Principle 13
+        id: audit_trail
+        text: 'Everything is recorded. The record cannot be modified. The audit trail
+          is append-only at the storage layer. No UPDATE or DELETE is permitted on
+          audit event records.
+
+          '
+      - cre_ref: CRE-SPEC-001 GOVERN
+        id: govern_mandatory
+        text: 'Consequential, irreversible actions require a human checkpoint. This
+          checkpoint cannot be bypassed or made optional by configuration, extension,
+          or policy. Veto is the default outcome if no input is received within the
+          timeout window.
+
+          '
+    operational:
+      description: 'Standard change management. Document and communicate changes.
+
+        '
+      principles:
+      - cre_ref: Principle 9
+        id: humility
+        text: 'The system presents candidates, not conclusions. Reasoning traces are
+          mandatory output. ContextBundle.reasoning_trace is never empty.
+
+          '
+      - cre_ref: Principle 6
+        id: openness
+        text: The system is transparent about what it sees and how it works.
+      - cre_ref: Principle 1
+        id: purpose
+        text: To help, not to control.
+      - cre_ref: Principle 11
+        id: dignity
+        text: Every person deserves respect.
+      - cre_ref: Principle 5
+        id: do_no_harm
+        text: Active avoidance of harm, not merely passive avoidance.
+    regulated:
+      description: 'Requires documented M-of-N ceremony to modify. Changes are recorded
+        in the signed principles chain.
+
+        '
+      principles:
+      - cre_ref: Principle 12
+        id: consent
+        text: 'Nothing without agreement. No implicit consent. No perpetual grants.
+          Revocation is immediate. Crypto-shredding is the erasure mechanism.
+
+          '
+      - cre_ref: Principle 9
+        id: uncertainty
+        text: 'Uncertainty is a first-class output. A system that presents complete-seeming
+          answers without visible uncertainty is non-compliant. The ContextBundle.uncertainty
+          field is mandatory and enforced at construction time.
+
+          '
+      - cre_ref: CRE-SPEC-001 RELATE
+        id: provenance
+        text: 'Every fact carries proof of where it came from. Provenance cannot be
+          stripped from context. The provenance named graph is append-only.
+
+          '
+      - cre_ref: CRE-SPEC-001 NAVIGATE
+        id: minimum_necessary
+        text: 'Context is assembled for a declared purpose. No context is constructed
+          without a stated reason. Purpose is mandatory in every NAVIGATE call.
+
+          '
+  schema: aevum-principles-v2
+content_sha256: 2c7081eb8e52928ffd008f732cc11ab1cfb43899e80b4c17113c0bd75ac93d2f
+format_version: '2.0'
+previous_hash: null
+rekor_log_entry: null
+sequence: 1
+signature: 8b242e525c00e3048c2dc652bc385b007d1b7b3bc77c96004684b6898dd6ceb1345004b9d468518b021a8c63be65aff02ac25bd6bfd7442b73f9eac48d18a703
+signature_algorithm: Ed25519
+signed_at: '2026-05-11T20:35:25.598872+00:00'
+signed_by: did:key:z6Mkr3RLXkr8UUg48DrHyFBJceWnYmhNkLswvThatji2UQBg

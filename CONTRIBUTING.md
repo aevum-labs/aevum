@@ -1,68 +1,82 @@
 # Contributing to Aevum
 
-Thank you for your interest in contributing.
+## Install (users)
 
-## Ways to contribute
+```
+pip install aevum-core                  # core loop, SQLite, CLI
+pip install "aevum-core[server]"        # + FastAPI + OIDC
+pip install "aevum-core[mcp]"           # + FastMCP gateway
+pip install "aevum-core[all]"           # everything
+```
+
+Note: `pip install aevum` does not install this project.
+The main package is `pip install aevum-core`.
+
+## The Machine Test and Brain Test
+
+Every contribution must pass both tests from the Crossover Contract:
+
+**BRAIN TEST:**
+Does this preserve contextual flow and accumulated awareness?
+Does the system still know what it knew?
+
+**MACHINE TEST:**
+Is this interface clean enough that a stranger could swap this component
+without reading its internals?
+
+Both must pass. Explain your answers in the PR description.
+
+## The Five Absolute Barriers
+
+These behaviors cannot be relaxed by any contribution.
+A PR that weakens any of these will not be merged.
+
+1. Crisis content triggers an absolute barrier — runs before everything
+2. GOVERN checkpoint cannot be bypassed or made optional
+3. REMEMBER must fire on every session close without exception
+4. Uncertainty is mandatory in every ContextBundle output
+5. Audit trail is append-only — no UPDATE or DELETE on event records
+
+## Standing Rules
+
+All contributors must follow the standing rules documented in the phase handoffs.
+Key rules:
+
+- Never include `tests/__init__.py` (Rule 01)
+- Run mypy per-package: `mypy --package aevum.X` (Rule 02)
+- Build backend is hatchling only (Rule 06)
+- No `__init__.py` in `src/aevum/` (Rule 07)
+- New dependencies: Apache-2.0, MIT, BSD-2, BSD-3, or ISC only
+
+## Development Setup
+
+```bash
+git clone https://github.com/aevum-labs/aevum
+cd aevum
+uv sync
+uv run pytest
+uv run mypy --package aevum.core --config-file packages/aevum-core/pyproject.toml
+```
+
+## Pull Request Process
+
+1. Open an issue for non-trivial changes before starting
+2. All 260+ tests must pass
+3. mypy must pass per-package (strict mode)
+4. ruff must pass with zero warnings
+5. Brain Test + Machine Test answers in PR description
+6. No new external dependencies without justification
+7. Code, tests, and docs change in the same commit
+
+## Ways to Contribute
 
 - **Bug reports:** [Open an issue](https://github.com/aevum-labs/aevum/issues)
 - **Feature requests:** [Start a discussion](https://github.com/aevum-labs/aevum/discussions)
-- **Security vulnerabilities:** [GitHub Security Advisories](https://github.com/aevum-labs/aevum/security/advisories/new) (private)
-- **Pull requests:** See the development guide below
+- **Security vulnerabilities:** security@aevum.build (private — do not open a public issue)
+- **Pull requests:** Follow the process above
 
-## Development setup
+## Contact
 
-```bash
-git clone https://github.com/aevum-labs/aevum.git
-cd aevum
-uv sync
-```
-
-## Running tests
-
-```bash
-# All packages
-uv run pytest packages/
-
-# Single package
-cd packages/aevum-core
-uv run pytest tests/ -v
-```
-
-## Code standards
-
-- Python 3.11+, mypy strict, ruff (zero warnings)
-- Every function has a docstring explaining purpose and constraints
-- Comments explain *why*, not *what*
-- No `tests/__init__.py` -- test directories are not packages
-- Run `uv run mypy --package aevum.<name>` per package
-
-## Submitting a pull request
-
-1. Fork the repository
-2. Create a branch: `git checkout -b my-feature`
-3. Make your changes with tests
-4. Run: `uv run pytest` and `uv run mypy --package aevum.<name>`
-5. Sign your commits: `git commit -s -m "Your message"`
-6. Open a pull request against `main`
-
-## Conformance
-
-Changes to aevum-core must pass the conformance suite:
-```bash
-cd ../aevum-conformance
-uv run pytest layer1_wire/ layer2_semantic/ layer3_invariants/ -v
-```
-
-## Specification Changes
-
-The Aevum Protocol Specification is maintained in a separate
-repository: https://github.com/aevum-labs/aevum-spec
-
-Do not add spec/ content to this repository.
-Specification changes require a PR to aevum-spec first.
-Implementation changes that require a spec update should
-reference the aevum-spec PR in the commit message.
-
-## License
-
-By contributing, you agree your contributions are licensed under Apache-2.0.
+Security issues: security@aevum.build
+Bugs: GitHub Issues
+Features: GitHub Discussions
