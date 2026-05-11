@@ -3,54 +3,40 @@
 ## Supported Versions
 
 | Version | Supported |
-|---|---|
-| 0.x (pre-release) | Current development |
-
-Once 1.0 is released, only the most recent minor version receives security fixes.
+|---------|-----------|
+| 0.4.x   | Yes       |
+| 0.3.x   | No        |
 
 ## Reporting a Vulnerability
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Please report security vulnerabilities using GitHub Security Advisories:
-https://github.com/aevum-labs/aevum/security/advisories/new
+Email: security@aevum.build
 
-Reports are kept private until a fix is released.
-We aim to respond within 48 hours and release a fix within 14 days.
+Response within 72 hours. Confirmed vulnerabilities addressed in a patch release.
+Credit given in release notes unless you prefer anonymity.
 
-Include:
-- A description of the vulnerability
-- Steps to reproduce
-- The version of `aevum-core` affected
-- Any relevant code or configuration
+## Security Architecture
 
-## Response Process
+Aevum's key security properties:
 
-- **Acknowledgement:** within 48 hours of receipt
-- **Initial assessment:** within 7 days
-- **Fix or mitigation:** within 90 days for confirmed vulnerabilities
-- **Public disclosure:** coordinated with the reporter after a fix is available
+- SHA-256 Merkle chain audit trail — tamper-evident, cannot be silently altered
+- Ed25519-signed principles verified at boot (runtime verification in Phase 1)
+- Five absolute barriers enforced via Cedar forbid policies (non-bypassable)
+- Append-only audit trail enforced at storage layer (no UPDATE or DELETE)
+- Consent gate verified before every context traversal
+- Crisis detection runs before any graph write
 
-We follow responsible disclosure. We will not take legal action against researchers
-who report vulnerabilities in good faith following this policy.
+Full threat model: [THREAT_MODEL.md](THREAT_MODEL.md)
 
-## Scope
+## Supply Chain
 
-The following are in scope:
+- pip-audit on every CI push
+- OpenSSF Scorecard badge — Phase 9
+- CycloneDX SBOM on every release — Phase 9
+- PyPI Trusted Publishing (OIDC, no stored API keys) — Phase 9
 
-- `aevum-core` and all packages in the `aevum-labs/aevum` monorepo
-- The Aevum protocol specification (`aevum-labs/aevum-spec`)
-- The conformance test suite (`aevum-labs/aevum-conformance`)
-
-The following are out of scope:
-
-- Vulnerabilities in dependencies (report to the dependency maintainer)
-- Vulnerabilities that require physical access to the system
-- Social engineering attacks
-
----
-
-## Signing key trust boundary
+## Signing Key Trust Boundary
 
 Aevum's security model depends on where the signing key lives relative to the
 agent's trust boundary.
@@ -65,25 +51,10 @@ agent's trust boundary.
 HIPAA §164.312(b) requiring independently-recorded audit trails): use an
 external signer. The signing key must live outside the agent's trust boundary.
 
-The default `InProcessSigner` provides tamper-DETECTION: any modification
-to a signed event is detectable by running `verify_sigchain()`. It does NOT
-provide tamper-PREVENTION: a compromised process could in principle re-sign
-forged events before the chain is verified.
-
 See [ADR-004](docs/adrs/adr-004-signer-interface.md) for the full trust-boundary
 analysis.
 
-## Complication security model
-
-Optional complications (aevum-spiffe, aevum-publish, aevum-llm, aevum-mcp)
-extend the kernel. Each complication:
-
-- Must be explicitly installed AND approved before it activates
-- Writes audit events using the kernel's sigchain (tamper-detectable)
-- **Cannot** disable or bypass the five absolute barriers
-- **Cannot** modify the existing chain (append-only, Barrier 4)
-
-## Absolute barriers
+## Absolute Barriers
 
 The five barriers cannot be disabled by any policy, configuration, or complication:
 
@@ -93,7 +64,7 @@ The five barriers cannot be disabled by any policy, configuration, or complicati
 4. **Audit immutability** — prevents audit log modification
 5. **Provenance** — records data lineage
 
-## Cryptographic algorithms
+## Cryptographic Algorithms
 
 | Component | Algorithm | Standard |
 |---|---|---|
@@ -101,18 +72,4 @@ The five barriers cannot be disabled by any policy, configuration, or complicati
 | Chain hash | SHA3-256 | FIPS 202 |
 | Payload hash | SHA3-256 | FIPS 202 |
 | Canonicalization | RFC 8785 JCS | RFC 8785 |
-| GENESIS_HASH | SHA3-256("aevum:genesis") | — |
-
-For FIPS 140-3 strict environments: Ed25519 is FIPS 186-5 approved but not
-universally available in validated cryptographic modules. Use `VaultTransitSigner`
-with a FIPS-validated Vault deployment, or implement a custom `Signer`
-against a FIPS 140-3 validated PKCS#11 module. See ADR-004 for the
-pluggable signer path.
-
-## External transparency (aevum-publish)
-
-`aevum-publish` submits chain checkpoints to Sigstore Rekor v2. Note: the
-current implementation targets the Rekor v1 hashedrekord submission format.
-Operators using a Rekor v2 (rekor-tiles) instance should verify the API format
-against [CLIENTS.md](https://github.com/sigstore/rekor-tiles/blob/main/CLIENTS.md)
-before production use.
+| Principles signing | Ed25519 | RFC 8032 |
