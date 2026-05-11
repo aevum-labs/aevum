@@ -32,13 +32,14 @@ Thumbs.db
 verify_*.py
 scripts/verify_*.py
 
-# Aevum development — never commit
+# Aevum development — never commit (Phase 0+)
 aevum_principles.key
 signed_principles_draft.yaml
 tools/sign_principles.py
 
-# Keys
+# Private keys — never commit
 *.key
+*.pem
 
-# OpenSSF Scorecard output
+# OpenSSF Scorecard output (Phase 0+)
 results.sarif
