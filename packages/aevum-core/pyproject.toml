@@ -25,12 +25,44 @@ dependencies = [
 [project.optional-dependencies]
 default = ["aevum-store-oxigraph"]
 cedar = ["cedarpy>=0.3"]
+server = [
+    "aevum-server>=0.4.0",
+    "aevum-oidc>=0.4.0",
+]
+mcp = [
+    "aevum-mcp>=0.4.0",
+]
+a2a = [
+    "aevum-agent>=0.4.0",
+]
+oxigraph = [
+    "aevum-store-oxigraph>=0.4.0",
+]
+postgres = [
+    "aevum-store-postgres>=0.4.0",
+]
+langgraph = [
+    # populated in Phase 7
+]
+crewai = [
+    # populated in Phase 7
+]
+openai-agents = [
+    # populated in Phase 7
+]
+all = [
+    "aevum-core[server]",
+    "aevum-core[mcp]",
+    "aevum-core[a2a]",
+    "aevum-core[oxigraph]",
+    "aevum-core[postgres]",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
-    "hypothesis>=6.100",
-    "mypy>=1.10",
-    "ruff>=0.9",
+    "mypy>=1.9",
+    "ruff>=0.4",
+    "cyclonedx-bom>=4.0",
 ]
 
 [project.urls]
