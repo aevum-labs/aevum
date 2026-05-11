@@ -19,7 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "aevum-core>=0.4.0",
+    "aevum-core>=0.3.0",
 ]
 
 [project.optional-dependencies]
@@ -40,3 +40,6 @@ packages = ["src/aevum"]
 [tool.mypy]
 strict = true
 python_version = "3.11"
+
+[tool.uv.sources]
+aevum-core = { workspace = true }
