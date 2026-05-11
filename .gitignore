@@ -29,5 +29,16 @@ site/
 Thumbs.db
 
 # Verify scripts (run locally, never commit)
-verify_phase*.py
-scripts/verify_phase*.py
+verify_*.py
+scripts/verify_*.py
+
+# Aevum development — never commit
+aevum_principles.key
+signed_principles_draft.yaml
+tools/sign_principles.py
+
+# Keys
+*.key
+
+# OpenSSF Scorecard output
+results.sarif
