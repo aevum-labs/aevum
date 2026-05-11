@@ -5,6 +5,7 @@ description = "Aevum — the sealed movement. Replay-first, policy-governed cont
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
+license-files = ["../../LICENSE"]
 keywords = ["ai", "governance", "provenance", "audit", "context", "replay"]
 classifiers = [
     "Development Status :: 3 - Alpha",
