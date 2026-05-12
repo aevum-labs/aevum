@@ -25,7 +25,10 @@ constraint-dependencies = [
 [tool.pytest.ini_options]
 testpaths = ["packages", "tests"]
 asyncio_mode = "auto"
-addopts = "--tb=short"
+addopts = "--tb=short -m 'not integration'"
+markers = [
+    "integration: live network tests (run with: pytest -m integration)",
+]
 
 [tool.ruff]
 line-length = 100

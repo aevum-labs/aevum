@@ -25,11 +25,11 @@ dependencies = [
     "rfc3161-client>=1.0.0",
     "pyyaml>=6.0",
     "base58>=2.1",
+    "cedarpy>=4.8.1",
 ]
 
 [project.optional-dependencies]
 default = ["aevum-store-oxigraph"]
-cedar = ["cedarpy>=0.3"]
 server = [
     "aevum-server>=0.3.0",
     # aevum-oidc added back in Phase 1 when OIDC package is restored
@@ -110,7 +110,7 @@ ignore = ["ANN401"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "--tb=short"
+addopts = "--tb=short -m 'not integration'"
 pythonpath = ["src", "tests"]
 markers = [
     "integration: live network tests (run with: pytest -m integration)",
