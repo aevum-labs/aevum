@@ -134,7 +134,7 @@ class CedarPolicyEngine:
             ) from exc
 
         decision = result.decision
-        permitted = (decision == Decision.Allow)
+        permitted: bool = (decision == Decision.Allow)
 
         if not permitted:
             logger.debug(
