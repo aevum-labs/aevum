@@ -2,7 +2,6 @@
 Unconditional Barriers — hardcoded, unconditional, non-configurable.
 Spec Section 09.3. Canary tests in tests/test_canary.py.
 """
-
 from __future__ import annotations
 
 from typing import Any
@@ -39,6 +38,16 @@ def _kernel_provenance(audit_id: str) -> ProvenanceRecord:
         source_id="aevum-core", ingest_audit_id=audit_id,
         chain_of_custody=["aevum-core"], classification=0,
     )
+
+
+def crisis_barrier_check(text: str) -> None:  # noqa: ARG001
+    """
+    Check if text contains crisis content.
+    Phase 1 stub — callable for canary import check.
+    Full implementation in Phase 2 (Cedar forbid policy + 13 crisis patterns).
+    Raises BarrierError if crisis content is detected (Phase 2).
+    """
+    pass
 
 
 def check_crisis(data: dict[str, Any], audit_id: str) -> OutputEnvelope | None:
