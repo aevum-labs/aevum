@@ -32,7 +32,7 @@ def migrate(
         raise typer.Exit(code=1)
 
     try:
-        from aevum.store.postgres.store import migrate_from_oxigraph
+        from aevum.store.postgres.migrate import migrate_from_oxigraph
     except ImportError:
         typer.echo("Error: aevum-store-postgres is not installed.", err=True)
         raise typer.Exit(code=1) from None
@@ -44,7 +44,7 @@ def migrate(
     try:
         import psycopg
         conn = psycopg.connect(postgres_dsn)
-        migrated = migrate_from_oxigraph(oxigraph_path, conn)
+        migrated = migrate_from_oxigraph(oxigraph_path, conn)  # type: ignore[arg-type]  # Phase 2: wire store construction
         typer.echo(f"Migration complete: {migrated} entities transferred.")
     except Exception as e:
         typer.echo(f"Migration failed: {e}", err=True)

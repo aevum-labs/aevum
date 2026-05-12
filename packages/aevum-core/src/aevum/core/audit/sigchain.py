@@ -1,5 +1,6 @@
 """
 Sigchain — Ed25519 signing and SHA3-256 chaining. Spec Section 06.
+Phase 1: adds ImmutableLedgerError, DualSigner integration, TSA integration.
 """
 
 from __future__ import annotations
@@ -8,9 +9,10 @@ import base64
 import datetime
 import hashlib
 import json
+import logging
 import os
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
@@ -20,7 +22,20 @@ from aevum.core.audit.event import AuditEvent
 from aevum.core.audit.hlc import now as hlc_now
 from aevum.core.audit.signer import InProcessSigner, Signer
 
+if TYPE_CHECKING:
+    from aevum.core.signing import DualSigner
+    from aevum.core.tsa import TSAClient
+
+logger = logging.getLogger(__name__)
+
 GENESIS_HASH = hashlib.sha3_256(b"aevum:genesis").hexdigest()
+
+
+class ImmutableLedgerError(Exception):
+    """
+    Raised when code attempts to modify or delete an audit chain entry.
+    The audit chain is append-only. This error is permanent and intentional.
+    """
 
 
 def _uuid7() -> str:
@@ -36,7 +51,7 @@ def _uuid7() -> str:
 
 
 class Sigchain:
-    """Per-node Ed25519 signing chain. Append-only by design."""
+    """Per-node Ed25519 signing chain with optional Phase 1 dual-sig + TSA. Append-only by design."""
 
     def __init__(
         self,
@@ -46,6 +61,9 @@ class Sigchain:
         key_id: str | None = None,
         initial_sequence: int = 0,
         initial_prior_hash: str = GENESIS_HASH,
+        # Phase 1 additions — optional
+        dual_signer: DualSigner | None = None,
+        tsa_client: TSAClient | None = None,
     ) -> None:
         if signer is not None:
             self._signer = signer
@@ -60,6 +78,8 @@ class Sigchain:
 
         self._sequence: int = initial_sequence
         self._prior_hash: str = initial_prior_hash
+        self._dual_signer = dual_signer
+        self._tsa_client = tsa_client
 
     @property
     def key_id(self) -> str:
@@ -134,7 +154,39 @@ class Sigchain:
             "prior_hash": prior,
             "signer_key_id": self._signer.key_id,
         }
-        signature = self._sign(signing_fields)
+        canonical = json.dumps(signing_fields, sort_keys=True, separators=(",", ":")).encode()
+        signature = base64.urlsafe_b64encode(
+            self._signer.sign(hashlib.sha3_256(canonical).digest())
+        ).rstrip(b"=").decode()
+
+        # Phase 1: dual-sig + TSA (belt-and-suspenders, non-blocking)
+        ed25519_sig_hex: str | None = None
+        mldsa65_sig_hex: str | None = None
+        ed25519_pub_hex: str | None = None
+        mldsa65_pub_hex: str | None = None
+        tsa_url: str | None = None
+        tsa_token_hex: str | None = None
+
+        if self._dual_signer is not None:
+            try:
+                from aevum.core.signing import DualSigner
+                dual_sig = self._dual_signer.sign(canonical)
+                DualSigner.verify(canonical, dual_sig)  # belt-and-suspenders
+                ed25519_sig_hex = dual_sig.ed25519_sig.hex()
+                mldsa65_sig_hex = dual_sig.mldsa65_sig.hex()
+                ed25519_pub_hex = dual_sig.ed25519_pub.hex()
+                mldsa65_pub_hex = dual_sig.mldsa65_pub.hex()
+            except Exception as exc:
+                logger.error("Dual-sig failed on new chain entry: %s", exc)
+
+            if self._tsa_client is not None:
+                try:
+                    tsa_token = self._tsa_client.timestamp(canonical)
+                    if tsa_token is not None:
+                        tsa_url = tsa_token.tsa_url
+                        tsa_token_hex = tsa_token.token_bytes.hex()
+                except Exception as exc:
+                    logger.warning("TSA timestamp failed (non-blocking): %s", exc)
 
         event = AuditEvent(
             event_id=event_id,
@@ -155,6 +207,12 @@ class Sigchain:
             prior_hash=prior,
             signature=signature,
             signer_key_id=self._signer.key_id,
+            ed25519_sig=ed25519_sig_hex,
+            mldsa65_sig=mldsa65_sig_hex,
+            ed25519_pub=ed25519_pub_hex,
+            mldsa65_pub=mldsa65_pub_hex,
+            tsa_url=tsa_url,
+            tsa_token=tsa_token_hex,
         )
         self._prior_hash = AuditEvent.hash_event_for_chain(event)
         return event
@@ -199,5 +257,23 @@ class Sigchain:
                 public_key.verify(sig_bytes, digest)
             except Exception:
                 return False
+
+            # Phase 1: verify dual-sig if present on this entry
+            if event.mldsa65_sig is not None and self._dual_signer is not None:
+                try:
+                    from aevum.core.signing import DualSignature, DualSigner
+                    if (event.ed25519_sig is not None
+                            and event.ed25519_pub is not None
+                            and event.mldsa65_pub is not None):
+                        dual_sig = DualSignature(
+                            ed25519_sig=bytes.fromhex(event.ed25519_sig),
+                            mldsa65_sig=bytes.fromhex(event.mldsa65_sig),
+                            ed25519_pub=bytes.fromhex(event.ed25519_pub),
+                            mldsa65_pub=bytes.fromhex(event.mldsa65_pub),
+                        )
+                        DualSigner.verify(canonical, dual_sig)
+                except Exception:
+                    return False
+
             expected_prior = AuditEvent.hash_event_for_chain(event)
         return True
