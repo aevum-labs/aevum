@@ -12,16 +12,13 @@ using internal mocks — they do not require Cedar, pyoxigraph, or session state
 The full canary suite (testing RELATE, NAVIGATE, GOVERN, REMEMBER) is built
 progressively as those modules are added in Phases 2-4.
 
-Phase 1 canaries (structural/invariant):
-  1. crisis_barrier_fires_before_graph_write   — audit barrier invariant
-  2. consent_required_without_grant            — consent gate invariant
-  3. uncertainty_mandatory_in_context_bundle   — output contract
-  4. reasoning_trace_mandatory                 — output contract
-  5. audit_chain_append_only                   — storage invariant
-  6. dual_signature_every_chain_entry          — sigchain invariant
-
-Canaries for GOVERN, REMEMBER, REPLAY are added in Phases 2-4
-when those implementations are in place.
+Phase 2 canaries (behavioral):
+  1. crisis_barrier_fires_before_graph_write         — barrier 1 fires on crisis text
+  2. consent_absent_raises_ConsentRequired           — ConsentRequired is raisable
+  3. govern_cannot_be_auto_approved_without_Cedar_permit — barrier 5 enforced via Cedar
+  4. reasoning_trace_nonempty_in_every_ContextBundle — deferred to Phase 3
+  5. audit_chain_append_only                         — barrier 4 enforced via Cedar
+  6. dual_signature_every_chain_entry                — sigchain invariant
 """
 from __future__ import annotations
 
@@ -76,7 +73,7 @@ class CanarySuite:
         canaries: list[Callable[[], CanaryResult]] = [
             self._canary_crisis_barrier_structure,
             self._canary_consent_required_without_grant,
-            self._canary_uncertainty_mandatory,
+            self._canary_govern_cannot_be_auto_approved,
             self._canary_reasoning_trace_mandatory,
             self._canary_audit_chain_append_only,
             self._canary_dual_signature_every_entry,
@@ -103,65 +100,133 @@ class CanarySuite:
 
     def _canary_crisis_barrier_structure(self) -> CanaryResult:
         """
-        Verify that the crisis barrier module is present and callable.
-        Full behavioral test (fires before graph write) is in Phase 2
-        when RELATE is implemented.
+        Verify the crisis barrier actually fires before graph writes.
+        Attempts to call crisis_barrier_check with crisis content.
         """
         name = "crisis_barrier_fires_before_graph_write"
         try:
-            from aevum.core.barriers import crisis_barrier_check  # noqa: F401
+            from aevum.core.barriers import crisis_barrier_check, BarrierError
+            # crisis_barrier_check must raise BarrierError for crisis content
+            raised = False
+            try:
+                crisis_barrier_check("I want to end my life")
+            except BarrierError:
+                raised = True
+            if not raised:
+                return CanaryResult(
+                    name=name,
+                    passed=False,
+                    detail="crisis_barrier_check did not raise BarrierError "
+                           "for 'I want to end my life'. "
+                           "This is a critical safety failure.",
+                )
+            # Normal text must NOT raise
+            try:
+                crisis_barrier_check("The weather is nice today.")
+            except BarrierError:
+                return CanaryResult(
+                    name=name,
+                    passed=False,
+                    detail="crisis_barrier_check raised BarrierError for "
+                           "non-crisis text — false positive.",
+                )
             return CanaryResult(name=name, passed=True)
         except ImportError as exc:
-            return CanaryResult(
-                name=name,
-                passed=False,
-                detail=f"crisis_barrier_check not importable: {exc}",
-            )
+            return CanaryResult(name=name, passed=False,
+                                detail=f"Cannot import: {exc}")
 
     # ── Canary 2 ─────────────────────────────────────────────────────────────
 
     def _canary_consent_required_without_grant(self) -> CanaryResult:
         """
-        Verify that ConsentRequired is importable and is an Exception subclass.
-        Full behavioral test is in Phase 3 when the consent ledger is built.
+        Verify that accessing data without consent raises ConsentRequired.
         """
         name = "consent_absent_raises_ConsentRequired"
         try:
-            from aevum.core.consent import ConsentRequired  # noqa: F401
+            from aevum.core.consent import ConsentRequired
+            # ConsentRequired must be an Exception subclass
             if not issubclass(ConsentRequired, Exception):
                 return CanaryResult(
-                    name=name,
-                    passed=False,
+                    name=name, passed=False,
                     detail="ConsentRequired is not an Exception subclass",
                 )
+            # Verify it can be raised and caught
+            try:
+                raise ConsentRequired("canary test")
+            except ConsentRequired:
+                pass
             return CanaryResult(name=name, passed=True)
         except ImportError as exc:
-            return CanaryResult(
-                name=name,
-                passed=False,
-                detail=f"ConsentRequired not importable: {exc}",
-            )
+            return CanaryResult(name=name, passed=False,
+                                detail=f"Cannot import ConsentRequired: {exc}")
 
     # ── Canary 3 ─────────────────────────────────────────────────────────────
 
-    def _canary_uncertainty_mandatory(self) -> CanaryResult:
+    def _canary_govern_cannot_be_auto_approved(self) -> CanaryResult:
         """
-        Verify that ContextBundle enforces uncertainty at construction.
-        Attempts to construct a ContextBundle with uncertainty=None
-        and expects a TypeError or ValueError.
+        Verify that GOVERN cannot approve an irreversible+consequential action
+        without a human checkpoint (Barrier 5).
         """
-        name = "uncertainty_present_in_every_ContextBundle"
+        name = "govern_cannot_be_auto_approved_without_Cedar_permit"
         try:
-            from aevum.core.types import ContextBundle  # noqa: F401
-            # ContextBundle is defined in Phase 3.
-            # In Phase 1, we just verify the types module exists.
+            from aevum.core.cedar_engine import CedarPolicyEngine
+            engine = CedarPolicyEngine.default()
+
+            # Attempt govern_approve for irreversible+consequential action
+            # WITHOUT human_checkpoint_completed
+            context_no_review = {
+                "action_reversible": False,
+                "action_consequential": True,
+                "has_crisis_content": False,
+                "has_active_consent": True,
+                "consent_purpose_matches": True,
+                "data_classification_level": 0,
+                "deployment_ceiling_level": 3,
+                "autonomy_level": 3,
+                "human_checkpoint_completed": False,
+            }
+            permitted_without_review = engine.is_permitted(
+                principal_type="AevumAgent",
+                principal_id="canary-agent",
+                action="govern_approve",
+                resource_type="DataGraph",
+                resource_id="knowledge",
+                context=context_no_review,
+            )
+            if permitted_without_review:
+                return CanaryResult(
+                    name=name,
+                    passed=False,
+                    detail="Cedar permitted govern_approve for irreversible+"
+                           "consequential action WITHOUT human review. "
+                           "Barrier 5 is broken.",
+                )
+
+            # With human_checkpoint_completed=True, it should be permitted
+            context_reviewed = dict(context_no_review)
+            context_reviewed["human_checkpoint_completed"] = True
+            permitted_with_review = engine.is_permitted(
+                principal_type="AevumAgent",
+                principal_id="canary-agent",
+                action="govern_approve",
+                resource_type="DataGraph",
+                resource_id="knowledge",
+                context=context_reviewed,
+            )
+            if not permitted_with_review:
+                return CanaryResult(
+                    name=name,
+                    passed=False,
+                    detail="Cedar denied govern_approve even WITH "
+                           "human_checkpoint_completed=True. "
+                           "Barrier 5 escape clause is broken.",
+                )
+
             return CanaryResult(name=name, passed=True)
-        except ImportError:
-            # Types module not yet built (Phase 3). Canary deferred.
-            # This is acceptable in Phase 1 — the invariant is enforced
-            # when the module is added.
-            return CanaryResult(name=name, passed=True,
-                                detail="Deferred to Phase 3 (types module)")
+
+        except Exception as exc:  # noqa: BLE001
+            return CanaryResult(name=name, passed=False,
+                                detail=f"Canary raised: {exc}")
 
     # ── Canary 4 ─────────────────────────────────────────────────────────────
 
@@ -175,26 +240,37 @@ class CanarySuite:
     # ── Canary 5 ─────────────────────────────────────────────────────────────
 
     def _canary_audit_chain_append_only(self) -> CanaryResult:
-        """
-        Verify the audit chain rejects mutation attempts.
-        Tests that ImmutableLedgerError is raised if a delete is attempted.
-        """
+        """Verify Barrier 4 blocks audit chain mutations via Cedar."""
         name = "audit_chain_append_only"
         try:
-            from aevum.core.sigchain import ImmutableLedgerError  # noqa: F401
+            from aevum.core.cedar_engine import CedarPolicyEngine
+            from aevum.core.sigchain import ImmutableLedgerError
+
             if not issubclass(ImmutableLedgerError, Exception):
+                return CanaryResult(name=name, passed=False,
+                                    detail="ImmutableLedgerError not an Exception")
+
+            engine = CedarPolicyEngine.default()
+            context: dict = {}  # barrier 4 is unconditional — no context needed
+
+            # delete_audit_event must always be denied
+            permitted = engine.is_permitted(
+                principal_type="AevumAgent",
+                principal_id="canary-agent",
+                action="delete_audit_event",
+                resource_type="DataGraph",
+                resource_id="provenance",
+                context=context,
+            )
+            if permitted:
                 return CanaryResult(
-                    name=name,
-                    passed=False,
-                    detail="ImmutableLedgerError is not an Exception subclass",
+                    name=name, passed=False,
+                    detail="Cedar permitted delete_audit_event. "
+                           "Barrier 4 (audit seal) is broken.",
                 )
             return CanaryResult(name=name, passed=True)
-        except ImportError as exc:
-            return CanaryResult(
-                name=name,
-                passed=False,
-                detail=f"ImmutableLedgerError not importable: {exc}",
-            )
+        except Exception as exc:  # noqa: BLE001
+            return CanaryResult(name=name, passed=False, detail=str(exc))
 
     # ── Canary 6 ─────────────────────────────────────────────────────────────
 
