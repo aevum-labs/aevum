@@ -110,7 +110,7 @@ ignore = ["ANN401"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "--tb=short"
+addopts = "--tb=short -m 'not integration'"
 pythonpath = ["src", "tests"]
 markers = [
     "integration: live network tests (run with: pytest -m integration)",
