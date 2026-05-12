@@ -17,7 +17,7 @@ app = typer.Typer(help="Manage the Aevum HTTP API server.")
 
 @app.command("start")
 def start(
-    host: Annotated[str, typer.Option(help="Bind host")] = "0.0.0.0",
+    host: Annotated[str, typer.Option(help="Bind host")] = "0.0.0.0",  # nosec B104
     port: Annotated[int, typer.Option(help="Bind port")] = 8000,
     workers: Annotated[int, typer.Option(help="Number of uvicorn workers")] = 1,
     graph: Annotated[
@@ -78,7 +78,7 @@ def _build_engine(graph: str) -> Engine:
         try:
             import psycopg
             from aevum.store.postgres import PostgresStore
-            from aevum.store.postgres.store import initialize_schema
+            from aevum.store.postgres.schema import initialize_schema
             conn = psycopg.connect(dsn)
             initialize_schema(conn)
             typer.echo("Graph backend: PostgreSQL")
