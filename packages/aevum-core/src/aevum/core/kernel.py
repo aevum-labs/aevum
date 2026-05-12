@@ -15,10 +15,9 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from aevum.core.canary import CanarySuite
-from aevum.core.principles import Principles, PrinciplesError, PrinciplesVerifier
+from aevum.core.principles import Principles, PrinciplesVerifier
 from aevum.core.signing import DualSigner
 from aevum.core.tsa import DEFAULT_TSA_URLS, TSAClient
 
@@ -66,11 +65,11 @@ class Kernel:
     @classmethod
     def local(
         cls,
-        state_dir: Optional[Path] = None,
-        principles_path: Optional[Path] = None,
+        state_dir: Path | None = None,
+        principles_path: Path | None = None,
         tsa_enabled: bool = True,
-        tsa_urls: Optional[list[str]] = None,
-    ) -> "Kernel":
+        tsa_urls: list[str] | None = None,
+    ) -> Kernel:
         """
         Boot the kernel with local state.
 

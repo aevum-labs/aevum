@@ -26,9 +26,9 @@ when those implementations are in place.
 from __future__ import annotations
 
 import dataclasses
-import hashlib
 import logging
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 # Module-level import required so tests can patch aevum.core.canary.DualSigner.generate
 from aevum.core.signing import DualSigner, SignatureError

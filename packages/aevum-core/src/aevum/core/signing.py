@@ -27,7 +27,6 @@ Usage:
 from __future__ import annotations
 
 import dataclasses
-import os
 from pathlib import Path
 
 import nacl.encoding
@@ -61,7 +60,7 @@ class DualSignature:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, str]) -> "DualSignature":
+    def from_dict(cls, d: dict[str, str]) -> DualSignature:
         """Deserialize from hex strings."""
         return cls(
             ed25519_sig=bytes.fromhex(d["ed25519_sig"]),
@@ -104,7 +103,7 @@ class DualSigner:
         return self._mldsa65_pk
 
     @classmethod
-    def generate(cls) -> "DualSigner":
+    def generate(cls) -> DualSigner:
         """Generate a fresh dual keypair. Keys are not persisted automatically."""
         ed25519_sk = nacl.signing.SigningKey.generate()
         with oqs.Signature(cls._MLDSA65_ALG) as signer:
@@ -113,7 +112,7 @@ class DualSigner:
         return cls(ed25519_sk, mldsa65_sk, mldsa65_pk)
 
     @classmethod
-    def load(cls, state_dir: Path) -> "DualSigner":
+    def load(cls, state_dir: Path) -> DualSigner:
         """Load keypair from state directory. Raises FileNotFoundError if absent."""
         ed25519_key_bytes = (state_dir / cls._ED25519_KEYFILE).read_bytes()
         ed25519_sk = nacl.signing.SigningKey(ed25519_key_bytes)

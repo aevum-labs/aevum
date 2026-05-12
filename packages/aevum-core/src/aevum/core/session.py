@@ -18,7 +18,7 @@ class Session:
     span_id: str | None = None
     metadata: dict[str, Any] = dataclasses.field(default_factory=dict)
 
-    async def __aenter__(self) -> "Session":
+    async def __aenter__(self) -> Session:
         return self
 
     async def __aexit__(

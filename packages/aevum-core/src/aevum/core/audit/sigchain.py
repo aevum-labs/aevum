@@ -12,7 +12,7 @@ import json
 import logging
 import os
 import time
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
@@ -62,8 +62,8 @@ class Sigchain:
         initial_sequence: int = 0,
         initial_prior_hash: str = GENESIS_HASH,
         # Phase 1 additions — optional
-        dual_signer: Optional["DualSigner"] = None,
-        tsa_client: Optional["TSAClient"] = None,
+        dual_signer: DualSigner | None = None,
+        tsa_client: TSAClient | None = None,
     ) -> None:
         if signer is not None:
             self._signer = signer
@@ -169,7 +169,7 @@ class Sigchain:
 
         if self._dual_signer is not None:
             try:
-                from aevum.core.signing import DualSigner, SignatureError
+                from aevum.core.signing import DualSigner
                 dual_sig = self._dual_signer.sign(canonical)
                 DualSigner.verify(canonical, dual_sig)  # belt-and-suspenders
                 ed25519_sig_hex = dual_sig.ed25519_sig.hex()
@@ -261,7 +261,7 @@ class Sigchain:
             # Phase 1: verify dual-sig if present on this entry
             if event.mldsa65_sig is not None and self._dual_signer is not None:
                 try:
-                    from aevum.core.signing import DualSignature, DualSigner, SignatureError
+                    from aevum.core.signing import DualSignature, DualSigner
                     if (event.ed25519_sig is not None
                             and event.ed25519_pub is not None
                             and event.mldsa65_pub is not None):

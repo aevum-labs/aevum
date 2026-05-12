@@ -68,6 +68,7 @@ dev = [
     "mypy>=1.9",
     "ruff>=0.4",
     "cyclonedx-bom>=4.0",
+    "types-PyYAML>=6.0",
 ]
 
 [project.urls]

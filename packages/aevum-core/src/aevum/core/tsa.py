@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-from typing import Optional
 
 import httpx
 from rfc3161_client import TimestampRequestBuilder, decode_timestamp_response
@@ -61,7 +60,7 @@ class TSAToken:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, str]) -> "TSAToken":
+    def from_dict(cls, d: dict[str, str]) -> TSAToken:
         return cls(
             tsa_url=d["tsa_url"],
             token_bytes=bytes.fromhex(d["token_bytes"]),
@@ -78,7 +77,7 @@ class TSAClient:
 
     def __init__(
         self,
-        tsa_urls: Optional[list[str]] = None,
+        tsa_urls: list[str] | None = None,
         timeout: float = TSA_TIMEOUT_SECONDS,
         enabled: bool = True,
     ) -> None:
@@ -86,7 +85,7 @@ class TSAClient:
         self._timeout = timeout
         self._enabled = enabled
 
-    def timestamp(self, data: bytes) -> Optional[TSAToken]:
+    def timestamp(self, data: bytes) -> TSAToken | None:
         """
         Request an RFC 3161 timestamp for data.
 
@@ -115,7 +114,7 @@ class TSAClient:
         )
         return None
 
-    def _try_tsa(self, url: str, request_bytes: bytes) -> Optional[TSAToken]:
+    def _try_tsa(self, url: str, request_bytes: bytes) -> TSAToken | None:
         """Attempt a single TSA server. Returns TSAToken or None on failure."""
         try:
             response = httpx.post(
