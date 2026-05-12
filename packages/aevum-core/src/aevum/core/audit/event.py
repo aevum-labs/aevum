@@ -1,5 +1,6 @@
 """
-AuditEvent — the 18-field episodic ledger entry. Spec Section 06.2.
+AuditEvent — the episodic ledger entry. Spec Section 06.2.
+Phase 1 adds 6 optional dual-sig + TSA fields (nullable for backward compat).
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from typing import Any
 
 @dataclasses.dataclass(frozen=True)
 class AuditEvent:
-    """Immutable episodic ledger entry. All 18 fields required."""
+    """Immutable episodic ledger entry. Core 18 fields + 6 optional Phase 1 dual-sig fields."""
 
     event_id: str
     episode_id: str
@@ -32,6 +33,13 @@ class AuditEvent:
     prior_hash: str
     signature: str
     signer_key_id: str
+    # Phase 1: dual-sig fields (nullable — absent on pre-Phase-1 entries)
+    ed25519_sig: str | None = None   # hex, 128 chars
+    mldsa65_sig: str | None = None   # hex, 6618 chars
+    ed25519_pub: str | None = None   # hex, 64 chars
+    mldsa65_pub: str | None = None   # hex, 3904 chars
+    tsa_url: str | None = None
+    tsa_token: str | None = None     # hex of DER bytes
 
     def __post_init__(self) -> None:
         if not self.actor:
