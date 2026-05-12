@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
+import pytest
 from test_phase1_principles import make_test_principles_file
 
 
@@ -96,15 +95,14 @@ class TestKernelLocal:
     def test_kernel_boot_runs_canaries(self, tmp_path):
         """Canary suite runs during boot — if it fails, Kernel.local() raises CanaryError."""
         sp_path, _ = make_test_principles_file(tmp_path)
-        from aevum.core.kernel import Kernel
         from aevum.core.canary import CanaryError
+        from aevum.core.kernel import Kernel
         from aevum.core.signing import DualSigner
 
-        with patch.object(DualSigner, "generate", side_effect=RuntimeError("broken")):
-            # Canary 6 will fail, CanaryError raised
-            with pytest.raises((CanaryError, RuntimeError)):
-                Kernel.local(
-                    state_dir=tmp_path / "state2",
-                    principles_path=sp_path,
-                    tsa_enabled=False,
-                )
+        # Canary 6 will fail, CanaryError raised
+        with patch.object(DualSigner, "generate", side_effect=RuntimeError("broken")), pytest.raises((CanaryError, RuntimeError)):
+            Kernel.local(
+                state_dir=tmp_path / "state2",
+                principles_path=sp_path,
+                tsa_enabled=False,
+            )

@@ -2,7 +2,7 @@
 """Tests for Phase 1 sigchain upgrade: ImmutableLedgerError and dual-sig integration."""
 import pytest
 
-from aevum.core.audit.sigchain import Sigchain, ImmutableLedgerError, GENESIS_HASH
+from aevum.core.audit.sigchain import GENESIS_HASH, ImmutableLedgerError, Sigchain
 from aevum.core.sigchain import ImmutableLedgerError as FacadeImmutableLedgerError
 from aevum.core.sigchain import Sigchain as FacadeSigchain
 from aevum.core.signing import DualSigner

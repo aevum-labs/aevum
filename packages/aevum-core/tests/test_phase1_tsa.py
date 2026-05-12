@@ -3,10 +3,11 @@
 TSA client tests. Network tests are marked @pytest.mark.integration
 and skipped by default. Unit tests use httpx mock.
 """
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from aevum.core.tsa import TSAClient, TSAToken, SIGSTORE_TSA_URL
+import pytest
+
+from aevum.core.tsa import SIGSTORE_TSA_URL, TSAClient, TSAToken
 
 
 class TestTSAClientUnit:

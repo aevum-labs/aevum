@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-import json
 import hashlib
-import pytest
+import json
 from pathlib import Path
 
-from aevum.core.principles import PrinciplesVerifier, PrinciplesError, Principles
+import pytest
+
+from aevum.core.principles import Principles, PrinciplesError, PrinciplesVerifier
 
 
 def make_test_principles_file(tmp_path: Path) -> tuple[Path, bytes]:
@@ -12,10 +13,10 @@ def make_test_principles_file(tmp_path: Path) -> tuple[Path, bytes]:
     Create a valid signed_principles.yaml for testing using pyca/cryptography.
     Returns (path, private_key_bytes).
     """
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-    from cryptography.hazmat.primitives import serialization
-    import yaml
     import base58
+    import yaml
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
     private_key = Ed25519PrivateKey.generate()
     pub_bytes = private_key.public_key().public_bytes(
@@ -147,10 +148,10 @@ class TestPrinciplesVerifier:
             PrinciplesVerifier(sp_path).verify()
 
     def test_missing_required_immutable_raises(self, tmp_path):
-        import yaml
         import base58
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        import yaml
         from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
         # Content missing 'govern_mandatory'
         private_key = Ed25519PrivateKey.generate()
         pub_bytes = private_key.public_key().public_bytes(

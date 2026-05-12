@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-import pytest
 import stat
-from pathlib import Path
 
-from aevum.core.signing import DualSigner, DualSignature, SignatureError
+import pytest
+
+from aevum.core.signing import DualSignature, DualSigner, SignatureError
 
 
 class TestDualSignerGenerate:

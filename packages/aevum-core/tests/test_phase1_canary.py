@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-import pytest
 from unittest.mock import MagicMock, patch
 
-from aevum.core.canary import CanarySuite, CanaryError, CanaryResult
+import pytest
+
+from aevum.core.canary import CanaryError, CanaryResult, CanarySuite
 
 
 class TestCanarySuite:
@@ -43,9 +44,8 @@ class TestCanarySuite:
         with patch(
             "aevum.core.canary.DualSigner.generate",
             side_effect=RuntimeError("signing broken"),
-        ):
-            with pytest.raises(CanaryError, match="dual_signature"):
-                suite.run_all()
+        ), pytest.raises(CanaryError, match="dual_signature"):
+            suite.run_all()
 
     def test_canary_result_has_name_and_passed(self):
         suite = self._make_suite()
