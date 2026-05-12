@@ -40,14 +40,27 @@ def _kernel_provenance(audit_id: str) -> ProvenanceRecord:
     )
 
 
-def crisis_barrier_check(text: str) -> None:  # noqa: ARG001
+class BarrierError(Exception):
+    """
+    Raised when an unconditional barrier fires.
+    Not configurable. Not catchable in application code (re-raise not permitted).
+    """
+
+
+def crisis_barrier_check(text: str) -> None:
     """
     Check if text contains crisis content.
-    Phase 1 stub — callable for canary import check.
-    Full implementation in Phase 2 (Cedar forbid policy + 13 crisis patterns).
-    Raises BarrierError if crisis content is detected (Phase 2).
+    Raises BarrierError if crisis content is detected.
+    This runs BEFORE entity recognition, BEFORE graph writes.
+    It is not configurable. There is no override.
     """
-    pass
+    text_lower = text.lower()
+    for pattern in _CRISIS_KEYWORDS:
+        if pattern in text_lower:
+            raise BarrierError(
+                f"Crisis content detected. Barrier 1 activated. "
+                f"Session halted. Pattern: {pattern!r}"
+            )
 
 
 def check_crisis(data: dict[str, Any], audit_id: str) -> OutputEnvelope | None:
