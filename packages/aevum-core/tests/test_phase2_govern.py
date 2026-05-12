@@ -1,18 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 """Phase 2 — GOVERN checkpoint tests."""
 import json
-import pytest
 from datetime import datetime
 
+import pytest
+
+from aevum.core.cedar_engine import CedarPolicyEngine
 from aevum.core.govern import (
+    DEFAULT_GOVERN_TIMEOUT_SECONDS,
     GovernCheckpoint,
     GovernOutcome,
     ProposedAction,
-    CheckpointResult,
-    AUTOMATION_BIAS_WARNING,
-    DEFAULT_GOVERN_TIMEOUT_SECONDS,
 )
-from aevum.core.cedar_engine import CedarPolicyEngine
 
 
 @pytest.fixture
@@ -189,8 +188,9 @@ class TestGovernOutcomeEnum:
 
 class TestProposedAction:
     def test_frozen(self):
+        import dataclasses
         action = _irrev_action()
-        with pytest.raises(Exception):
+        with pytest.raises(dataclasses.FrozenInstanceError):
             action.action_type = "mutated"  # type: ignore[misc]
 
     def test_default_classification(self):

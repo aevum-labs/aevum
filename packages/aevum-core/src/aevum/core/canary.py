@@ -105,7 +105,7 @@ class CanarySuite:
         """
         name = "crisis_barrier_fires_before_graph_write"
         try:
-            from aevum.core.barriers import crisis_barrier_check, BarrierError
+            from aevum.core.barriers import BarrierError, crisis_barrier_check
             # crisis_barrier_check must raise BarrierError for crisis content
             raised = False
             try:
@@ -251,7 +251,7 @@ class CanarySuite:
                                     detail="ImmutableLedgerError not an Exception")
 
             engine = CedarPolicyEngine.default()
-            context: dict = {}  # barrier 4 is unconditional — no context needed
+            context: dict[str, Any] = {}  # barrier 4 is unconditional — no context needed
 
             # delete_audit_event must always be denied
             permitted = engine.is_permitted(

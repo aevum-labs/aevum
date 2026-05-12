@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Phase 2 — Trifecta enforcement tests."""
 import pytest
+
 from aevum.core.cedar_engine import CedarPolicyEngine
 
 

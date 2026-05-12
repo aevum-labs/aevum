@@ -25,9 +25,9 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from cedarpy import is_authorized, AuthzResult, Decision
+from cedarpy import AuthzResult, Decision, is_authorized
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class CedarPolicyEngine:
         self._policy_text = policy_text
 
     @classmethod
-    def default(cls) -> "CedarPolicyEngine":
+    def default(cls) -> CedarPolicyEngine:
         """Load all policies from the policies/ directory."""
         policy_text = cls._load_all_policies()
         return cls(policy_text)
@@ -101,7 +101,7 @@ class CedarPolicyEngine:
         resource_type: str,
         resource_id: str,
         context: dict[str, Any],
-        entities: Optional[list[dict[str, Any]]] = None,
+        entities: list[dict[str, Any]] | None = None,
     ) -> bool:
         """
         Evaluate Cedar policies for a request.

@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Phase 2 — CedarPolicyEngine and five absolute barrier tests."""
-import pytest
 from pathlib import Path
 
-from aevum.core.cedar_engine import CedarPolicyEngine, PolicyError
-from cedarpy import Decision
+import pytest
 
+from aevum.core.cedar_engine import CedarPolicyEngine, PolicyError
 
 # ---------------------------------------------------------------------------
 # Engine loading

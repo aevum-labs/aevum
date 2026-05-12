@@ -36,9 +36,9 @@ from __future__ import annotations
 import dataclasses
 import logging
 import uuid
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Optional
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ AUTOMATION_BIAS_WARNING = (
 DEFAULT_GOVERN_TIMEOUT_SECONDS = 300  # 5 minutes
 
 
-class GovernOutcome(str, Enum):
+class GovernOutcome(StrEnum):
     """The result of a GOVERN checkpoint."""
     APPROVED = "approved"
     VETOED = "vetoed"      # human vetoed OR timeout (veto-as-default)
@@ -88,7 +88,7 @@ class CheckpointResult:
     proposed_action: ProposedAction
     outcome: GovernOutcome
     decided_at: datetime
-    decided_by: Optional[str]     # human reviewer identifier, or None if timeout
+    decided_by: str | None     # human reviewer identifier, or None if timeout
     session_id: str
     checkpoint_id: str
     timeout_seconds: float
@@ -130,7 +130,7 @@ class GovernCheckpoint:
         self,
         cedar_engine: Any,          # CedarPolicyEngine
         session_id: str,
-        review_callback: Optional[Any] = None,  # callable(ProposedAction) -> bool
+        review_callback: Any | None = None,  # callable(ProposedAction) -> bool
         timeout_seconds: float = DEFAULT_GOVERN_TIMEOUT_SECONDS,
     ) -> None:
         self._cedar = cedar_engine
@@ -157,7 +157,7 @@ class GovernCheckpoint:
         GOVERN itself does not write to the sigchain — that is Session's job.
         """
         checkpoint_id = str(uuid.uuid4())
-        start = datetime.now(timezone.utc)
+        start = datetime.now(UTC)
 
         # Always show the automation bias warning for substantive checkpoints
         if action.reversible is False or action.consequential:
@@ -168,11 +168,11 @@ class GovernCheckpoint:
 
         if not requires_review:
             # Cedar permits this without human review
-            elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+            elapsed = (datetime.now(UTC) - start).total_seconds()
             return CheckpointResult(
                 proposed_action=action,
                 outcome=GovernOutcome.APPROVED,
-                decided_at=datetime.now(timezone.utc),
+                decided_at=datetime.now(UTC),
                 decided_by="cedar_automatic_permit",
                 session_id=self._session_id,
                 checkpoint_id=checkpoint_id,
@@ -182,7 +182,7 @@ class GovernCheckpoint:
 
         # Human review required — invoke callback or apply veto-as-default
         human_approved, reviewer_id = self._request_human_review(action)
-        elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+        elapsed = (datetime.now(UTC) - start).total_seconds()
 
         outcome = GovernOutcome.APPROVED if human_approved else GovernOutcome.VETOED
 
@@ -194,7 +194,7 @@ class GovernCheckpoint:
         return CheckpointResult(
             proposed_action=action,
             outcome=outcome,
-            decided_at=datetime.now(timezone.utc),
+            decided_at=datetime.now(UTC),
             decided_by=reviewer_id,
             session_id=self._session_id,
             checkpoint_id=checkpoint_id,
@@ -233,7 +233,7 @@ class GovernCheckpoint:
 
     def _request_human_review(
         self, action: ProposedAction
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Request human review via callback or apply veto-as-default.
         Returns (approved: bool, reviewer_id: Optional[str]).

@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Phase 2 — Canary suite behavioral tests."""
-import pytest
 from unittest.mock import MagicMock, patch
 
-from aevum.core.canary import CanarySuite, CanaryError, CanaryResult
+import pytest
+
+from aevum.core.canary import CanaryError, CanaryResult, CanarySuite
 
 
 @pytest.fixture
@@ -15,7 +16,7 @@ class TestPhase2CanariesPass:
     def test_all_canaries_pass(self, suite):
         results = suite.run_all()
         failures = [f"{r.name}: {r.detail}" for r in results if not r.passed]
-        assert not failures, f"Canaries failed:\n" + "\n".join(failures)
+        assert not failures, "Canaries failed:\n" + "\n".join(failures)
 
     def test_returns_six_results(self, suite):
         results = suite.run_all()
@@ -123,15 +124,19 @@ class TestCanaryErrorPropagation:
     def test_run_all_raises_on_first_failure(self, engine=None):
         suite = CanarySuite(kernel=MagicMock())
         # Make canary 1 fail by patching crisis_barrier_check to not raise
-        with patch("aevum.core.barriers.crisis_barrier_check", return_value=None):
-            with pytest.raises(CanaryError, match="crisis_barrier_fires"):
-                suite.run_all()
+        with (
+            patch("aevum.core.barriers.crisis_barrier_check", return_value=None),
+            pytest.raises(CanaryError, match="crisis_barrier_fires"),
+        ):
+            suite.run_all()
 
     def test_canary_error_message_contains_name(self):
         suite = CanarySuite(kernel=MagicMock())
-        with patch("aevum.core.barriers.crisis_barrier_check", return_value=None):
-            with pytest.raises(CanaryError) as exc_info:
-                suite.run_all()
+        with (
+            patch("aevum.core.barriers.crisis_barrier_check", return_value=None),
+            pytest.raises(CanaryError) as exc_info,
+        ):
+            suite.run_all()
         assert "crisis_barrier_fires_before_graph_write" in str(exc_info.value)
 
     def test_canary_result_fields(self, suite):
