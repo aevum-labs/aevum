@@ -96,6 +96,7 @@ version = "0.3.0"
 source = { editable = "packages/aevum-core" }
 dependencies = [
     { name = "base58" },
+    { name = "cedarpy" },
     { name = "cryptography" },
     { name = "httpx" },
     { name = "liboqs-python" },
@@ -115,9 +116,6 @@ all = [
     { name = "aevum-server" },
     { name = "aevum-store-oxigraph" },
     { name = "aevum-store-postgres" },
-]
-cedar = [
-    { name = "cedarpy" },
 ]
 default = [
     { name = "aevum-store-oxigraph" },
@@ -157,7 +155,7 @@ requires-dist = [
     { name = "aevum-store-oxigraph", marker = "extra == 'oxigraph'", editable = "packages/aevum-store-oxigraph" },
     { name = "aevum-store-postgres", marker = "extra == 'postgres'", editable = "packages/aevum-store-postgres" },
     { name = "base58", specifier = ">=2.1" },
-    { name = "cedarpy", marker = "extra == 'cedar'", specifier = ">=0.3" },
+    { name = "cedarpy", specifier = ">=4.8.1" },
     { name = "cryptography", specifier = ">=42.0" },
     { name = "cyclonedx-bom", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "httpx", specifier = ">=0.27.0" },
@@ -172,7 +170,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
 ]
-provides-extras = ["default", "cedar", "server", "mcp", "a2a", "oxigraph", "postgres", "langgraph", "crewai", "openai-agents", "all", "dev"]
+provides-extras = ["default", "server", "mcp", "a2a", "oxigraph", "postgres", "langgraph", "crewai", "openai-agents", "all", "dev"]
 
 [[package]]
 name = "aevum-llm"
