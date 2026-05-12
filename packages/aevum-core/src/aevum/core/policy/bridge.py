@@ -31,11 +31,13 @@ _GENERIC_PURPOSES = frozenset({
 # Cedar policy for consent decisions.
 # Requests are permitted when: grant is active, purpose is specific,
 # and the data classification does not exceed the grant ceiling.
+# Note: use bare `principal`, `action`, `resource` (no == constraint) to match
+# any entity — Cedar treats User::"?principal" as a literal ID, not a wildcard.
 _CEDAR_POLICY = """
 permit(
-    principal == User::"?principal",
-    action == Action::"?operation",
-    resource == Subject::"?subject"
+    principal,
+    action,
+    resource
 )
 when {
     context.grant_active == true &&
