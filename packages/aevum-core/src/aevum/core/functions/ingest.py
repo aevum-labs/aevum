@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any
 
 from aevum.core.audit.sigchain import _uuid7
 from aevum.core.barriers import BarrierError, check_consent, check_crisis, check_provenance, crisis_barrier_check
@@ -24,7 +24,7 @@ from aevum.core.envelope.models import OutputEnvelope, ProvenanceRecord
 from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
-from aevum.core.types import SourceType, TaintLabel, TypedFact
+from aevum.core.types import SourceType, TypedFact
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ def _build_typed_fact(
     data: dict[str, Any],
     provenance: dict[str, Any],
     audit_id: str,
-) -> Optional[TypedFact]:
+) -> TypedFact | None:
     """
     Try to build a TypedFact from data dict.
     Returns None if data lacks required TypedFact fields (backward compat).
@@ -122,9 +122,11 @@ def _write_to_named_graphs(fact: TypedFact, audit_id: str) -> None:
     No-op if pyoxigraph is not installed — graph store protocol handles storage.
     """
     try:
-        from pyoxigraph import Literal, NamedNode, Quad, Store, XSD_STRING
+        from pyoxigraph import Literal, NamedNode, Quad, Store
     except ImportError:
         return
+
+    _XSD_STRING = NamedNode("http://www.w3.org/2001/XMLSchema#string")
 
     try:
         store = Store()  # in-process ephemeral store for named graph record
@@ -137,16 +139,16 @@ def _write_to_named_graphs(fact: TypedFact, audit_id: str) -> None:
         typed_fact_class = NamedNode(f"{ont}TypedFact")
 
         store.add(Quad(fact_node, rdf_type, typed_fact_class, kg))
-        store.add(Quad(fact_node, NamedNode(f"{ont}subject"), Literal(fact.subject, datatype=XSD_STRING), kg))
-        store.add(Quad(fact_node, NamedNode(f"{ont}predicate"), Literal(fact.predicate, datatype=XSD_STRING), kg))
-        store.add(Quad(fact_node, NamedNode(f"{ont}objectValue"), Literal(fact.object_value, datatype=XSD_STRING), kg))
-        store.add(Quad(fact_node, NamedNode(f"{ont}sourceType"), Literal(str(fact.source_type), datatype=XSD_STRING), kg))
+        store.add(Quad(fact_node, NamedNode(f"{ont}subject"), Literal(fact.subject, datatype=_XSD_STRING), kg))
+        store.add(Quad(fact_node, NamedNode(f"{ont}predicate"), Literal(fact.predicate, datatype=_XSD_STRING), kg))
+        store.add(Quad(fact_node, NamedNode(f"{ont}objectValue"), Literal(fact.object_value, datatype=_XSD_STRING), kg))
+        store.add(Quad(fact_node, NamedNode(f"{ont}sourceType"), Literal(str(fact.source_type), datatype=_XSD_STRING), kg))
 
         # provenance named graph entry
         audit_node = NamedNode(audit_id if audit_id.startswith("http") else f"urn:aevum:{audit_id}")
         store.add(Quad(audit_node, NamedNode(f"{ont}provenanceFor"), fact_node, pg))
-        store.add(Quad(audit_node, NamedNode(f"{ont}ingestedAt"), Literal(fact.ingested_at.isoformat(), datatype=XSD_STRING), pg))
-        store.add(Quad(audit_node, NamedNode(f"{ont}source"), Literal(fact.source, datatype=XSD_STRING), pg))
+        store.add(Quad(audit_node, NamedNode(f"{ont}ingestedAt"), Literal(fact.ingested_at.isoformat(), datatype=_XSD_STRING), pg))
+        store.add(Quad(audit_node, NamedNode(f"{ont}source"), Literal(fact.source, datatype=_XSD_STRING), pg))
 
         logger.debug("Named graph write: %d quads for fact %s", len(store), fact.fact_id)
     except Exception:  # noqa: BLE001
