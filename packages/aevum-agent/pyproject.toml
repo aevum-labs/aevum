@@ -37,9 +37,24 @@ Issues = "https://github.com/aevum-labs/aevum/issues"
 [tool.hatch.build.targets.wheel]
 packages = ["src/aevum"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short"
+pythonpath = ["src", "tests"]
+
 [tool.mypy]
 strict = true
 python_version = "3.11"
+mypy_path = "src"
+explicit_package_bases = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 130
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I", "ANN"]
+ignore = ["ANN401"]
 
 [tool.uv.sources]
 aevum-core = { workspace = true }
