@@ -364,12 +364,14 @@ class ReplayEngine:
             ),
         )
         for ev in record.events:
+            # Use fork-qualified event_id to avoid PK collision with the original session
+            fork_event_id = f"{record.session_id}-seq{ev.sequence}"
             self._conn.execute(
-                "INSERT OR IGNORE INTO session_events "
+                "INSERT OR REPLACE INTO session_events "
                 "(event_id, session_id, sequence, event_type, occurred_at, "
                 "input_hash, output_hash, latency_ms) VALUES (?,?,?,?,?,?,?,?)",
                 (
-                    ev.event_id, record.session_id, ev.sequence,
+                    fork_event_id, record.session_id, ev.sequence,
                     ev.event_type.value, ev.occurred_at.isoformat(),
                     ev.input_hash, ev.output_hash, ev.latency_ms,
                 ),
