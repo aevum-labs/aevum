@@ -18,10 +18,10 @@ class TestCanarySuite:
         assert all(isinstance(r, CanaryResult) for r in results)
         assert all(r.passed for r in results)
 
-    def test_run_all_returns_six_results(self):
+    def test_run_all_returns_seven_results(self):
         suite = self._make_suite()
         results = suite.run_all()
-        assert len(results) == 6
+        assert len(results) == 7
 
     def test_all_canary_names_are_unique(self):
         suite = self._make_suite()
@@ -78,7 +78,7 @@ class TestCanarySuite:
         suite = self._make_suite()
         suite.run_all()
         results2 = suite.run_all()
-        assert len(results2) == 6  # not 12
+        assert len(results2) == 7  # not 14
 
     def test_canary_error_message_contains_name(self):
         suite = self._make_suite()
