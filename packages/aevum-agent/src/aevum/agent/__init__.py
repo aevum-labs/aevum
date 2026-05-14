@@ -3,8 +3,6 @@
 """
 aevum-agent: A2A v1.0 agent protocol interceptor and governance layer.
 
-Phase 0 skeleton. Full A2A v1.0 implementation in Phase 6.
-
 Targets the Linux Foundation-ratified A2A v1.0 spec (April 2026):
   - SCREAMING_SNAKE_CASE enums (breaking change from rc)
   - OAuth 2.0 device-code flow (RFC 8628) + PKCE required
@@ -13,9 +11,22 @@ Targets the Linux Foundation-ratified A2A v1.0 spec (April 2026):
 
 Replaces the deprecated aevum-llm package.
 
-Usage (Phase 6+):
+Usage:
   from aevum.agent import AevumA2AInterceptor
+  interceptor = AevumA2AInterceptor(kernel=kernel)
+  signed_task = interceptor.create_task({"query": "hello"})
 """
 
+from aevum.agent.interceptor import AevumA2AInterceptor, SignedAgentCard, SignedTask
+from aevum.agent.types import A2ATask, AgentCapability, AgentCard, TaskStatus
+
 __version__ = "0.4.0"
-__all__: list[str] = []  # populated in Phase 6
+__all__ = [
+    "A2ATask",
+    "AgentCard",
+    "TaskStatus",
+    "AgentCapability",
+    "AevumA2AInterceptor",
+    "SignedTask",
+    "SignedAgentCard",
+]
