@@ -48,28 +48,21 @@ class AevumGateway:
 
         from aevum.mcp.middleware import build_governance_middleware_class
 
-        upstream_client = Client(upstream_url)
+        # ProxyProvider requires a factory callable (not a Client instance).
+        # FastMCP 3.x canonical path; fastmcp.server.proxy is deprecated.
+        def _client_factory() -> Client[Any]:
+            return Client(upstream_url)
 
-        # FastMCP 3.x: ProxyProvider sources components from upstream.
-        # fastmcp.server.proxy is deprecated; use fastmcp.server.providers.proxy.
         try:
             from fastmcp.server.providers.proxy import ProxyProvider
-            provider = ProxyProvider(upstream_client)
-            gateway_server = FastMCP(name, providers=[provider])
+            gateway_server = FastMCP(name, providers=[ProxyProvider(_client_factory)])
         except ImportError:
-            try:
-                from fastmcp.server.proxy import ProxyProvider as _LegacyProxyProvider  # type: ignore[no-redef]
-                provider_legacy = _LegacyProxyProvider(upstream_client)
-                gateway_server = FastMCP(name, providers=[provider_legacy])
-            except ImportError:
-                # Fallback to deprecated FastMCP.as_proxy() for older 3.x builds
-                logger.warning(
-                    "ProxyProvider not found — falling back to FastMCP.as_proxy(). "
-                    "Upgrade to fastmcp>=3.2.0 for security fixes (CVE-2026-27124)."
-                )
-                gateway_server = await FastMCP.as_proxy(  # type: ignore[attr-defined]
-                    upstream_client, name=name
-                )
+            # as_proxy() accepts a URL string directly and is not async.
+            logger.warning(
+                "ProxyProvider not found — falling back to FastMCP.as_proxy(). "
+                "Upgrade to fastmcp>=3.2.0 for security fixes (CVE-2026-27124)."
+            )
+            gateway_server = FastMCP.as_proxy(upstream_url, name=name)
 
         GovernanceMiddleware = build_governance_middleware_class()
         gateway_server.add_middleware(
