@@ -31,7 +31,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-
 # PROV-O namespace
 PROV = "http://www.w3.org/ns/prov#"
 XSD = "http://www.w3.org/2001/XMLSchema#"

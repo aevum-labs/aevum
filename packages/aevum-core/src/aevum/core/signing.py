@@ -109,7 +109,7 @@ class DualSigner:
         return self._mldsa65_pk
 
     @classmethod
-    def generate(cls) -> "DualSigner":
+    def generate(cls) -> DualSigner:
         """Generate a fresh dual keypair. Keys are not persisted automatically."""
         if not _OQS_AVAILABLE:
             raise ImportError(
