@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-import math
 import pytest
+
 from aevum.core.functions.query import compute_edge_score
 
 

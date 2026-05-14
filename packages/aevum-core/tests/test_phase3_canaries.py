@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-import pytest
 from unittest.mock import MagicMock, patch
-from aevum.core.canary import CanarySuite, CanaryError
+
+import pytest
+
+from aevum.core.canary import CanaryError, CanarySuite
 
 
 class TestPhase3Canaries:
@@ -53,9 +55,8 @@ class TestPhase3Canaries:
 
     def test_run_all_raises_canary_error_on_failure(self):
         suite = self._suite()
-        with patch("aevum.core.barriers.crisis_barrier_check", return_value=None):
-            with pytest.raises(CanaryError):
-                suite.run_all()
+        with patch("aevum.core.barriers.crisis_barrier_check", return_value=None), pytest.raises(CanaryError):
+            suite.run_all()
 
     def test_canary_uncertainty_rejects_none(self):
         """_canary_uncertainty_mandatory must detect uncertainty=None acceptance."""

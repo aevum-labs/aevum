@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import pytest
-from aevum.core.shacl_validator import validate_fact_rdf, SHACLValidationError
 
+from aevum.core.shacl_validator import SHACLValidationError, validate_fact_rdf
 
 VALID_FACT_TTL = """
 @prefix aevum: <https://aevum.build/ontology#> .

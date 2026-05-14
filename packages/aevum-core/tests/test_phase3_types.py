@@ -1,10 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 import dataclasses
-import pytest
 from datetime import UTC, datetime
+
+import pytest
+
 from aevum.core.types import (
-    ContextBundle, TypedFact, WeightedEdge, ExclusionNote,
-    Completeness, SourceType, TaintLabel,
+    Completeness,
+    ContextBundle,
+    ExclusionNote,
+    SourceType,
+    TaintLabel,
+    TypedFact,
+    WeightedEdge,
 )
 
 

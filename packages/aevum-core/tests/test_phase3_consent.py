@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-import pytest
 from pathlib import Path
-from datetime import UTC, datetime
+
+import pytest
 
 from aevum.core.consent.ledger import ConsentLedger, ConsentRequired
 
