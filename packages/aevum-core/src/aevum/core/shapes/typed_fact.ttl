@@ -1,0 +1,30 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix aevum: <https://aevum.build/ontology#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+aevum:TypedFactShape
+    a sh:NodeShape ;
+    sh:targetClass aevum:TypedFact ;
+    sh:property [
+        sh:path aevum:subject ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "TypedFact must have a subject." ;
+    ] ;
+    sh:property [
+        sh:path aevum:predicate ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "TypedFact must have a predicate." ;
+    ] ;
+    sh:property [
+        sh:path aevum:objectValue ;
+        sh:minCount 1 ;
+        sh:message "TypedFact must have an object value." ;
+    ] ;
+    sh:property [
+        sh:path aevum:sourceType ;
+        sh:minCount 1 ;
+        sh:in ( "user" "tool" "inference" "system" ) ;
+        sh:message "TypedFact.sourceType must be user, tool, inference, or system." ;
+    ] .
