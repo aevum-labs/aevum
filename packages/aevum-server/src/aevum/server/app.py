@@ -33,7 +33,7 @@ from fastapi.responses import JSONResponse
 
 from aevum.server.core.config import Settings
 from aevum.server.middleware import AevumMiddleware
-from aevum.server.routes import admin, data, health, replay, review
+from aevum.server.routes import admin, data, health, phase6, replay, review
 
 logger = logging.getLogger(__name__)
 
@@ -161,5 +161,6 @@ def create_app(
     app.include_router(replay.router, prefix="/v1")
     app.include_router(review.router, prefix="/v1")
     app.include_router(admin.router, prefix="/_aevum/v1")
+    app.include_router(phase6.router, prefix="/v1")
 
     return app
