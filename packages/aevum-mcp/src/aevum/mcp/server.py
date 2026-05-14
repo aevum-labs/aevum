@@ -1,6 +1,10 @@
 """
 Aevum MCP server — five governed functions exposed as MCP tools, plus two
 A2A task tools (create_task, get_task) backed by the episodic ledger.
+
+Governance: every tool call passes through AevumGovernanceMiddleware
+(Cedar ABAC + sigchain record). Pass kernel= to enable; omit for dev mode
+where Cedar evaluation is skipped.
 """
 
 from __future__ import annotations
@@ -13,7 +17,7 @@ from aevum.mcp.a2a import A2ATask
 from fastmcp import FastMCP
 
 
-def create_server(engine: Engine | None = None) -> FastMCP:
+def create_server(engine: Engine | None = None, kernel: Any = None) -> FastMCP:
     """
     Create the Aevum MCP server.
 
@@ -25,6 +29,11 @@ def create_server(engine: Engine | None = None) -> FastMCP:
     """
     _engine = engine or Engine()
     mcp = FastMCP("aevum")
+
+    if kernel is not None:
+        from aevum.mcp.middleware import build_governance_middleware_class
+        GovernanceMiddleware = build_governance_middleware_class()
+        mcp.add_middleware(GovernanceMiddleware(kernel=kernel))
 
     @mcp.tool()
     def ingest(
@@ -205,5 +214,45 @@ def create_server(engine: Engine | None = None) -> FastMCP:
             description=original_payload.get("description", ""),
         )
         return task.model_dump(mode="json")
+
+    @mcp.tool()
+    async def relate(
+        text: str,
+        subject: str,
+        source: str = "mcp",
+    ) -> dict[str, Any]:
+        """RELATE: Ingest a fact into the governed context graph."""
+        result = _engine.ingest(
+            data={"text": text, "subject": subject},
+            provenance={"source": source},
+            purpose="relate",
+            subject_id=subject,
+        )
+        return result.model_dump(mode="json")
+
+    @mcp.tool()
+    async def navigate(
+        purpose: str,
+        query: str,
+    ) -> dict[str, Any]:
+        """NAVIGATE: Assemble governed context for a purpose."""
+        result = _engine.query(
+            purpose=purpose,
+            subject_ids=[query],
+        )
+        return result.model_dump(mode="json")
+
+    @mcp.tool()
+    async def govern(
+        action_type: str,
+        reversible: bool,
+        consequential: bool,
+    ) -> dict[str, Any]:
+        """GOVERN: Request human checkpoint for a proposed action."""
+        result = _engine.review(
+            audit_id=action_type,
+            actor="mcp-agent",
+        )
+        return result.model_dump(mode="json")
 
     return mcp
