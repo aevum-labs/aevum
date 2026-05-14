@@ -18,9 +18,9 @@ class TestPhase2CanariesPass:
         failures = [f"{r.name}: {r.detail}" for r in results if not r.passed]
         assert not failures, "Canaries failed:\n" + "\n".join(failures)
 
-    def test_returns_six_results(self, suite):
+    def test_returns_seven_results(self, suite):
         results = suite.run_all()
-        assert len(results) == 6
+        assert len(results) == 7
 
     def test_all_results_are_canary_result_instances(self, suite):
         results = suite.run_all()
