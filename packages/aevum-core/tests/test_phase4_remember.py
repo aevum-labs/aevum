@@ -14,11 +14,8 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-import pytest
-
 from aevum.core.session import Session
 from aevum.core.session_record import CommitType, EventType, SessionEvent, SessionRecord
-
 
 # ── REMEMBER fires on session close ──────────────────────────────────────────
 

@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from aevum.core.replay import DiffResult, EventReplayResult, ReplayEngine, ReplayResult
+from aevum.core.replay import EventReplayResult, ReplayEngine, ReplayResult
 from aevum.core.session_record import (
     CommitType,
     EventType,

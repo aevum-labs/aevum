@@ -10,7 +10,6 @@ import logging
 import sqlite3
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -88,10 +87,7 @@ class Session:
         else:
             try:
                 from aevum.core.barriers import BarrierError
-                if issubclass(exc_type, BarrierError):
-                    commit_type = "crisis"
-                else:
-                    commit_type = "emergency"
+                commit_type = "crisis" if issubclass(exc_type, BarrierError) else "emergency"
             except ImportError:
                 commit_type = "emergency"
         # REMEMBER fires here regardless — never blocks session close
