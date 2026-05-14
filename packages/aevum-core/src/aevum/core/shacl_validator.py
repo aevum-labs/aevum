@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ class SHACLValidationError(Exception):
 
 def validate_fact_rdf(
     data_graph_ttl: str,
-    shapes_path: Optional[Path] = None,
+    shapes_path: Path | None = None,
 ) -> None:
     """
     Validate an RDF graph (Turtle string) against SHACL shapes.

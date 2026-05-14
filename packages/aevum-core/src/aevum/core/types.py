@@ -10,10 +10,8 @@ is a construction error, not a runtime warning.
 from __future__ import annotations
 
 import dataclasses
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import StrEnum
-from typing import Any
-
 
 # ── Enumerations ──────────────────────────────────────────────────────────────
 

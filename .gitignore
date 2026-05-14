@@ -43,3 +43,4 @@ tools/sign_principles.py
 
 # OpenSSF Scorecard output (Phase 0+)
 results.sarif
+verify_phase3.py

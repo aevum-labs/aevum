@@ -26,7 +26,7 @@ import sqlite3
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -52,7 +52,7 @@ class ConsentGrant:
     subject: str
     purpose: str
     granted_at: datetime
-    expires_at: Optional[datetime]
+    expires_at: datetime | None
 
     @property
     def is_expired(self) -> bool:
@@ -106,7 +106,7 @@ class ConsentLedger:
         self,
         subject: str,
         purpose: str,
-        expiry_seconds: Optional[int] = None,
+        expiry_seconds: int | None = None,
     ) -> ConsentGrant:
         """
         Grant consent for subject/purpose.
@@ -189,12 +189,12 @@ class ConsentLedger:
         )
         self._conn.commit()
 
-    def get_dek(self, subject: str) -> Optional[bytes]:
+    def get_dek(self, subject: str) -> bytes | None:
         """Retrieve the DEK for a subject. Returns None if shredded."""
         row = self._conn.execute(
             "SELECT dek_bytes FROM dek_vault WHERE subject_id = ?", (subject,)
         ).fetchone()
-        result: Optional[bytes] = row[0] if row else None
+        result: bytes | None = row[0] if row else None
         return result
 
     def encrypt_for_subject(self, subject: str, plaintext: bytes) -> bytes:
@@ -251,7 +251,6 @@ class ConsentLedger:
 
     def add_grant(self, grant: ProtocolConsentGrant) -> None:
         """Protocol compat: add a pre-built ConsentGrant to the ledger."""
-        import threading
         # Parse expires_at from the Pydantic model's string field
         try:
             expires_dt = datetime.fromisoformat(grant.expires_at.replace("Z", "+00:00"))
