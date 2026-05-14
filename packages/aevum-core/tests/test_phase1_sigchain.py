@@ -2,6 +2,11 @@
 """Tests for Phase 1 sigchain upgrade: ImmutableLedgerError and dual-sig integration."""
 import pytest
 
+try:
+    import oqs as _oqs_check  # noqa: F401
+except (ImportError, OSError, SystemExit):
+    pytest.skip("liboqs native library not available — skipping oqs-dependent tests", allow_module_level=True)
+
 from aevum.core.audit.sigchain import GENESIS_HASH, ImmutableLedgerError, Sigchain
 from aevum.core.sigchain import ImmutableLedgerError as FacadeImmutableLedgerError
 from aevum.core.sigchain import Sigchain as FacadeSigchain

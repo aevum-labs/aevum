@@ -4,6 +4,11 @@ from unittest.mock import patch
 import pytest
 from test_phase1_principles import make_test_principles_file
 
+try:
+    import oqs as _oqs_check  # noqa: F401
+except (ImportError, OSError, SystemExit):
+    pytest.skip("liboqs native library not available — skipping oqs-dependent tests", allow_module_level=True)
+
 
 class TestKernelLocal:
     def test_kernel_local_succeeds_with_valid_principles(self, tmp_path):
