@@ -147,7 +147,8 @@ def _write_to_named_graphs(fact: TypedFact, audit_id: str) -> None:
         # provenance named graph entry
         audit_node = NamedNode(audit_id if audit_id.startswith("http") else f"urn:aevum:{audit_id}")
         store.add(Quad(audit_node, NamedNode(f"{ont}provenanceFor"), fact_node, pg))
-        store.add(Quad(audit_node, NamedNode(f"{ont}ingestedAt"), Literal(fact.ingested_at.isoformat(), datatype=_XSD_STRING), pg))
+        ingested_lit = Literal(fact.ingested_at.isoformat(), datatype=_XSD_STRING)
+        store.add(Quad(audit_node, NamedNode(f"{ont}ingestedAt"), ingested_lit, pg))
         store.add(Quad(audit_node, NamedNode(f"{ont}source"), Literal(fact.source, datatype=_XSD_STRING), pg))
 
         logger.debug("Named graph write: %d quads for fact %s", len(store), fact.fact_id)
