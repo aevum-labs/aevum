@@ -14,13 +14,13 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-
 TEST_API_KEY = "test-api-key-for-ci"
 
 
 @pytest.fixture
 def client() -> TestClient:
     from aevum.core.engine import Engine
+
     from aevum.server.app import create_app
     from aevum.server.core.config import Settings
 
@@ -32,6 +32,7 @@ def client() -> TestClient:
 @pytest.fixture
 def authed_client() -> TestClient:
     from aevum.core.engine import Engine
+
     from aevum.server.app import create_app
     from aevum.server.core.config import Settings
 

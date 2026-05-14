@@ -20,7 +20,7 @@ Standing Rule 17 confirmed: SCREAMING_SNAKE_CASE enums throughout.
 from __future__ import annotations
 
 import dataclasses
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import StrEnum
 from typing import Any
 

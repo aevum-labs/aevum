@@ -12,9 +12,9 @@ from __future__ import annotations
 from typing import Any
 
 from aevum.core.engine import Engine
+from fastmcp import FastMCP
 
 from aevum.mcp.a2a import A2ATask
-from fastmcp import FastMCP
 
 
 def create_server(engine: Engine | None = None, kernel: Any = None) -> FastMCP:

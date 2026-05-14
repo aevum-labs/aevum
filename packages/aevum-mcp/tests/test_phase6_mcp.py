@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class TestGovernanceMiddleware:
@@ -99,8 +99,8 @@ class TestGovernanceMiddleware:
         def mock_record(tool_name: str, in_hash: str, out_hash: str) -> None:
             sigchain_calls.append((tool_name, in_hash, out_hash))
 
-        with patch.object(m, "_evaluate_cedar", return_value=True):
-            with patch.object(m, "_record_in_sigchain", side_effect=mock_record):
+        with patch.object(m, "_evaluate_cedar", return_value=True), \
+                patch.object(m, "_record_in_sigchain", side_effect=mock_record):
                 context = MagicMock()
                 context.message.name = "my_tool"
                 context.message.arguments = {}
@@ -168,8 +168,8 @@ class TestServerWithGovernance:
         assert mcp is not None
 
     def test_create_server_with_kernel_adds_middleware(self) -> None:
-        from aevum.mcp.server import create_server
         from aevum.mcp import middleware as mcp_middleware
+        from aevum.mcp.server import create_server
         kernel = MagicMock()
         with patch.object(mcp_middleware, "build_governance_middleware_class") as mock_build:
             mock_cls = MagicMock(return_value=MagicMock())

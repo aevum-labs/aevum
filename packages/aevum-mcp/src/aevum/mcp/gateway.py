@@ -44,7 +44,8 @@ class AevumGateway:
 
         Returns a FastMCP server instance ready to call .run() on.
         """
-        from fastmcp import FastMCP, Client
+        from fastmcp import Client, FastMCP
+
         from aevum.mcp.middleware import build_governance_middleware_class
 
         upstream_client = Client(upstream_url)
