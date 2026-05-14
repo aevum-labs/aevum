@@ -100,7 +100,7 @@ def build_governance_middleware_class() -> type:
                 "Ensure fastmcp>=3.2.0 is installed."
             ) from exc
 
-    class _GovernanceMiddlewareImpl(_Base, AevumGovernanceMiddleware):  # type: ignore[misc]
+    class _GovernanceMiddlewareImpl(_Base, AevumGovernanceMiddleware):
         """FastMCP governance middleware with Aevum Cedar + sigchain integration."""
 
         async def on_call_tool(

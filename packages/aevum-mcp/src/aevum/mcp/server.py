@@ -227,6 +227,7 @@ def create_server(engine: Engine | None = None, kernel: Any = None) -> FastMCP:
             provenance={"source": source},
             purpose="relate",
             subject_id=subject,
+            actor="mcp-agent",
         )
         return result.model_dump(mode="json")
 
@@ -239,6 +240,7 @@ def create_server(engine: Engine | None = None, kernel: Any = None) -> FastMCP:
         result = _engine.query(
             purpose=purpose,
             subject_ids=[query],
+            actor="mcp-agent",
         )
         return result.model_dump(mode="json")
 
