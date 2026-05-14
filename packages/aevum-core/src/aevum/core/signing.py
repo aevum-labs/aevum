@@ -28,16 +28,18 @@ from __future__ import annotations
 
 import dataclasses
 from pathlib import Path
+from typing import Any
 
 import nacl.encoding
 import nacl.exceptions
 import nacl.signing
 
+_oqs_module: Any  # oqs module when available, None otherwise
 try:
     import oqs as _oqs_module
     _OQS_AVAILABLE: bool = True
 except (ImportError, OSError, SystemExit):
-    _oqs_module = None  # type: ignore[assignment]
+    _oqs_module = None
     _OQS_AVAILABLE = False
 
 
@@ -119,7 +121,7 @@ class DualSigner:
                 "  LD_LIBRARY_PATH=$HOME/_oqs/lib:$LD_LIBRARY_PATH"
             )
         ed25519_sk = nacl.signing.SigningKey.generate()
-        with _oqs_module.Signature(cls._MLDSA65_ALG) as signer:  # type: ignore[union-attr]
+        with _oqs_module.Signature(cls._MLDSA65_ALG) as signer:
             mldsa65_pk = signer.generate_keypair()
             mldsa65_sk = signer.export_secret_key()
         return cls(ed25519_sk, mldsa65_sk, mldsa65_pk)
@@ -164,7 +166,7 @@ class DualSigner:
         ed25519_sig = bytes(signed.signature)  # first 64 bytes
 
         # ML-DSA-65 via liboqs
-        with _oqs_module.Signature(self._MLDSA65_ALG, self._mldsa65_sk) as signer:  # type: ignore[union-attr]
+        with _oqs_module.Signature(self._MLDSA65_ALG, self._mldsa65_sk) as signer:
             mldsa65_sig = signer.sign(data)
 
         return DualSignature(
@@ -194,7 +196,7 @@ class DualSigner:
                 "liboqs-python is required for ML-DSA-65 verification. "
                 "Install: pip install liboqs-python"
             )
-        with _oqs_module.Signature("ML-DSA-65") as verifier:  # type: ignore[union-attr]
+        with _oqs_module.Signature("ML-DSA-65") as verifier:
             ok = verifier.verify(data, dual_sig.mldsa65_sig, dual_sig.mldsa65_pub)
         if not ok:
             raise SignatureError("ML-DSA-65 signature invalid")

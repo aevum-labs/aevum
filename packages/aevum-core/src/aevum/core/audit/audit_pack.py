@@ -169,7 +169,7 @@ class AuditPackExporter:
         return json.dumps(pack, indent=indent, ensure_ascii=False)
 
     def _load_session(self, session_id: str) -> sqlite3.Row:
-        row = self._conn.execute(
+        row: sqlite3.Row | None = self._conn.execute(
             "SELECT session_id, commit_type, principal, purpose, "
             "started_at, closed_at, event_count, fact_count, "
             "checkpoint_count, merkle_root, sigchain_entry_id "
