@@ -50,13 +50,13 @@ postgres = [
     "aevum-store-postgres>=0.3.0",
 ]
 langgraph = [
-    # populated in Phase 7
+    "langgraph-checkpoint>=4.1.0",
 ]
 crewai = [
-    # populated in Phase 7
+    "crewai>=0.80.0",
 ]
 openai-agents = [
-    # populated in Phase 7
+    "openai-agents>=0.0.12",
 ]
 all = [
     "aevum-core[server]",
