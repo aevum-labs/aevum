@@ -16,7 +16,6 @@ classifiers = [
 dependencies = [
     "aevum-core",
     "aevum-server",
-    "aevum-conformance",
     "typer[all]>=0.12",
     "uvicorn[standard]>=0.30",
 ]
@@ -61,6 +60,9 @@ select = ["E", "F", "UP", "B", "SIM", "I", "ANN"]
 ignore = ["ANN401"]
 
 [project.optional-dependencies]
+conform = [
+    "aevum-conformance",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",

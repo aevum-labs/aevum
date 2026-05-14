@@ -10,9 +10,17 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from aevum.conformance.suite import ConformanceSuite  # noqa: E402  module-level for mock.patch (Rule 57)
 
 from aevum.cli.commands import complication, conformance, server, store, version
+
+# Module-level import for mock.patch patchability (Rule 57).
+# Soft import: aevum-conformance is a workspace package not on PyPI, so
+# callers without it installed still get a usable CLI (conform command
+# shows a helpful error instead of crashing at startup).
+try:
+    from aevum.conformance.suite import ConformanceSuite
+except ImportError:  # pragma: no cover
+    ConformanceSuite = None  # type: ignore[assignment,misc]
 
 app = typer.Typer(
     name="aevum",
@@ -173,6 +181,12 @@ def conform(
     Tests all required Aevum behavioral invariants and prints a report.
     Exit code 0 = all pass, 1 = one or more fail.
     """
+    if ConformanceSuite is None:
+        typer.echo(
+            "aevum-conformance is not installed. Install it with: pip install aevum-conformance",
+            err=True,
+        )
+        raise typer.Exit(code=1)
     suite = ConformanceSuite()
     result = suite.run_all()
 
