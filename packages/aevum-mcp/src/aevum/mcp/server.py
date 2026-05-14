@@ -10,7 +10,7 @@ from typing import Any
 from aevum.core.engine import Engine
 
 from aevum.mcp.a2a import A2ATask
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 
 def create_server(engine: Engine | None = None) -> FastMCP:
