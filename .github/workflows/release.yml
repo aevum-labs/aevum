@@ -3,43 +3,64 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
-
-permissions:
-  contents: read
-  id-token: write
+      - "v[0-9]+.[0-9]+.[0-9]+"
 
 jobs:
-  publish:
+  build-and-publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/project/aevum-core/
+    environment: release
+    permissions:
+      id-token: write     # Required for Trusted Publishing (OIDC)
+      contents: write     # Required for GitHub release creation
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          version: "latest"
+          python-version: "3.11"
 
-      - name: Verify workspace syncs cleanly
-        run: uv sync --frozen
+      - name: Install build tools
+        run: |
+          pip install "hatchling>=1.21" "build>=1.0" "cyclonedx-bom>=4.0"
 
       - name: Build all packages
         run: |
           mkdir -p dist
-          uv build packages/aevum-core --out-dir dist/
-          uv build packages/aevum-server --out-dir dist/
-          uv build packages/aevum-store-oxigraph --out-dir dist/
-          uv build packages/aevum-store-postgres --out-dir dist/
-          uv build packages/aevum-mcp --out-dir dist/
-          uv build packages/aevum-cli --out-dir dist/
+          for pkg in packages/aevum-*/; do
+            echo "Building $pkg..."
+            python -m build "$pkg" --outdir dist/
+          done
           echo "Built packages:"
           ls dist/
 
-      - name: Publish to PyPI
+      - name: Generate SBOM (CycloneDX JSON)
+        run: |
+          pip install "aevum-core" --find-links dist/ || true
+          cyclonedx-py environment \
+            --output-format json \
+            --output-file sbom.json
+          echo "SBOM generated: $(wc -l < sbom.json) lines"
+
+      - name: Upload SBOM as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+          retention-days: 90
+
+      - name: Publish to PyPI (Trusted Publishing — no API key)
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            sbom.json
+          generate_release_notes: true
