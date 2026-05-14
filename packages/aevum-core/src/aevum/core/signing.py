@@ -34,13 +34,13 @@ import nacl.encoding
 import nacl.exceptions
 import nacl.signing
 
-_oqs_module: Any  # oqs module when available, None otherwise
+_oqs_module: Any = None  # oqs module when available, None otherwise
+_OQS_AVAILABLE: bool = False
 try:
     import oqs as _oqs_module
-    _OQS_AVAILABLE: bool = True
+    _OQS_AVAILABLE = True
 except (ImportError, OSError, SystemExit):
-    _oqs_module = None
-    _OQS_AVAILABLE = False
+    pass
 
 
 class SignatureError(Exception):
