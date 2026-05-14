@@ -32,7 +32,13 @@ from pathlib import Path
 import nacl.encoding
 import nacl.exceptions
 import nacl.signing
-import oqs
+
+try:
+    import oqs as _oqs_module
+    _OQS_AVAILABLE: bool = True
+except (ImportError, OSError, SystemExit):
+    _oqs_module = None  # type: ignore[assignment]
+    _OQS_AVAILABLE = False
 
 
 class SignatureError(Exception):
@@ -103,10 +109,17 @@ class DualSigner:
         return self._mldsa65_pk
 
     @classmethod
-    def generate(cls) -> DualSigner:
+    def generate(cls) -> "DualSigner":
         """Generate a fresh dual keypair. Keys are not persisted automatically."""
+        if not _OQS_AVAILABLE:
+            raise ImportError(
+                "liboqs-python is required for ML-DSA-65 signing. "
+                "Install: pip install liboqs-python\n"
+                "If already installed, ensure the native library path is set:\n"
+                "  LD_LIBRARY_PATH=$HOME/_oqs/lib:$LD_LIBRARY_PATH"
+            )
         ed25519_sk = nacl.signing.SigningKey.generate()
-        with oqs.Signature(cls._MLDSA65_ALG) as signer:
+        with _oqs_module.Signature(cls._MLDSA65_ALG) as signer:  # type: ignore[union-attr]
             mldsa65_pk = signer.generate_keypair()
             mldsa65_sk = signer.export_secret_key()
         return cls(ed25519_sk, mldsa65_sk, mldsa65_pk)
@@ -139,12 +152,19 @@ class DualSigner:
 
     def sign(self, data: bytes) -> DualSignature:
         """Sign data with both algorithms. Returns DualSignature."""
+        if not _OQS_AVAILABLE:
+            raise ImportError(
+                "liboqs-python is required for ML-DSA-65 signing. "
+                "Install: pip install liboqs-python\n"
+                "If already installed, ensure the native library path is set:\n"
+                "  LD_LIBRARY_PATH=$HOME/_oqs/lib:$LD_LIBRARY_PATH"
+            )
         # Ed25519 via PyNaCl
         signed = self._ed25519_sk.sign(data)
         ed25519_sig = bytes(signed.signature)  # first 64 bytes
 
         # ML-DSA-65 via liboqs
-        with oqs.Signature(self._MLDSA65_ALG, self._mldsa65_sk) as signer:
+        with _oqs_module.Signature(self._MLDSA65_ALG, self._mldsa65_sk) as signer:  # type: ignore[union-attr]
             mldsa65_sig = signer.sign(data)
 
         return DualSignature(
@@ -169,7 +189,12 @@ class DualSigner:
             raise SignatureError(f"Ed25519 signature invalid: {exc}") from exc
 
         # Verify ML-DSA-65
-        with oqs.Signature("ML-DSA-65") as verifier:
+        if not _OQS_AVAILABLE:
+            raise ImportError(
+                "liboqs-python is required for ML-DSA-65 verification. "
+                "Install: pip install liboqs-python"
+            )
+        with _oqs_module.Signature("ML-DSA-65") as verifier:  # type: ignore[union-attr]
             ok = verifier.verify(data, dual_sig.mldsa65_sig, dual_sig.mldsa65_pub)
         if not ok:
             raise SignatureError("ML-DSA-65 signature invalid")

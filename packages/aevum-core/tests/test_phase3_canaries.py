@@ -3,6 +3,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+try:
+    import oqs as _oqs_check  # noqa: F401
+except (ImportError, OSError, SystemExit):
+    pytest.skip("liboqs native library not available — skipping oqs-dependent tests", allow_module_level=True)
+
 from aevum.core.canary import CanaryError, CanarySuite
 
 
