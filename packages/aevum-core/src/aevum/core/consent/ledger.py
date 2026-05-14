@@ -1,53 +1,280 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2024-2026 Aevum Labs contributors
 """
-Consent ledger — OR-Set semantics. Spec Section 07.
+Consent ledger: OR-Set CRDT with AES-256-GCM DEK vault.
 
-In-memory implementation. Cedar policy evaluation is in aevum.core.policy.bridge.
+The consent ledger tracks per-subject, per-purpose consent grants.
+Revocation is immediate. Crypto-shredding destroys the subject's DEK,
+making all encrypted data permanently unreadable without breaking the
+audit chain (which stores only hashes, not plaintext).
+
+GDPR Art. 17: destroy DEK → encryption unreadable → erasure demonstrated.
+The audit chain entry stays (append-only) — it proves erasure occurred.
+
+OR-Set CRDT semantics:
+  - Add/grant: add a (subject, purpose, expiry) tuple to the add-set
+  - Remove/revoke: add the same ID to the remove-set
+  - Check: ID is in add-set AND NOT in remove-set AND not expired
+  - OR-Set: concurrent adds and removes are resolved by bias toward add
+    (in Aevum's single-node case, revoke always wins — no concurrent ops)
 """
-
 from __future__ import annotations
 
-import threading
-from datetime import UTC, datetime
+import dataclasses
+import os
+import sqlite3
+import uuid
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import TYPE_CHECKING, Optional
 
-from aevum.core.consent.models import ConsentGrant
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+if TYPE_CHECKING:
+    from aevum.core.consent.models import ConsentGrant as ProtocolConsentGrant
+
+
+class ConsentRequired(Exception):
+    """
+    Raised when an operation requires consent that has not been granted.
+    This is an absolute barrier.
+    """
+
+
+class ConsentExpired(Exception):
+    """Raised when a consent grant has expired."""
+
+
+@dataclasses.dataclass(frozen=True)
+class ConsentGrant:
+    """An active consent grant record (Phase 3 OR-Set CRDT ledger)."""
+    grant_id: str
+    subject: str
+    purpose: str
+    granted_at: datetime
+    expires_at: Optional[datetime]
+
+    @property
+    def is_expired(self) -> bool:
+        if self.expires_at is None:
+            return False
+        return datetime.now(UTC) > self.expires_at
 
 
 class ConsentLedger:
-    """Thread-safe in-memory consent ledger. Revocation wins over concurrent grants."""
+    """
+    Consent ledger with OR-Set CRDT semantics and AES-256-GCM DEK vault.
 
-    def __init__(self) -> None:
-        self._grants: dict[str, ConsentGrant] = {}
-        self._lock = threading.Lock()
+    All grant/revoke operations are persisted to SQLite immediately.
+    The DEK vault maps subject_id → 32-byte AES key.
+    Calling shred(subject) destroys the key, making all encrypted
+    data for that subject permanently unreadable.
 
-    def add_grant(self, grant: ConsentGrant) -> None:
-        with self._lock:
-            self._grants[grant.grant_id] = grant
+    db_path defaults to ":memory:" for in-process / test usage.
+    Pass a Path for persistent storage (production deployments).
+    """
+
+    def __init__(self, db_path: Path | str = ":memory:") -> None:
+        self._db_path = str(db_path)
+        self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
+        self._init_schema()
+
+    def _init_schema(self) -> None:
+        self._conn.executescript("""
+            CREATE TABLE IF NOT EXISTS consent_grants (
+                grant_id    TEXT PRIMARY KEY,
+                subject     TEXT NOT NULL,
+                purpose     TEXT NOT NULL,
+                granted_at  TEXT NOT NULL,
+                expires_at  TEXT
+            );
+            CREATE TABLE IF NOT EXISTS consent_revocations (
+                grant_id    TEXT PRIMARY KEY,
+                revoked_at  TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS dek_vault (
+                subject_id  TEXT PRIMARY KEY,
+                dek_bytes   BLOB NOT NULL,
+                created_at  TEXT NOT NULL
+            );
+        """)
+        self._conn.commit()
+
+    # ── Phase 3 OR-Set CRDT API ───────────────────────────────────────────────
+
+    def grant(
+        self,
+        subject: str,
+        purpose: str,
+        expiry_seconds: Optional[int] = None,
+    ) -> ConsentGrant:
+        """
+        Grant consent for subject/purpose.
+        Creates a DEK for the subject if one doesn't exist.
+        """
+        grant_id = str(uuid.uuid4())
+        now = datetime.now(UTC)
+        expires_at = None
+        if expiry_seconds is not None:
+            expires_at = now + timedelta(seconds=expiry_seconds)
+
+        self._conn.execute(
+            "INSERT INTO consent_grants VALUES (?, ?, ?, ?, ?)",
+            (grant_id, subject, purpose, now.isoformat(),
+             expires_at.isoformat() if expires_at else None),
+        )
+        self._conn.commit()
+
+        self._ensure_dek(subject)
+
+        return ConsentGrant(
+            grant_id=grant_id,
+            subject=subject,
+            purpose=purpose,
+            granted_at=now,
+            expires_at=expires_at,
+        )
+
+    def revoke(self, subject: str, purpose: str) -> None:
+        """
+        Revoke all consent grants for subject/purpose.
+        Does NOT destroy the DEK — use shred() for Art. 17 erasure.
+        """
+        now = datetime.now(UTC).isoformat()
+        grants = self._conn.execute(
+            "SELECT grant_id FROM consent_grants "
+            "WHERE subject = ? AND purpose = ?",
+            (subject, purpose),
+        ).fetchall()
+        for (grant_id,) in grants:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO consent_revocations VALUES (?, ?)",
+                (grant_id, now),
+            )
+        self._conn.commit()
+
+    def check(self, subject: str, purpose: str) -> bool:
+        """
+        Check if subject has active, unexpired consent for purpose.
+        Returns True if at least one valid grant exists.
+        """
+        rows = self._conn.execute(
+            """
+            SELECT g.grant_id, g.expires_at
+            FROM consent_grants g
+            WHERE g.subject = ?
+              AND g.purpose = ?
+              AND g.grant_id NOT IN (SELECT grant_id FROM consent_revocations)
+            """,
+            (subject, purpose),
+        ).fetchall()
+
+        now = datetime.now(UTC)
+        for _grant_id, expires_at_str in rows:
+            if expires_at_str is None:
+                return True  # no expiry
+            expires_at = datetime.fromisoformat(expires_at_str)
+            if now <= expires_at:
+                return True
+        return False
+
+    def shred(self, subject: str) -> None:
+        """
+        GDPR Art. 17 erasure: destroy the subject's DEK.
+        All data encrypted with this DEK becomes permanently unreadable.
+        The grant records remain (audit trail) but the data is gone.
+        """
+        self._conn.execute(
+            "DELETE FROM dek_vault WHERE subject_id = ?", (subject,)
+        )
+        self._conn.commit()
+
+    def get_dek(self, subject: str) -> Optional[bytes]:
+        """Retrieve the DEK for a subject. Returns None if shredded."""
+        row = self._conn.execute(
+            "SELECT dek_bytes FROM dek_vault WHERE subject_id = ?", (subject,)
+        ).fetchone()
+        result: Optional[bytes] = row[0] if row else None
+        return result
+
+    def encrypt_for_subject(self, subject: str, plaintext: bytes) -> bytes:
+        """
+        Encrypt plaintext with the subject's DEK using AES-256-GCM.
+        Raises ConsentRequired if the DEK has been shredded.
+        Returns: nonce (12 bytes) + ciphertext
+        """
+        dek = self.get_dek(subject)
+        if dek is None:
+            raise ConsentRequired(
+                f"Cannot encrypt for subject {subject!r}: DEK has been shredded. "
+                "This subject's data has been erased (GDPR Art. 17)."
+            )
+        aesgcm = AESGCM(dek)
+        nonce = os.urandom(12)
+        ciphertext = aesgcm.encrypt(nonce, plaintext, None)
+        return nonce + ciphertext
+
+    def decrypt_for_subject(self, subject: str, ciphertext: bytes) -> bytes:
+        """
+        Decrypt ciphertext with the subject's DEK.
+        Raises ConsentRequired if the DEK has been shredded (data erased).
+        """
+        dek = self.get_dek(subject)
+        if dek is None:
+            raise ConsentRequired(
+                f"Cannot decrypt for subject {subject!r}: DEK has been shredded."
+            )
+        aesgcm = AESGCM(dek)
+        nonce = ciphertext[:12]
+        ct = ciphertext[12:]
+        return aesgcm.decrypt(nonce, ct, None)
+
+    def _ensure_dek(self, subject: str) -> None:
+        """Create a DEK for subject if one doesn't exist."""
+        existing = self._conn.execute(
+            "SELECT subject_id FROM dek_vault WHERE subject_id = ?", (subject,)
+        ).fetchone()
+        if existing is None:
+            dek = os.urandom(32)  # 256-bit AES key
+            self._conn.execute(
+                "INSERT INTO dek_vault VALUES (?, ?, ?)",
+                (subject, dek, datetime.now(UTC).isoformat()),
+            )
+            self._conn.commit()
+
+    def close(self) -> None:
+        self._conn.close()
+
+    # ── ConsentLedgerProtocol backward-compat wrappers ────────────────────────
+    # These adapt the Phase 3 API to the existing ConsentLedgerProtocol so that
+    # the Engine can use ConsentLedger() without changes.
+
+    def add_grant(self, grant: ProtocolConsentGrant) -> None:
+        """Protocol compat: add a pre-built ConsentGrant to the ledger."""
+        import threading
+        # Parse expires_at from the Pydantic model's string field
+        try:
+            expires_dt = datetime.fromisoformat(grant.expires_at.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            expires_dt = None
+
+        now_str = datetime.now(UTC).isoformat()
+        self._conn.execute(
+            "INSERT OR IGNORE INTO consent_grants VALUES (?, ?, ?, ?, ?)",
+            (grant.grant_id, grant.subject_id, grant.purpose,
+             now_str, expires_dt.isoformat() if expires_dt else None),
+        )
+        self._conn.commit()
+        self._ensure_dek(grant.subject_id)
 
     def revoke_grant(self, grant_id: str) -> None:
-        # DISTRIBUTED DEPLOYMENT NOTE:
-        # The consent ledger uses an OR-Set CRDT for grant management.
-        # OR-Set semantics: "add wins" on concurrent add/remove.
-        #
-        # In single-node deployments (the standard case), revocation is
-        # immediate and reliable.
-        #
-        # In distributed deployments with multiple Engine instances, if a
-        # grant-add and a grant-revoke for the same grant occur simultaneously
-        # on two nodes, the add will win on merge. This means consent may
-        # appear granted after a revocation in a concurrent multi-node scenario.
-        #
-        # Mitigation: Coordinate consent operations through a single
-        # authoritative node in distributed deployments, or implement
-        # application-level sequencing to ensure revocations are fully
-        # propagated before new operations are permitted.
-        #
-        # See THREAT_MODEL.md — Consent Revocation Semantic.
-        with self._lock:
-            if grant_id in self._grants:
-                g = self._grants[grant_id]
-                self._grants[grant_id] = ConsentGrant(
-                    **{**g.model_dump(), "revocation_status": "revoked"}
-                )
+        """Protocol compat: revoke by grant_id."""
+        now = datetime.now(UTC).isoformat()
+        self._conn.execute(
+            "INSERT OR IGNORE INTO consent_revocations VALUES (?, ?)",
+            (grant_id, now),
+        )
+        self._conn.commit()
 
     def has_consent(
         self,
@@ -57,26 +284,58 @@ class ConsentLedger:
         grantee_id: str,
         purpose: str | None = None,
     ) -> bool:
+        """
+        Protocol compat: check if subject has active consent for any purpose.
+        Checks across all purposes (or specific purpose if provided).
+        """
+        query = """
+            SELECT g.grant_id, g.expires_at
+            FROM consent_grants g
+            WHERE g.subject = ?
+              AND g.grant_id NOT IN (SELECT grant_id FROM consent_revocations)
+        """
+        params: list[str] = [subject_id]
+        if purpose is not None:
+            query += " AND g.purpose = ?"
+            params.append(purpose)
+
+        rows = self._conn.execute(query, params).fetchall()
         now = datetime.now(UTC)
-        with self._lock:
-            for grant in self._grants.values():
-                if grant.subject_id != subject_id:
-                    continue
-                if grant.grantee_id != grantee_id:
-                    continue
-                if operation not in grant.operations:
-                    continue
-                if grant.revocation_status != "active":
-                    continue
-                try:
-                    expires = datetime.fromisoformat(grant.expires_at.replace("Z", "+00:00"))
-                    if now > expires:
-                        continue
-                except ValueError:
-                    continue
+        for _grant_id, expires_at_str in rows:
+            if expires_at_str is None:
                 return True
+            try:
+                expires_at = datetime.fromisoformat(expires_at_str)
+                if now <= expires_at:
+                    return True
+            except ValueError:
+                continue
         return False
 
-    def all_grants(self) -> list[ConsentGrant]:
-        with self._lock:
-            return list(self._grants.values())
+    def all_grants(self) -> list[ProtocolConsentGrant]:
+        """Protocol compat: return all grants as Pydantic ConsentGrant objects."""
+        from aevum.core.consent.models import ConsentGrant as PydanticGrant
+        rows = self._conn.execute(
+            "SELECT grant_id, subject, purpose, granted_at, expires_at "
+            "FROM consent_grants"
+        ).fetchall()
+        revoked = {
+            r[0] for r in self._conn.execute(
+                "SELECT grant_id FROM consent_revocations"
+            ).fetchall()
+        }
+        result: list[ProtocolConsentGrant] = []
+        for grant_id, subject, purpose, granted_at, expires_at in rows:
+            status = "revoked" if grant_id in revoked else "active"
+            result.append(PydanticGrant(
+                grant_id=grant_id,
+                subject_id=subject,
+                grantee_id="",
+                operations=["ingest", "query"],
+                purpose=purpose,
+                classification_max=0,
+                granted_at=granted_at,
+                expires_at=expires_at or "9999-12-31T23:59:59+00:00",
+                revocation_status=status,  # type: ignore[arg-type]
+            ))
+        return result
