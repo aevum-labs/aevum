@@ -146,8 +146,6 @@ class TestCLIPackageStructure:
 
     def test_aevum_cli_has_five_new_commands(self) -> None:
         from aevum.cli.app import app
-        names = {c.name for c in app.registered_commands}
-        # Direct commands (name may be None meaning function name is used)
         from typer.testing import CliRunner
         runner = CliRunner()
         result = runner.invoke(app, ["--help"])

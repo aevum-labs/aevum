@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from aevum.conformance.suite import ConformanceSuite  # noqa: E402  module-level for mock.patch (Rule 57)
 
 from aevum.cli.commands import complication, conformance, server, store, version
-from aevum.conformance.suite import ConformanceSuite  # module-level for mock.patch (Rule 57)
 
 app = typer.Typer(
     name="aevum",
@@ -57,7 +57,7 @@ def init(
         typer.echo(f"  Principles: OK (sequence={p.sequence}, signed_by={p.signed_by[:30]}...)")
     except Exception as exc:  # noqa: BLE001
         typer.echo(f"  Principles: FAILED — {exc}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     try:
         from aevum.core.kernel import Kernel
@@ -71,7 +71,7 @@ def init(
         typer.echo(f"  Canaries: PASS ({len(kernel.principles.immutable_ids())} immutable principles)")
     except Exception as exc:  # noqa: BLE001
         typer.echo(f"  Kernel init: FAILED — {exc}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     typer.echo(typer.style("Aevum initialized successfully.", fg=typer.colors.GREEN))
 
@@ -119,7 +119,7 @@ def verify(
 
     except ValueError as exc:
         typer.echo(f"Session not found: {exc}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @app.command(name="audit-pack")
@@ -157,7 +157,7 @@ def audit_pack(
 
     except Exception as exc:  # noqa: BLE001
         typer.echo(f"Audit pack error: {exc}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @app.command()
@@ -235,4 +235,4 @@ def replay(
 
     except ValueError as exc:
         typer.echo(f"Session not found: {exc}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None

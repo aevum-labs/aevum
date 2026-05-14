@@ -18,27 +18,25 @@ from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
-
 
 # ── Fixture: Ed25519 signer (no ML-DSA-65 to avoid oqs dependency) ─────────
 
 @pytest.fixture(scope="session")
-def ed25519_sk():  # type: ignore[return]
+def ed25519_sk() -> object:
     import nacl.signing
     return nacl.signing.SigningKey.generate()
 
 
 @pytest.fixture(scope="session")
-def cedar_engine():  # type: ignore[return]
+def cedar_engine() -> object:
     from aevum.core.cedar_engine import CedarPolicyEngine
     return CedarPolicyEngine.default()
 
 
 @pytest.fixture(scope="session")
-def consent_ledger(tmp_path_factory):  # type: ignore[return]
+def consent_ledger(tmp_path_factory: pytest.TempPathFactory) -> object:  # type: ignore[misc]
     tmp = tmp_path_factory.mktemp("bench")
     from aevum.core.consent.ledger import ConsentLedger
     ledger = ConsentLedger(tmp / "bench.db")
@@ -48,7 +46,7 @@ def consent_ledger(tmp_path_factory):  # type: ignore[return]
 
 # ── Benchmark 1: Ed25519 signing ─────────────────────────────────────────────
 
-def test_bench_ed25519_sign(benchmark, ed25519_sk) -> None:  # type: ignore[no-untyped-def]
+def test_bench_ed25519_sign(benchmark: object, ed25519_sk: object) -> None:
     data = b"aevum-benchmark-payload-" * 10
 
     def _sign() -> None:
@@ -57,7 +55,7 @@ def test_bench_ed25519_sign(benchmark, ed25519_sk) -> None:  # type: ignore[no-u
     benchmark.pedantic(_sign, iterations=100, rounds=10)
 
 
-def test_bench_ed25519_verify(benchmark, ed25519_sk) -> None:  # type: ignore[no-untyped-def]
+def test_bench_ed25519_verify(benchmark: object, ed25519_sk: object) -> None:
     data = b"aevum-benchmark-payload-" * 10
     signed = ed25519_sk.sign(data)
     vk = ed25519_sk.verify_key
@@ -70,7 +68,7 @@ def test_bench_ed25519_verify(benchmark, ed25519_sk) -> None:  # type: ignore[no
 
 # ── Benchmark 2: Cedar ABAC ──────────────────────────────────────────────────
 
-def test_bench_cedar_permit(benchmark, cedar_engine) -> None:  # type: ignore[no-untyped-def]
+def test_bench_cedar_permit(benchmark: object, cedar_engine: object) -> None:
     ctx = {
         "has_crisis_content": False,
         "has_active_consent": True,
@@ -90,7 +88,7 @@ def test_bench_cedar_permit(benchmark, cedar_engine) -> None:  # type: ignore[no
     benchmark.pedantic(_eval, iterations=100, rounds=10)
 
 
-def test_bench_cedar_deny_crisis(benchmark, cedar_engine) -> None:  # type: ignore[no-untyped-def]
+def test_bench_cedar_deny_crisis(benchmark: object, cedar_engine: object) -> None:
     ctx = {"has_crisis_content": True}
 
     def _eval() -> None:
@@ -103,7 +101,7 @@ def test_bench_cedar_deny_crisis(benchmark, cedar_engine) -> None:  # type: igno
 
 # ── Benchmark 3: Merkle root ─────────────────────────────────────────────────
 
-def test_bench_merkle_root_10_events(benchmark) -> None:  # type: ignore[no-untyped-def]
+def test_bench_merkle_root_10_events(benchmark: object) -> None:
     from aevum.core.session_record import EventType, SessionEvent, SessionRecord
     now = datetime.now(UTC)
     h = hashlib.sha256(b"test").hexdigest()
@@ -118,7 +116,7 @@ def test_bench_merkle_root_10_events(benchmark) -> None:  # type: ignore[no-unty
     benchmark.pedantic(_root, iterations=100, rounds=10)
 
 
-def test_bench_merkle_root_100_events(benchmark) -> None:  # type: ignore[no-untyped-def]
+def test_bench_merkle_root_100_events(benchmark: object) -> None:
     from aevum.core.session_record import EventType, SessionEvent, SessionRecord
     now = datetime.now(UTC)
     h = hashlib.sha256(b"test").hexdigest()
@@ -135,7 +133,7 @@ def test_bench_merkle_root_100_events(benchmark) -> None:  # type: ignore[no-unt
 
 # ── Benchmark 4: Consent ledger ──────────────────────────────────────────────
 
-def test_bench_consent_grant_and_check(benchmark, consent_ledger) -> None:  # type: ignore[no-untyped-def]
+def test_bench_consent_grant_and_check(benchmark: object, consent_ledger: object) -> None:
     counter = [0]
 
     def _grant_check() -> None:

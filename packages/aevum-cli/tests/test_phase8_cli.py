@@ -9,12 +9,10 @@ import hashlib
 import json
 import re
 import sqlite3
-import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
 from aevum.cli.app import app
@@ -102,7 +100,7 @@ class TestConformCommand:
             mock_suite.run_all.return_value = mock_result
             mock_cls.return_value = mock_suite
 
-            result = runner.invoke(app, ["conform"])
+            runner.invoke(app, ["conform"])
         # text mode calls render(), not to_dict()
         assert mock_result.render.called
 
