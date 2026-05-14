@@ -7,18 +7,17 @@ If any canary fails, the system halts with CanaryError.
 These tests verify the system BEHAVES according to its principles,
 not just that the principles file exists.
 
-The six canaries in this module test structural properties of the kernel
-using internal mocks — they do not require Cedar, pyoxigraph, or session state.
-The full canary suite (testing RELATE, NAVIGATE, GOVERN, REMEMBER) is built
-progressively as those modules are added in Phases 2-4.
-
-Phase 2 canaries (behavioral):
+Phase 3 canaries (7 total):
   1. crisis_barrier_fires_before_graph_write         — barrier 1 fires on crisis text
   2. consent_absent_raises_ConsentRequired           — ConsentRequired is raisable
   3. govern_cannot_be_auto_approved_without_Cedar_permit — barrier 5 enforced via Cedar
-  4. reasoning_trace_nonempty_in_every_ContextBundle — deferred to Phase 3
+  4. reasoning_trace_nonempty_in_every_ContextBundle — ContextBundle enforces humility
   5. audit_chain_append_only                         — barrier 4 enforced via Cedar
   6. dual_signature_every_chain_entry                — sigchain invariant
+  7. consent_revoke_destroys_dek                     — GDPR Art. 17 crypto-shredding
+
+Phase 3 also adds _canary_uncertainty_mandatory (callable directly; not in run_all)
+to verify the uncertainty principle is enforced at construction time.
 """
 from __future__ import annotations
 
@@ -77,6 +76,7 @@ class CanarySuite:
             self._canary_reasoning_trace_mandatory,
             self._canary_audit_chain_append_only,
             self._canary_dual_signature_every_entry,
+            self._canary_consent_revoke_destroys_dek,
         ]
 
         for canary in canaries:
@@ -231,11 +231,45 @@ class CanarySuite:
     # ── Canary 4 ─────────────────────────────────────────────────────────────
 
     def _canary_reasoning_trace_mandatory(self) -> CanaryResult:
-        """Verify reasoning_trace invariant. Deferred to Phase 3."""
+        """Verify that ContextBundle rejects an empty reasoning_trace (humility principle)."""
         name = "reasoning_trace_nonempty_in_every_ContextBundle"
-        # Deferred to Phase 3 when ContextBundle is implemented.
-        return CanaryResult(name=name, passed=True,
-                            detail="Deferred to Phase 3 (ContextBundle)")
+        try:
+            from datetime import UTC, datetime
+
+            from aevum.core.types import Completeness, ContextBundle
+
+            raised = False
+            try:
+                ContextBundle(
+                    facts=(),
+                    edges=(),
+                    uncertainty=0.5,
+                    reasoning_trace=(),    # empty — must raise
+                    completeness=Completeness.COMPLETE,
+                    excluded=(),
+                    consent_ref="test",
+                    purpose="test",
+                    assembled_at=datetime.now(UTC),
+                    audit_id=1,
+                    agent_prompt="",
+                    agent_prompt_tokens=0,
+                    checkpoint_required=False,
+                )
+            except ValueError:
+                raised = True
+
+            if not raised:
+                return CanaryResult(
+                    name=name, passed=False,
+                    detail="ContextBundle accepted empty reasoning_trace. "
+                           "The humility principle is violated.",
+                )
+            return CanaryResult(name=name, passed=True)
+        except ImportError as exc:
+            return CanaryResult(name=name, passed=False,
+                                detail=f"Cannot import ContextBundle: {exc}")
+        except Exception as exc:  # noqa: BLE001
+            return CanaryResult(name=name, passed=False, detail=str(exc))
 
     # ── Canary 5 ─────────────────────────────────────────────────────────────
 
@@ -269,6 +303,73 @@ class CanarySuite:
                            "Barrier 4 (audit seal) is broken.",
                 )
             return CanaryResult(name=name, passed=True)
+        except Exception as exc:  # noqa: BLE001
+            return CanaryResult(name=name, passed=False, detail=str(exc))
+
+    # ── Canary 3 (Phase 3) — uncertainty_mandatory ────────────────────────────
+    # Not in run_all; called directly by tests to verify the uncertainty principle.
+
+    def _canary_uncertainty_mandatory(self) -> CanaryResult:
+        """Verify that ContextBundle rejects uncertainty=None (uncertainty principle)."""
+        name = "uncertainty_present_in_every_ContextBundle"
+        try:
+            from datetime import UTC, datetime
+
+            from aevum.core.types import Completeness, ContextBundle
+
+            # Construction WITHOUT uncertainty must raise ValueError or TypeError
+            raised = False
+            try:
+                ContextBundle(
+                    facts=(),
+                    edges=(),
+                    uncertainty=None,      # type: ignore[arg-type]
+                    reasoning_trace=("test",),
+                    completeness=Completeness.COMPLETE,
+                    excluded=(),
+                    consent_ref="test",
+                    purpose="test",
+                    assembled_at=datetime.now(UTC),
+                    audit_id=1,
+                    agent_prompt="test",
+                    agent_prompt_tokens=1,
+                    checkpoint_required=False,
+                )
+            except (ValueError, TypeError):
+                raised = True
+
+            if not raised:
+                return CanaryResult(
+                    name=name, passed=False,
+                    detail="ContextBundle accepted uncertainty=None. "
+                           "The uncertainty principle is violated.",
+                )
+
+            # Construction WITH valid uncertainty must succeed
+            bundle = ContextBundle(
+                facts=(),
+                edges=(),
+                uncertainty=0.5,
+                reasoning_trace=("reason",),
+                completeness=Completeness.PARTIAL,
+                excluded=(),
+                consent_ref="test",
+                purpose="test",
+                assembled_at=datetime.now(UTC),
+                audit_id=1,
+                agent_prompt="",
+                agent_prompt_tokens=0,
+                checkpoint_required=False,
+            )
+            if bundle.uncertainty != 0.5:
+                return CanaryResult(
+                    name=name, passed=False,
+                    detail="ContextBundle.uncertainty stored incorrectly.",
+                )
+            return CanaryResult(name=name, passed=True)
+        except ImportError as exc:
+            return CanaryResult(name=name, passed=False,
+                                detail=f"Cannot import ContextBundle: {exc}")
         except Exception as exc:  # noqa: BLE001
             return CanaryResult(name=name, passed=False, detail=str(exc))
 
@@ -321,3 +422,58 @@ class CanarySuite:
                 passed=False,
                 detail=f"Dual-sig canary raised unexpected exception: {exc}",
             )
+
+    # ── Canary 7 (Phase 3) — consent_revoke_destroys_dek ─────────────────────
+
+    def _canary_consent_revoke_destroys_dek(self) -> CanaryResult:
+        """
+        Verify that shredding a subject's DEK makes their data permanently
+        unreadable (GDPR Art. 17 crypto-shredding).
+        """
+        name = "consent_revoke_destroys_dek"
+        try:
+            import tempfile
+            from pathlib import Path
+
+            from aevum.core.consent.ledger import ConsentLedger, ConsentRequired
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                ledger = ConsentLedger(Path(tmpdir) / "canary_consent.db")
+
+                # Grant consent and encrypt some data
+                ledger.grant("canary-subject", "canary-purpose")
+                plaintext = b"canary sensitive data"
+                ciphertext = ledger.encrypt_for_subject("canary-subject", plaintext)
+
+                # Verify round-trip before shredding
+                decrypted = ledger.decrypt_for_subject("canary-subject", ciphertext)
+                if decrypted != plaintext:
+                    return CanaryResult(
+                        name=name, passed=False,
+                        detail="Encryption/decryption roundtrip failed before shred.",
+                    )
+
+                # Shred: destroy DEK
+                ledger.shred("canary-subject")
+
+                # After shredding, decrypt must raise ConsentRequired
+                raised = False
+                try:
+                    ledger.decrypt_for_subject("canary-subject", ciphertext)
+                except ConsentRequired:
+                    raised = True
+
+                ledger.close()
+
+            if not raised:
+                return CanaryResult(
+                    name=name, passed=False,
+                    detail="DEK shredding did not prevent decryption. "
+                           "GDPR Art. 17 crypto-shredding is broken.",
+                )
+            return CanaryResult(name=name, passed=True)
+        except ImportError as exc:
+            return CanaryResult(name=name, passed=False,
+                                detail=f"Cannot import ConsentLedger: {exc}")
+        except Exception as exc:  # noqa: BLE001
+            return CanaryResult(name=name, passed=False, detail=str(exc))
