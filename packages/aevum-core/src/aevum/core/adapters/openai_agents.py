@@ -23,6 +23,8 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from aevum.core.cedar_engine import CedarPolicyEngine
+
 logger = logging.getLogger(__name__)
 
 
@@ -53,8 +55,6 @@ class AevumAgentHooks:
         Evaluates Cedar policy. Raises PermissionError if denied.
         Returns a context dict for on_tool_end.
         """
-        from aevum.core.cedar_engine import CedarPolicyEngine
-
         engine = CedarPolicyEngine.default()
 
         permitted = engine.is_permitted(

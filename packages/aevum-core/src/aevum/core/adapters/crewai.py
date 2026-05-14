@@ -30,6 +30,8 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from aevum.core.cedar_engine import CedarPolicyEngine
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,8 +58,6 @@ class AevumCrewHooks:
         Cedar check: evaluates tool_call action.
         GOVERN: if consequential and not reversible, runs checkpoint.
         """
-        from aevum.core.cedar_engine import CedarPolicyEngine
-
         engine = CedarPolicyEngine.default()
 
         permitted = engine.is_permitted(
