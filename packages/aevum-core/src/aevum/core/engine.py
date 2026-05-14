@@ -236,8 +236,11 @@ class Engine:
         episode_id: str | None = None,
         correlation_id: str | None = None,
         model_context: dict[str, Any] | None = None,
+        session: Any = None,        # aevum.core.session.Session | None
     ) -> OutputEnvelope:
-        return _ingest(
+        import time
+        t0 = time.monotonic()
+        result = _ingest(
             data=data, provenance=provenance, purpose=purpose,
             subject_id=subject_id, actor=actor, ledger=self._ledger,
             consent_ledger=self._consent_ledger, graph=self._graph,
@@ -246,6 +249,20 @@ class Engine:
             episode_id=episode_id, correlation_id=correlation_id,
             model_context=model_context,
         )
+        if session is not None and hasattr(session, "record_relate_event"):
+            try:
+                from aevum.core.session_record import SessionEvent
+                in_h = SessionEvent.hash_payload({"data": data, "purpose": purpose, "subject_id": subject_id})
+                out_h = SessionEvent.hash_payload(result.data or {})
+                fact_id = (result.data or {}).get("typed_fact", {}).get("fact_id") if result.data else None
+                session.record_relate_event(
+                    in_h, out_h,
+                    fact_id=fact_id,
+                    latency_ms=int((time.monotonic() - t0) * 1000),
+                )
+            except Exception as exc:  # noqa: BLE001
+                _logger.error("session event recording failed (ingest): %s", exc)
+        return result
 
     def query(
         self,
@@ -259,8 +276,11 @@ class Engine:
         correlation_id: str | None = None,
         model_context: dict[str, Any] | None = None,
         capture_witness: bool = True,
+        session: Any = None,        # aevum.core.session.Session | None
     ) -> OutputEnvelope:
-        return _query(
+        import time
+        t0 = time.monotonic()
+        result = _query(
             purpose=purpose, subject_ids=subject_ids, actor=actor,
             ledger=self._ledger, consent_ledger=self._consent_ledger,
             graph=self._graph, constraints=constraints,
@@ -271,6 +291,18 @@ class Engine:
             model_context=model_context,
             capture_witness=capture_witness,
         )
+        if session is not None and hasattr(session, "record_navigate_event"):
+            try:
+                from aevum.core.session_record import SessionEvent
+                in_h = SessionEvent.hash_payload({"purpose": purpose, "subject_ids": subject_ids})
+                out_h = SessionEvent.hash_payload(result.data or {})
+                session.record_navigate_event(
+                    in_h, out_h,
+                    latency_ms=int((time.monotonic() - t0) * 1000),
+                )
+            except Exception as exc:  # noqa: BLE001
+                _logger.error("session event recording failed (query): %s", exc)
+        return result
 
     def review(
         self,
@@ -280,7 +312,10 @@ class Engine:
         action: str | None = None,
         episode_id: str | None = None,
         correlation_id: str | None = None,
+        session: Any = None,        # aevum.core.session.Session | None
     ) -> OutputEnvelope:
+        import time
+        t0 = time.monotonic()
         result = _review(
             audit_id=audit_id, action=action, actor=actor,
             ledger=self._ledger, review_store=self._review_store,
@@ -294,6 +329,18 @@ class Engine:
             for comp in self._complication_registry.active_complications():
                 if hasattr(comp, "reset_consecutive_actions"):
                     comp.reset_consecutive_actions()
+        if session is not None and hasattr(session, "record_govern_event"):
+            try:
+                from aevum.core.session_record import SessionEvent
+                in_h = SessionEvent.hash_payload({"audit_id": audit_id, "action": action})
+                out_h = SessionEvent.hash_payload(result.data or {})
+                session.record_govern_event(
+                    in_h, out_h,
+                    checkpoint_id=audit_id,
+                    latency_ms=int((time.monotonic() - t0) * 1000),
+                )
+            except Exception as exc:  # noqa: BLE001
+                _logger.error("session event recording failed (review): %s", exc)
         return result
 
     def commit(
