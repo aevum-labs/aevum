@@ -3,16 +3,25 @@ Tests for A2A task format and MCP tools.
 Uses direct tool invocation -- no real MCP protocol.
 
 NO tests/__init__.py (standing rule).
+FastMCP 3.x API: use list_tools() and get_tool() (async).
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 
 from aevum.core.engine import Engine
 
 from aevum.mcp.a2a import A2ATask
 from aevum.mcp.server import create_server
+
+
+def _get_tool_fn(mcp: object, name: str) -> object:
+    """Get the underlying callable for a FastMCP 3.x tool by name."""
+    loop = asyncio.get_event_loop()
+    tool = loop.run_until_complete(mcp.get_tool(name))  # type: ignore[attr-defined]
+    return tool.fn
 
 
 class TestA2AModels:
@@ -51,7 +60,7 @@ class TestA2AModels:
 class TestA2AMcpTools:
     def test_create_task_tool(self) -> None:
         mcp = create_server(Engine())
-        tool_fn = mcp._tool_manager._tools["create_task"].fn  # type: ignore[attr-defined]
+        tool_fn = _get_tool_fn(mcp, "create_task")
         result = tool_fn(name="Test Task", description="A test", payload={"x": 1})
         assert result["state"] == "created"
         assert result["task_id"].startswith("urn:aevum:audit:")
@@ -59,8 +68,8 @@ class TestA2AMcpTools:
 
     def test_get_task_tool(self) -> None:
         mcp = create_server(Engine())
-        create_fn = mcp._tool_manager._tools["create_task"].fn  # type: ignore[attr-defined]
-        get_fn = mcp._tool_manager._tools["get_task"].fn  # type: ignore[attr-defined]
+        create_fn = _get_tool_fn(mcp, "create_task")
+        get_fn = _get_tool_fn(mcp, "get_task")
 
         created = create_fn(name="Fetch Me", description="test")
         task_id = created["task_id"]
@@ -70,19 +79,20 @@ class TestA2AMcpTools:
 
     def test_get_task_not_found(self) -> None:
         mcp = create_server(Engine())
-        get_fn = mcp._tool_manager._tools["get_task"].fn  # type: ignore[attr-defined]
+        get_fn = _get_tool_fn(mcp, "get_task")
         result = get_fn(task_id="urn:aevum:audit:00000000-0000-7000-8000-000000000999")
         assert result["state"] == "failed"
 
     def test_seven_tools_registered(self) -> None:
         mcp = create_server(Engine())
-        tools = set(mcp._tool_manager._tools.keys())  # type: ignore[attr-defined]
+        tools = asyncio.get_event_loop().run_until_complete(mcp.list_tools())
+        tool_names = {t.name for t in tools}
         for expected in ["ingest", "query", "review", "commit", "replay",
                          "create_task", "get_task"]:
-            assert expected in tools, f"Missing tool: {expected}"
+            assert expected in tool_names, f"Missing tool: {expected}"
 
     def test_create_task_result_json_serializable(self) -> None:
         mcp = create_server(Engine())
-        tool_fn = mcp._tool_manager._tools["create_task"].fn  # type: ignore[attr-defined]
+        tool_fn = _get_tool_fn(mcp, "create_task")
         result = tool_fn(name="Test", payload={})
         json.dumps(result)  # Must not raise
