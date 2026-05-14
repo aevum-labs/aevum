@@ -11,6 +11,7 @@ resolution-markers = [
 members = [
     "aevum-agent",
     "aevum-cli",
+    "aevum-conformance",
     "aevum-core",
     "aevum-llm",
     "aevum-mcp",
@@ -90,6 +91,17 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
 provides-extras = ["dev"]
+
+[[package]]
+name = "aevum-conformance"
+version = "2.0.0"
+source = { editable = "packages/aevum-conformance" }
+dependencies = [
+    { name = "aevum-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "aevum-core", editable = "packages/aevum-core" }]
 
 [[package]]
 name = "aevum-core"
