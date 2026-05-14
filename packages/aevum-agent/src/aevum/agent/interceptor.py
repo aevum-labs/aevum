@@ -225,7 +225,9 @@ class AevumA2AInterceptor:
         if _OQS_AVAILABLE:
             try:
                 dual_sig = self._kernel.signer.sign(payload)
-                mldsa65_sig = dual_sig.mldsa65_sig.hex()
+                raw = dual_sig.mldsa65_sig
+                if isinstance(raw, (bytes, bytearray)):
+                    mldsa65_sig = raw.hex()
             except Exception as exc:  # noqa: BLE001
                 logger.warning("ML-DSA-65 signing failed: %s", exc)
 
