@@ -58,6 +58,9 @@ crewai = [
 openai-agents = [
     "openai-agents>=0.0.12",
 ]
+benchmark = [
+    "pytest-benchmark>=4.0.0",
+]
 all = [
     "aevum-core[server]",
     "aevum-core[mcp]",
