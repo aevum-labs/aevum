@@ -37,7 +37,8 @@ import nacl.signing
 _oqs_module: Any = None  # oqs module when available, None otherwise
 _OQS_AVAILABLE: bool = False
 try:
-    import oqs as _oqs_module
+    import oqs as _oqs_import
+    _oqs_module = _oqs_import
     _OQS_AVAILABLE = True
 except (ImportError, OSError, SystemExit):
     pass
