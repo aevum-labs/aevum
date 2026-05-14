@@ -19,8 +19,7 @@ from aevum.mcp.server import create_server
 
 def _get_tool_fn(mcp: object, name: str) -> object:
     """Get the underlying callable for a FastMCP 3.x tool by name."""
-    loop = asyncio.get_event_loop()
-    tool = loop.run_until_complete(mcp.get_tool(name))  # type: ignore[attr-defined]
+    tool = asyncio.run(mcp.get_tool(name))  # type: ignore[attr-defined]
     return tool.fn
 
 
@@ -85,7 +84,7 @@ class TestA2AMcpTools:
 
     def test_seven_tools_registered(self) -> None:
         mcp = create_server(Engine())
-        tools = asyncio.get_event_loop().run_until_complete(mcp.list_tools())
+        tools = asyncio.run(mcp.list_tools())
         tool_names = {t.name for t in tools}
         for expected in ["ingest", "query", "review", "commit", "replay",
                          "create_task", "get_task"]:

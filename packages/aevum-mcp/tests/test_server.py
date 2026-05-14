@@ -46,8 +46,7 @@ def _prov() -> dict:  # type: ignore[type-arg]
 
 def _get_tool_fn(mcp: object, name: str) -> object:
     """Get the underlying callable for a FastMCP 3.x tool by name."""
-    loop = asyncio.get_event_loop()
-    tool = loop.run_until_complete(mcp.get_tool(name))  # type: ignore[attr-defined]
+    tool = asyncio.run(mcp.get_tool(name))  # type: ignore[attr-defined]
     return tool.fn
 
 
@@ -59,7 +58,7 @@ def test_server_creates_successfully() -> None:
 
 def test_five_tools_registered() -> None:
     mcp = create_server()
-    tools = asyncio.get_event_loop().run_until_complete(mcp.list_tools())
+    tools = asyncio.run(mcp.list_tools())
     tool_names = [t.name for t in tools]
     for expected in ["ingest", "query", "review", "commit", "replay"]:
         assert expected in tool_names, f"Tool '{expected}' not registered"

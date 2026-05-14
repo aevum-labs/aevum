@@ -55,9 +55,7 @@ class TestGovernanceMiddleware:
             context.message.name = "dangerous_tool"
             context.message.arguments = {}
             with pytest.raises(PermissionError, match="Cedar policy denied"):
-                asyncio.get_event_loop().run_until_complete(
-                    m.on_call_tool(context, AsyncMock())
-                )
+                asyncio.run(m.on_call_tool(context, AsyncMock()))
 
     def test_cedar_permit_passes_tool_call(self) -> None:
         cls = self._make_middleware_class()
@@ -72,9 +70,7 @@ class TestGovernanceMiddleware:
             context = MagicMock()
             context.message.name = "safe_tool"
             context.message.arguments = {"query": "test"}
-            result = asyncio.get_event_loop().run_until_complete(
-                m.on_call_tool(context, mock_next)
-            )
+            result = asyncio.run(m.on_call_tool(context, mock_next))
         assert result == mock_result
 
     def test_cedar_deny_logs_warning(self) -> None:
@@ -86,9 +82,7 @@ class TestGovernanceMiddleware:
             context.message.name = "bad_tool"
             context.message.arguments = {}
             with pytest.raises(PermissionError):
-                asyncio.get_event_loop().run_until_complete(
-                    m.on_call_tool(context, AsyncMock())
-                )
+                asyncio.run(m.on_call_tool(context, AsyncMock()))
 
     def test_permit_records_in_sigchain(self) -> None:
         cls = self._make_middleware_class()
@@ -104,9 +98,7 @@ class TestGovernanceMiddleware:
                 context = MagicMock()
                 context.message.name = "my_tool"
                 context.message.arguments = {}
-                asyncio.get_event_loop().run_until_complete(
-                    m.on_call_tool(context, AsyncMock(return_value="result"))
-                )
+                asyncio.run(m.on_call_tool(context, AsyncMock(return_value="result")))
         assert len(sigchain_calls) == 1
         assert sigchain_calls[0][0] == "my_tool"
 
@@ -181,25 +173,25 @@ class TestServerWithGovernance:
     def test_server_has_relate_tool(self) -> None:
         from aevum.mcp.server import create_server
         mcp = create_server()
-        tool_names = [t.name for t in asyncio.get_event_loop().run_until_complete(mcp.list_tools())]
+        tool_names = [t.name for t in asyncio.run(mcp.list_tools())]
         assert "relate" in tool_names
 
     def test_server_has_navigate_tool(self) -> None:
         from aevum.mcp.server import create_server
         mcp = create_server()
-        tool_names = [t.name for t in asyncio.get_event_loop().run_until_complete(mcp.list_tools())]
+        tool_names = [t.name for t in asyncio.run(mcp.list_tools())]
         assert "navigate" in tool_names
 
     def test_server_has_govern_tool(self) -> None:
         from aevum.mcp.server import create_server
         mcp = create_server()
-        tool_names = [t.name for t in asyncio.get_event_loop().run_until_complete(mcp.list_tools())]
+        tool_names = [t.name for t in asyncio.run(mcp.list_tools())]
         assert "govern" in tool_names
 
     def test_server_has_all_five_functions(self) -> None:
         from aevum.mcp.server import create_server
         mcp = create_server()
-        tool_names = [t.name for t in asyncio.get_event_loop().run_until_complete(mcp.list_tools())]
+        tool_names = [t.name for t in asyncio.run(mcp.list_tools())]
         for name in ("ingest", "query", "review", "commit", "replay"):
             assert name in tool_names
 
