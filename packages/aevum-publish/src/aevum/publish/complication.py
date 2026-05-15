@@ -74,7 +74,7 @@ class PublishComplication:
     """
 
     name: str = "aevum-publish"
-    version: str = "0.1.0"
+    version: str = "0.4.0"
 
     def __init__(
         self,

@@ -1,0 +1,116 @@
+{
+  "@context": {
+    "prov": "http://www.w3.org/ns/prov#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "aevum": "https://aevum.build/ontology#",
+    "prov:startedAtTime": {
+      "@type": "xsd:dateTime"
+    },
+    "prov:endedAtTime": {
+      "@type": "xsd:dateTime"
+    },
+    "prov:generatedAtTime": {
+      "@type": "xsd:dateTime"
+    }
+  },
+  "@graph": [
+    {
+      "@id": "https://aevum.build/ontology#AevumKernel",
+      "@type": [
+        "prov:SoftwareAgent",
+        "prov:Agent"
+      ],
+      "prov:label": "Aevum Governed Context Kernel",
+      "https://aevum.build/ontology#version": "2.0"
+    },
+    {
+      "@id": "https://aevum.build/agent/user:demo",
+      "@type": [
+        "prov:Person",
+        "prov:Agent"
+      ],
+      "prov:label": "user:demo"
+    },
+    {
+      "@id": "https://aevum.build/session/aevum-sample-2026",
+      "@type": "prov:Activity",
+      "prov:startedAtTime": "2026-05-15T03:55:34.031838+00:00",
+      "prov:endedAtTime": "2026-05-15T03:55:34.031838+00:00",
+      "prov:wasAssociatedWith": [
+        {
+          "@id": "https://aevum.build/agent/user:demo"
+        },
+        {
+          "@id": "https://aevum.build/ontology#AevumKernel"
+        }
+      ],
+      "https://aevum.build/ontology#purpose": "customer-support-demonstration",
+      "https://aevum.build/ontology#commitType": "complete",
+      "https://aevum.build/ontology#eventCount": 3,
+      "https://aevum.build/ontology#merkleRoot": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "https://aevum.build/ontology#sigchainEntry": 42
+    },
+    {
+      "@id": "https://aevum.build/session/aevum-sample-2026/event/0",
+      "@type": "prov:Entity",
+      "prov:wasGeneratedBy": {
+        "@id": "https://aevum.build/session/aevum-sample-2026"
+      },
+      "prov:generatedAtTime": "2026-05-15T03:55:34.031838+00:00",
+      "https://aevum.build/ontology#eventType": "relate",
+      "https://aevum.build/ontology#sequence": 0,
+      "https://aevum.build/ontology#inputHash": "38b6829c8214fdac4d724a80128eeb7bdf73dfe724c7c08ceebbf319cdf42474",
+      "https://aevum.build/ontology#outputHash": "a37ba3472b85d363315c3fd5e2fefde7afa57dbecb402b7fca5fd61d6b4c5685",
+      "https://aevum.build/ontology#latencyMs": 12
+    },
+    {
+      "@id": "https://aevum.build/session/aevum-sample-2026/event/1",
+      "@type": "prov:Entity",
+      "prov:wasGeneratedBy": {
+        "@id": "https://aevum.build/session/aevum-sample-2026"
+      },
+      "prov:generatedAtTime": "2026-05-15T03:55:34.031838+00:00",
+      "https://aevum.build/ontology#eventType": "navigate",
+      "https://aevum.build/ontology#sequence": 1,
+      "https://aevum.build/ontology#inputHash": "1b6dcfedb8a85c21eb2805af642f433cdad7f4188e279dacbde0eae86b7d9a91",
+      "https://aevum.build/ontology#outputHash": "64389f48d477bec54894ecfc1a0b505ea29a0f80762f9c6c5a50c9c968017e1d",
+      "https://aevum.build/ontology#latencyMs": 28
+    },
+    {
+      "@id": "https://aevum.build/session/aevum-sample-2026/event/2",
+      "@type": "prov:Entity",
+      "prov:wasGeneratedBy": {
+        "@id": "https://aevum.build/session/aevum-sample-2026"
+      },
+      "prov:generatedAtTime": "2026-05-15T03:55:34.031838+00:00",
+      "https://aevum.build/ontology#eventType": "govern",
+      "https://aevum.build/ontology#sequence": 2,
+      "https://aevum.build/ontology#inputHash": "77108d2f3d2449010db09f86f333b55f48f06b6ff51f80a584d241b39ba2e8c4",
+      "https://aevum.build/ontology#outputHash": "a7a424d33d5ce63082da04779d5a15b784146d3f8ac5aa8c4c8bf9b101784c40",
+      "https://aevum.build/ontology#latencyMs": 145
+    },
+    {
+      "@id": "https://aevum.build/session/aevum-sample-2026/article12",
+      "@type": "https://aevum.build/ontology#Article12Record",
+      "prov:generatedAtTime": "2026-05-15T03:55:34.239312+00:00",
+      "https://aevum.build/ontology#aiSystemId": "aevum-kernel-v2",
+      "https://aevum.build/ontology#sessionId": "aevum-sample-2026",
+      "https://aevum.build/ontology#principalId": "user:demo",
+      "https://aevum.build/ontology#purpose": "customer-support-demonstration",
+      "https://aevum.build/ontology#startedAt": "2026-05-15T03:55:34.031838+00:00",
+      "https://aevum.build/ontology#endedAt": "2026-05-15T03:55:34.031838+00:00",
+      "https://aevum.build/ontology#commitType": "complete",
+      "https://aevum.build/ontology#totalEvents": 3,
+      "https://aevum.build/ontology#merkleRoot": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "https://aevum.build/ontology#auditIntegrity": "sigchain-dual-signed"
+    }
+  ],
+  "_meta": {
+    "export_format": "aevum-article12-v2",
+    "generated_at": "2026-05-15T03:55:34.239312+00:00",
+    "session_id": "aevum-sample-2026",
+    "event_count": 3,
+    "prov_o_version": "2013-04-30",
+    "eu_ai_act_article": "12"
+  }
+}

@@ -48,7 +48,7 @@ class SpiffeComplication:
     """
 
     name: str = "aevum-spiffe"
-    version: str = "0.1.0"
+    version: str = "0.4.0"
     capabilities: list[str] = ["spiffe-identity"]
 
     def __init__(

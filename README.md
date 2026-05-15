@@ -1,15 +1,34 @@
 # Aevum
 
-Aevum is a Python library that gives AI agents a signed audit trail,
-consent-checked data access, and verifiable decision records —
-three problems that tend to surface together in production. The quickstart
-gets you to working code in ten minutes.
+Governed context kernel for AI agents. Signed audit trail, consent-gated data
+access, and verifiable decision records — three controls that regulators ask for
+together and that are hardest to add after the fact.
 
-Documentation: https://aevum.build
+[![CI](https://github.com/aevum-labs/aevum/actions/workflows/ci.yml/badge.svg)](https://github.com/aevum-labs/aevum/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/aevum-core)](https://pypi.org/project/aevum-core/)
+[![Python](https://img.shields.io/pypi/pyversions/aevum-core)](https://pypi.org/project/aevum-core/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12630/badge)](https://www.bestpractices.dev/projects/12630)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/aevum-core.svg)](https://pypi.org/project/aevum-core/)
+## The problem
+
+AI agents are uniquely exposed to the **lethal trifecta**: reading untrusted
+content, accessing private user data, and exfiltrating via a tool call — three
+steps that are innocuous individually but catastrophic in composition. Aevum's
+Cedar policies block that composition unconditionally, before any permit can
+override it.
+
+Beyond trifecta prevention, every AI system operating on personal data needs
+three things the standard stack does not provide:
+
+1. **A signed, replayable record** of every decision (EU AI Act Article 12,
+   HIPAA §164.312)
+2. **Consent as a precondition** for any data traversal (GDPR Art. 6/9)
+3. **Crypto-erasure** when a subject exercises the right to be forgotten
+   (GDPR Art. 17)
+
+Aevum makes all three structural rather than procedural.
+
+## Quick demo
 
 ```python
 from aevum.core import Engine
@@ -22,180 +41,114 @@ engine.add_consent_grant(ConsentGrant(
     classification_max=1,
     granted_at="2026-01-01T00:00:00Z", expires_at="2027-01-01T00:00:00Z",
 ))
-
 result = engine.ingest(
     data={"message": "User asked about billing"},
     provenance={"source_id": "support-chat", "chain_of_custody": ["support-chat"],
                 "classification": 0},
     purpose="customer-support", subject_id="user-42", actor="my-agent",
 )
-print(result.audit_id)   # urn:aevum:audit:<uuid7>  -- cryptographically signed
+print(result.audit_id)   # urn:aevum:audit:<uuid7>  — signed, chained, replayable
 print(result.status)     # ok
 ```
 
-Every operation is signed, chained, and replayable. No consent grant = no operation.
+No consent grant? `result.status == "error"` with `error_code == "consent_required"`.
+Crisis keyword in data? Blocked before the graph write. No exceptions.
 
-## What Aevum provides
+## LangGraph drop-in
 
-| Primitive | What it does |
-|---|---|
-| **Episodic ledger** | Ed25519-signed, SHA3-256-chained log of every AI decision |
-| **Consent ledger** | OR-Set consent grants; revocation is immediate and propagates |
-| **Five functions** | `ingest` `query` `review` `commit` `replay` -- the governed API surface |
-| **Human review gates** | Veto-as-default HITL gates with deadline enforcement |
-| **Replay** | Retrieve and verify the exact signed record of any past operation |
-| **Five unconditional barriers** | Crisis detection, classification ceiling, consent, audit immutability, provenance -- unconditional |
-| **Complication framework** | Policy-governed plugin system with 7-state lifecycle |
-| **MCP integration** | All five functions available as tools for any MCP-compatible host |
-| **Agent autonomy levels** | L1-L5 DeepMind taxonomy with automatic review triggers |
+```python
+from aevum.core.adapters.langgraph import AevumCheckpointer
+checkpointer = AevumCheckpointer.local()
+graph = builder.compile(checkpointer=checkpointer)
+```
+
+Every superstep is dual-signed (Ed25519 + ML-DSA-65) and chained.
+`delete_thread(thread_id)` triggers GDPR Art. 17 crypto-erasure.
 
 ## Install
 
 ```bash
-pip install aevum-core          # kernel only
-pip install aevum-server        # + HTTP API
-pip install "aevum-core[cedar]" # + real Cedar policy enforcement
+pip install aevum-core                     # kernel only
+pip install "aevum-core[server]"           # + HTTP API
+pip install "aevum-core[langgraph]"        # + LangGraph checkpointer
+pip install "aevum-core[oxigraph]"         # + embedded RDF graph
+pip install "aevum-core[postgres]"         # + PostgreSQL backend
+pip install "aevum-core[mcp]"             # + MCP integration
+pip install "aevum-core[all]"              # everything
 ```
 
-## 10-minute quickstart
+> **Note:** The bare name `aevum` on PyPI is an unrelated project.
+> Always use `aevum-core` (or another `aevum-*` package).
+
+## The five functions (CRE protocol)
+
+| Function | Protocol verb | What it does |
+|---|---|---|
+| `ingest` | RELATE | Write data through the governed membrane |
+| `query` | NAVIGATE | Traverse the graph for a declared purpose |
+| `review` | GOVERN | Present context for human decision |
+| `commit` | REMEMBER | Append event to the episodic ledger |
+| `replay` | (no verb) | Reconstruct any past decision faithfully |
+
+All five are consent-checked, barrier-enforced, and ledger-recorded.
+
+## The five absolute barriers
+
+These are Cedar `forbid` policies. Cedar semantics: forbid always overrides
+permit. No configuration, no override, no escape hatch.
+
+| Barrier | What it blocks |
+|---|---|
+| **1 — Crisis** | Any graph write when crisis-signal keywords are detected |
+| **2 — Consent** | Any context traversal without a scoped, active consent grant |
+| **3 — Classification ceiling** | Any action on data whose level exceeds the deployment ceiling |
+| **4 — Audit seal** | Any deletion or mutation of the provenance graph |
+| **5 — Provenance (veto-as-default)** | Any irreversible+consequential action without a human checkpoint |
+
+## Compliance
+
+| Requirement | Aevum control |
+|---|---|
+| EU AI Act Article 12 (logging) | Episodic ledger: Ed25519+ML-DSA-65 dual-signed, SHA3-256-chained |
+| GDPR Art. 6/9 (lawful basis) | Consent ledger: OR-Set grants, purpose-scoped, Cedar-enforced |
+| GDPR Art. 17 (erasure) | Crypto-shredding: DEK destroyed on revoke, ciphertext unrecoverable |
+| OWASP ASI01 (prompt injection) | Trifecta barrier: blocks untrusted-read + private-read + exfiltrate composition |
+| OWASP ASI02 (data exfiltration) | Classification ceiling + trifecta Cedar policy |
+| OWASP ASI04 (memory poisoning) | Sigchain: every entry chained, mutations detectable |
+| NIST AI RMF MAP-1.6 | Structured audit pack exportable for any decision |
+
+## Conformance
+
+Aevum ships a machine-verifiable conformance suite:
 
 ```bash
-pip install aevum-core
-
-python - << 'EOF'
-from aevum.core import Engine
-from aevum.core.consent.models import ConsentGrant
-
-engine = Engine()
-
-# Grant consent for an agent to ingest and query data about a user
-engine.add_consent_grant(ConsentGrant(
-    grant_id="demo-grant",
-    subject_id="user-1",
-    grantee_id="demo-agent",
-    operations=["ingest", "query"],
-    purpose="product-demo",
-    classification_max=0,
-    granted_at="2026-01-01T00:00:00Z",
-    expires_at="2030-01-01T00:00:00Z",
-))
-
-# Ingest data -- every write is signed and chained
-result = engine.ingest(
-    data={"note": "User requested account review"},
-    provenance={"source_id": "demo", "chain_of_custody": ["demo"], "classification": 0},
-    purpose="product-demo",
-    subject_id="user-1",
-    actor="demo-agent",
-)
-print("audit_id:", result.audit_id)  # urn:aevum:audit:<uuid7>
-print("status:  ", result.status)    # ok
-
-# Query -- no consent grant = no results (Barrier 3)
-q = engine.query(purpose="product-demo", subject_ids=["user-1"], actor="demo-agent")
-print("results: ", list(q.data["results"].keys()))  # ['user-1']
-
-# Replay any past decision deterministically
-r = engine.replay(audit_id=result.audit_id, actor="demo-agent")
-print("replayed:", r.data["replayed_payload"]["note"])  # User requested account review
-EOF
+pip install aevum-conformance
+python -c "from aevum.conformance.suite import ConformanceSuite; \
+    r = ConformanceSuite().run_all(); print(r.passed_count, '/', r.total_count)"
 ```
 
-## What Aevum is not
-
-- **Not a prompt injection defense** — use a guardrail layer (Lakera Guard,
-  NeMo Guardrails) on the model boundary
-- **Not a code execution sandbox** — use gVisor, Firecracker, or NVIDIA
-  OpenShell for process isolation
-- **Not a mandatory network enforcement point** — deploy behind an AI gateway
-  or MCP gateway for that; see
-  [Deployment Patterns](https://aevum.build/learn/deployment-patterns/)
-- **Not a compliance report generator** — the episodic ledger produces
-  evidence; your compliance program interprets it
-
-**Signing key trust boundary:** The default `InProcessSigner` generates
-an Ed25519 key in process memory — the same process as the agent. This
-provides tamper-DETECTION (any modification is detectable) but not
-tamper-PREVENTION (a compromised process could theoretically forge entries).
-
-For regulated deployments requiring FDA §11.10(e) "independently record"
-or equivalent: implement a custom `Signer`
-implementation backed by a KMS or HSM outside the agent's trust boundary.
+See [`docs/conformance_report.txt`](docs/conformance_report.txt) for the
+reference run (9 invariants, generated from this codebase).
 
 ## Packages
 
-| Package | Purpose |
-|---|---|
-| `aevum-core` | Context kernel: five functions, sigchain, barriers, consent |
-| `aevum-server` | HTTP API wrapping the five functions |
-| `aevum-store-oxigraph` | Embedded RDF graph backend (single-node) |
-| `aevum-store-postgres` | PostgreSQL graph + consent + ledger backend |
-| `aevum-mcp` | MCP integration for any MCP-compatible host |
-| `aevum-cli` | `aevum server start`, `aevum store migrate`, and more |
+| Package | Install | Purpose |
+|---|---|---|
+| `aevum-core` | `pip install aevum-core` | Kernel: five functions, sigchain, barriers, consent |
+| `aevum-server` | `aevum-core[server]` | HTTP API wrapping all five functions |
+| `aevum-store-oxigraph` | `aevum-core[oxigraph]` | Embedded RDF graph backend |
+| `aevum-store-postgres` | `aevum-core[postgres]` | PostgreSQL graph + consent + ledger |
+| `aevum-mcp` | `aevum-core[mcp]` | MCP tools for any MCP-compatible host |
+| `aevum-cli` | `pip install aevum-cli` | `aevum server start`, `aevum store migrate` |
+| `aevum-conformance` | `pip install aevum-conformance` | Machine-verifiable conformance suite |
+| `aevum-agent` | `pip install aevum-agent` | A2A protocol integration |
 
-## Complication lifecycle
+## Contributing
 
-Complications are registered and activated in three explicit steps:
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-```python
-from aevum.mcp import McpComplication
-
-comp = McpComplication()
-engine.install_complication(comp)      # registers the complication
-engine.approve_complication("aevum-mcp")  # transitions state, writes ledger entry
-comp.on_approved(engine)               # activates — must be called explicitly
-```
-
-The Engine does not invoke `on_approved()` automatically. This is intentional:
-activation may require configuration that the caller provides after approval.
-
-## Architecture
-
-```
-┌─────────────────────────────────────┐
-│           Your application          │
-├──────────────┬──────────────────────┤
-│  aevum-mcp   │  aevum-server        │  ← Integration surface
-│  (MCP tools) │  (HTTP API)          │
-├──────────────┴──────────────────────┤
-│            aevum-core               │  ← Kernel
-│  ingest  query  review  commit  replay
-│  ┌─────────────┐  ┌──────────────┐  │
-│  │ Episodic    │  │ Consent      │  │
-│  │ ledger      │  │ ledger       │  │
-│  │ (sigchain)  │  │ (OR-Set)     │  │
-│  └─────────────┘  └──────────────┘  │
-│  ┌──────────────────────────────┐   │
-│  │ Five unconditional barriers       │   │
-│  └──────────────────────────────┘   │
-├─────────────────────────────────────┤
-│  aevum-store-oxigraph / -postgres   │  ← Graph backends
-└─────────────────────────────────────┘
-```
-
-## Documentation
-
-- [Architecture](https://aevum.build/learn/architecture/)
-- [Quickstart](https://aevum.build/getting-started/quickstart/)
-- [Deployment Patterns](https://aevum.build/learn/deployment-patterns/)
-- [Standards Alignment](https://aevum.build/learn/standards-alignment/)
-- [Full documentation](https://aevum.build)
-
-## Security and compliance
-
-- [Threat Model](THREAT_MODEL.md) — trust assumptions, limitations, and
-  deployment recommendations for regulated workloads
-- [Control Mapping](CONTROL_MAPPING.md) — how Aevum's controls map to
-  HIPAA, EU AI Act, GDPR, NIST AI RMF, OWASP, and other frameworks
-
-## Community
-
-- **Questions and discussion:** [GitHub Discussions](https://github.com/aevum-labs/aevum/discussions)
-- **Bug reports:** [GitHub Issues](https://github.com/aevum-labs/aevum/issues)
-- **Security vulnerabilities:** [GitHub Security Advisories](https://github.com/aevum-labs/aevum/security/advisories/new) (private)
-- **Spec and conformance:** [aevum-labs/aevum-spec](https://github.com/aevum-labs/aevum-spec) and [aevum-labs/aevum-conformance](https://github.com/aevum-labs/aevum-conformance)
+Security vulnerabilities: [GitHub Security Advisories](https://github.com/aevum-labs/aevum/security/advisories/new) (private disclosure).
 
 ## License
 
-Code: Apache-2.0
-Specification: CC-BY-4.0 + OWFa 1.0.1
+Code: Apache-2.0 · Specification: CC-BY-4.0 + OWFa 1.0.1

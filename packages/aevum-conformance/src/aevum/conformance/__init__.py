@@ -1,2 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2024-2026 Aevum Labs contributors
+
+__version__ = "0.4.0"

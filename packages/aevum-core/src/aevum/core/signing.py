@@ -40,7 +40,7 @@ try:
     import oqs as _oqs_import
     _oqs_module = _oqs_import
     _OQS_AVAILABLE = True
-except (ImportError, OSError, SystemExit):
+except (ImportError, OSError, RuntimeError, SystemExit):
     pass
 
 

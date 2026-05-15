@@ -1,0 +1,16 @@
+AEVUM CONFORMANCE REPORT
+Date: 2026-05-15 03:55:12 UTC
+Version: 0.4.0
+Suite: aevum-conformance 2.0
+--------------------------------------------------
+INVARIANT  1  crisis_barrier_fires_before_graph_write       PASS
+INVARIANT  2  consent_absent_raises_ConsentRequired         PASS
+INVARIANT  3  govern_cannot_be_auto_approved_without_Cedar_permit PASS
+INVARIANT  4  remember_fires_on_every_session_close         PASS
+INVARIANT  5  uncertainty_present_in_every_ContextBundle    PASS
+INVARIANT  6  reasoning_trace_nonempty_in_every_ContextBundle PASS
+INVARIANT  7  audit_chain_append_only                       PASS
+INVARIANT  8  dual_signature_every_chain_entry              PASS
+INVARIANT  9  consent_revoke_destroys_dek                   PASS
+--------------------------------------------------
+STATUS: PASS (9/9)
