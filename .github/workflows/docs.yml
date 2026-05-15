@@ -43,7 +43,8 @@ jobs:
           pip install -e packages/aevum-core
           pip install -e packages/aevum-server
           pip install -e packages/aevum-mcp
-          pip install -e packages/aevum-cli
+          pip install -e packages/aevum-conformance
+          pip install -e "packages/aevum-cli[conform]"
 
       - name: Build documentation
         run: mkdocs build --strict

@@ -67,7 +67,6 @@ name = "aevum-cli"
 version = "0.3.0"
 source = { editable = "packages/aevum-cli" }
 dependencies = [
-    { name = "aevum-conformance" },
     { name = "aevum-core" },
     { name = "aevum-server" },
     { name = "typer" },
@@ -75,6 +74,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+conform = [
+    { name = "aevum-conformance" },
+]
 dev = [
     { name = "mypy" },
     { name = "pytest" },
@@ -84,7 +86,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aevum-conformance", editable = "packages/aevum-conformance" },
+    { name = "aevum-conformance", marker = "extra == 'conform'", editable = "packages/aevum-conformance" },
     { name = "aevum-core", editable = "packages/aevum-core" },
     { name = "aevum-server", editable = "packages/aevum-server" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
@@ -94,7 +96,7 @@ requires-dist = [
     { name = "typer", extras = ["all"], specifier = ">=0.12" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["conform", "dev"]
 
 [[package]]
 name = "aevum-conformance"
