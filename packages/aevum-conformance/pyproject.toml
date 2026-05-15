@@ -4,7 +4,6 @@ version = "0.4.0"
 description = "Aevum conformance test suite — 9 behavioral invariants."
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
-license-files = ["../../LICENSE"]
 keywords = ["ai", "governance", "conformance", "audit"]
 classifiers = [
     "Development Status :: 3 - Alpha",
