@@ -32,8 +32,10 @@ jobs:
           python-version: "3.11"
 
       - name: Install system dependencies for social cards
-        run: sudo apt-get install -y libcairo2-dev libfreetype6-dev
-              libgdk-pixbuf2.0-dev libpango1.0-dev libffi-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --fix-missing libcairo2-dev libfreetype6-dev \
+            libgdk-pixbuf2.0-dev libpango1.0-dev libffi-dev
 
       - name: Install documentation dependencies
         run: pip install -r docs/requirements.txt
