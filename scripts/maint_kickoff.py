@@ -53,7 +53,8 @@ def load_scan_results() -> str:
     return f.read_text().strip()
 
 
-
+def fill(template: str, tokens: dict) -> str:
+    """Replace all {{TOKEN}} placeholders with their values."""
     for k, v in tokens.items():
         template = template.replace(k, str(v))
     leftover = re.findall(r"\{\{[A-Z_]+\}\}", template)
