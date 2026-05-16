@@ -5,7 +5,7 @@ Execution: hand Research Report to Claude Code via EXECUTION.md
 Generated: {{GENERATED_TIMESTAMP}}
 
 Principle: Claude researches and classifies. Claude Code executes and commits.
-           you review gate reports and make release decisions.
+           the maintainer reviews gate reports and makes release decisions.
            Think smarter, not harder.
 
 =======================

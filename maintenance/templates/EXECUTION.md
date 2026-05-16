@@ -5,7 +5,7 @@ Research: RESEARCH.md session supplies the findings below
 Generated: {{GENERATED_TIMESTAMP}}
 
 Principle: Claude researches and classifies. Claude Code executes and commits.
-           you review gate reports and make release decisions.
+           the maintainer reviews gate reports and makes release decisions.
            Docs ship with every release — code without matching docs does not ship.
            Think smarter, not harder.
 
