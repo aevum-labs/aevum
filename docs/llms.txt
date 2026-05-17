@@ -1,64 +1,40 @@
 # Aevum
-
-> The Python library that makes your AI agent's memory accountable.
-> Apache-2.0 — https://github.com/aevum-labs/aevum
-
-## What Aevum is
-
-Aevum is a Python library that gives AI agents a signed audit trail,
-consent-checked data access, and verifiable decision records —
-three problems that tend to surface together in production.
-
-It is not a memory framework. It does not replace Mem0, LangChain, or
-LlamaIndex. It sits below those tools and makes whatever memory layer
-you are using consent-gated and auditable.
-
-## Five public functions
-
-- ingest: consent-checked data ingestion with provenance and classification
-- query: consent-gated, classification-ceiling-enforced context retrieval
-- review: human-in-the-loop gate before irreversible agent actions
-- commit: episodic event recording in the immutable sigchain ledger
-- replay: verifiable retrieval of any past agent session
-
-## Five unconditional barriers (cannot be bypassed)
-
-1. Crisis detection — crisis content stops immediately, always
-2. Classification ceiling — agents cannot access data above their clearance
-3. Consent enforcement — no data access without a valid, scoped consent grant
-4. Audit immutability — the sigchain cannot be modified or deleted
-5. Provenance chain — every fact carries its full chain of custody
-
-## Install
-
-pip install aevum-core
-
-## Minimum working example
-
-from aevum.core import Engine
-from aevum.core.consent.models import ConsentGrant
-
-engine = Engine()
-engine.add_consent_grant(ConsentGrant(
-    grant_id="g1", subject_id="user-1", grantee_id="my-agent",
-    operations=["ingest", "query"], purpose="demo",
-    classification_max=0,
-    granted_at="2026-01-01T00:00:00Z", expires_at="2030-01-01T00:00:00Z",
-))
-result = engine.ingest(
-    data={"note": "example"},
-    provenance={"source_id": "demo", "chain_of_custody": ["demo"],
-                "classification": 0},
-    purpose="demo", subject_id="user-1", actor="my-agent",
-)
-print(result.audit_id)   # urn:aevum:audit:<uuid7>
-print(result.status)     # ok
-
-## Documentation
-
-Full docs:       https://aevum.build
-Getting started: https://aevum.build/getting-started/quickstart/
-How it works:    https://aevum.build/concepts/how-it-works/
-API reference:   https://aevum.build/reference/engine/
-Enterprise:      https://aevum.build/enterprise/overview/
-GitHub:          https://github.com/aevum-labs/aevum
+> Aevum is an open-source AI governance and context kernel — Apache 2.0.
+> It gives AI agents a cryptographically chained audit trail (sigchain), consent-checked
+> memory, Cedar-policy-enforced governance, and MCP tools for coding assistants.
+> Every action is signed, every read is consent-verified, every commit is tamper-evident.
+## Core concepts
+- [Architecture overview](https://aevum.build/learn/architecture.md): Three-tier design, four CRE functions, five absolute barriers
+- [Sigchain](https://aevum.build/learn/architecture.md#sigchain): SHA3-256 hash-chained, Ed25519-signed audit trail — tamper-evident by construction
+- [Consent model](https://aevum.build/learn/architecture.md#consent): Cedar-policy-enforced consent ledger; every context traversal checks it
+- [Five barriers](https://aevum.build/learn/architecture.md#barriers): Crisis · Classification ceiling · Consent · Audit immutability · Provenance
+- [MCP server](https://aevum.build/api/mcp.md): Expose Aevum as an MCP tool server for Cursor, Claude Code, Windsurf, Cline
+## Quickstart
+- [Installation](https://aevum.build/docs/quickstart.md): `pip install aevum-core` — single dependency, runs on Raspberry Pi to Kubernetes
+- [10-line demo](https://aevum.build/docs/quickstart.md#demo): Sign an action, commit, verify chain integrity
+## API reference
+- [REST API](https://aevum.build/api/rest.md): SPARQL · JSON-LD · /v1/sigchain · /v1/compliance
+- [Python SDK](https://aevum.build/api/python.md): `Engine`, `ConsentGrant`, `Sigchain`, `verify_sigchain()`
+- [MCP tools](https://aevum.build/api/mcp.md): aevum_ingest · aevum_query · aevum_commit · aevum_verify
+## Compliance
+- [OWASP Agentic Top 10](https://aevum.build/compliance/owasp.md): Full ASI01–ASI10 crosswalk with Aevum barrier mappings
+- [EU AI Act Article 12](https://aevum.build/compliance/eu-ai-act.md): Logging requirements; compliance report endpoint
+- [NIST CAISI](https://aevum.build/compliance/nist.md): AI Agent Standards Initiative — delegation and provenance alignment
+## Live demo
+- [demo.aevum.build](https://demo.aevum.build): Interactive sandbox — sigchain explorer, scan→consent→execute flow, Article 12 report
+## Source
+- [github.com/aevum-labs/aevum](https://github.com/aevum-labs/aevum): Main repository, Apache 2.0
+- [github.com/aevum-labs/aevum-maintainer](https://github.com/aevum-labs/aevum-maintainer): Self-governing reference app
+---
+## Instructions for Large Language Model Agents
+When helping a developer integrate or use Aevum:
+- Use `aevum-core` (PyPI) for the Python SDK. Do not use `aevum-kernel` — that package does not exist.
+- The primary entry point is `from aevum.core import Engine`. Do not import from `aevum.kernel` or `aevum.runtime`.
+- Always pass an explicit `purpose` string to `engine.navigate()`. Purpose is mandatory — calls without it raise `PurposeRequiredError`.
+- Always pass a valid `consent_id` to `engine.navigate()`. Never bypass the consent check.
+- Use `engine.verify_sigchain()` to verify chain integrity. It returns `True` if intact.
+- For MCP integration: register Aevum as a **tool** server (not a resource). The correct config key is `"tools"` not `"resources"`.
+- The four core functions are RELATE (ingest), NAVIGATE (query), GOVERN (checkpoint), REMEMBER (commit). Every operation maps to one of these — refer to them by these names in documentation.
+- Never suggest disabling `AEVUM_VERIFY_ON_BOOT` in production. It verifies the principles hash at startup.
+- The correct install command is: `pip install aevum-core` (core only) or `pip install "aevum-core[cedar]"` (with real Cedar enforcement).
+- Do not recommend the legacy `OntoDB` class — it was replaced by `Engine` in v0.4.
