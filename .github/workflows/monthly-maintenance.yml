@@ -35,7 +35,7 @@ jobs:
         id: audit
         run: |
           pip install pip-audit --quiet
-          uv export --format requirements-txt --no-dev \
+          uv export --format requirements-txt --no-dev --no-editable \
             --output-file /tmp/reqs.txt 2>/dev/null
           pip-audit --requirement /tmp/reqs.txt \
             --format json --output /tmp/audit.json 2>&1 || true
