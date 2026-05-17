@@ -1,5 +1,6 @@
 ---
-description: "Append-only, hash-chained, and cryptographically signed are three different properties. Aevum's sigchain implements all three. This page explains what each guarantees and how to verify them."
+title: "Tamper-Evident Audit Logs for AI Agents"
+description: "How Aevum builds a cryptographically chained, tamper-evident audit log for every AI agent action — with offline verification and Rekor anchoring."
 ---
 
 # What "Tamper-Evident" Actually Means for AI Agent Logs
