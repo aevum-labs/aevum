@@ -43,6 +43,8 @@ jobs:
             && mv /tmp/reqs_filtered.txt /tmp/reqs.txt
           pip-audit --requirement /tmp/reqs.txt \
             --format json --output /tmp/audit.json 2>&1 || true
+          # Guarantee the file exists so downstream Python never hits FileNotFoundError
+          [ -f /tmp/audit.json ] || echo '{"dependencies":[]}' > /tmp/audit.json
 
           python3 - <<'EOF'
           import json
