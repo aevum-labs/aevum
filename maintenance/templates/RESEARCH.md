@@ -189,6 +189,44 @@ Classify: CRITICAL (getting-started broken) / HIGH (API undocumented, wrong vers
           MEDIUM (minor inaccuracy) / LOW (cosmetic)
 
 =======================
+PHASE 7 — AEVUM-MAINTAINER HEALTH
+=======================
+Goal: confirm the demo infrastructure is healthy before closing the month.
+Takes ~5 minutes. Always run — do not skip even if earlier phases are clean.
+
+Check 1 — API health
+  Fetch: https://api.demo.aevum.build/health
+  Expected: {"status":"ok"}
+  If unreachable or unexpected response → CRITICAL
+
+Check 2 — Frontend health
+  Fetch: https://demo.aevum.build
+  Expected: HTTP 200, page loads without error
+  If unreachable → CRITICAL
+
+Check 3 — aevum-maintainer Python CVEs
+  Go to: github.com/aevum-labs/aevum-maintainer → Actions →
+  monthly-maintenance → most recent run → read the step summary
+  Any CVEs found → classify as CRITICAL/HIGH/MEDIUM per standard severity
+  If workflow has not run this month → flag as MEDIUM, trigger manually
+
+Check 4 — aevum-maintainer Node.js vulnerabilities
+  Same monthly-maintenance run → "Frontend security (npm audit)" section
+  Any HIGH or CRITICAL severity → flag for execution session
+  MODERATE severity → flag as MEDIUM
+
+Check 5 — Fly.io machine health
+  Go to: fly.io dashboard → aevum-maintainer → Machines tab
+  Confirm machine is running (green indicator)
+  Check logs for the past 24 hours — any crash or health check failure → CRITICAL
+
+Classify all findings using the standard scale:
+  CRITICAL: demo infrastructure down, or HIGH/CRITICAL CVE in either repo
+  HIGH:     MEDIUM CVE, or recurring Fly.io health check failure
+  MEDIUM:   maintenance workflow missed this month, or major dep updates available
+  LOW:      informational only, no action needed this month
+
+=======================
 RESEARCH REPORT
 =======================
 (Claude fills this completely. paste it into EXECUTION.md.)
