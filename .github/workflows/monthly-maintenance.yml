@@ -39,8 +39,9 @@ jobs:
             --output-file /tmp/reqs.txt 2>/dev/null
           # Strip local workspace packages — pip-audit can't hash directories.
           # uv export emits them as "-e file:///..." or "-e ./packages/..." depending on context.
-          grep -v -E '^(-e |file://)' /tmp/reqs.txt > /tmp/reqs_filtered.txt \
-            && mv /tmp/reqs_filtered.txt /tmp/reqs.txt
+          # Use || true so grep's exit code 1 (no lines kept) doesn't abort under set -eo pipefail.
+          grep -v -E '^(-e |file://)' /tmp/reqs.txt > /tmp/reqs_filtered.txt || true
+          mv /tmp/reqs_filtered.txt /tmp/reqs.txt
           pip-audit --requirement /tmp/reqs.txt \
             --format json --output /tmp/audit.json 2>&1 || true
           # Guarantee the file exists so downstream Python never hits FileNotFoundError
