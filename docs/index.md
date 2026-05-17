@@ -49,3 +49,17 @@ Apache-2.0. No telemetry. Runs fully offline.
 
 Self-hosted — your data never leaves your infrastructure.
 No vendor API. No licensing server. No SaaS dependency.
+
+---
+
+## See It in Action
+
+Aevum governs its own development. Every change to Aevum flows through
+Aevum's own governance pipeline — OIDC-verified ingest, Cedar policy
+enforcement, human consent gates, and a cryptographic audit trail.
+
+**[demo.aevum.build](https://demo.aevum.build)** — explore the live
+sigchain, replay any maintenance session, try the sandbox workflow, and
+export an Article 12 compliance report.
+
+Read how it works: [How Aevum Governs Itself](/learn/self-governance/)
