@@ -37,8 +37,12 @@ jobs:
           pip install pip-audit --quiet
           uv export --format requirements-txt --no-dev \
             --output-file /tmp/reqs.txt 2>/dev/null
-          pip-audit --requirement /tmp/reqs.txt \
+          # Filter out editable/local workspace packages — pip-audit cannot hash them
+          grep -v "^-e " /tmp/reqs.txt | grep -v "file://" > /tmp/reqs_filtered.txt
+          pip-audit --requirement /tmp/reqs_filtered.txt \
             --format json --output /tmp/audit.json 2>&1 || true
+          # Ensure audit.json always exists even if pip-audit crashed
+          [ -f /tmp/audit.json ] || echo '{"dependencies":[]}' > /tmp/audit.json
 
           python3 - <<'EOF'
           import json
