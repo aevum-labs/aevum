@@ -1,0 +1,154 @@
+name: monthly-maintenance
+
+# Runs on the 1st of each month at 13:00 UTC.
+# Triggerable anytime from GitHub mobile: Actions → monthly-maintenance → Run workflow.
+# Output: step summary readable in GitHub mobile — paste into RESEARCH.md session.
+
+on:
+  schedule:
+    - cron: '0 13 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to commit scan_results.md back to repo
+
+jobs:
+  scan:
+    name: Monthly Security and Freshness Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install uv
+        run: pip install uv --quiet
+
+      - name: Install workspace
+        run: uv sync --all-packages --dev --quiet
+
+      - name: Security scan (pip-audit)
+        id: audit
+        run: |
+          pip install pip-audit --quiet
+          uv export --format requirements-txt --no-dev \
+            --output-file /tmp/reqs.txt 2>/dev/null
+          pip-audit --requirement /tmp/reqs.txt \
+            --format json --output /tmp/audit.json 2>&1 || true
+
+          python3 - <<'EOF'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("/tmp/audit.json").read_text())
+          found = [
+              (d["name"], v["id"], v.get("fix_versions", []))
+              for d in data.get("dependencies", [])
+              for v in d.get("vulns", [])
+          ]
+
+          print("## Security Scan (pip-audit)")
+          if found:
+              print(f"**{len(found)} CVE(s) found:**")
+              for name, vid, fix in found:
+                  print(f"- `{name}`: {vid} → fix: {fix}")
+          else:
+              print("✅ 0 CVEs found")
+          EOF
+
+      - name: Dependency freshness
+        id: freshness
+        run: |
+          git stash --include-untracked --quiet 2>/dev/null || true
+
+          echo "## Dependency Updates Available" >> $GITHUB_STEP_SUMMARY
+          uv lock --upgrade 2>&1 \
+            | grep -E "^(Updated|warning)" \
+            | head -20 \
+            >> $GITHUB_STEP_SUMMARY \
+            || echo "None available or uv lock unchanged" >> $GITHUB_STEP_SUMMARY
+
+          git stash pop --quiet 2>/dev/null || true
+
+      - name: Write step summary
+        run: |
+          echo "# Aevum Monthly Maintenance — $(date +'%B %Y')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Paste this summary into RESEARCH.md before starting the Claude session.**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # pip-audit results
+          python3 - <<'EOF' >> $GITHUB_STEP_SUMMARY
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("/tmp/audit.json").read_text())
+          found = [
+              (d["name"], v["id"], v.get("fix_versions", []))
+              for d in data.get("dependencies", [])
+              for v in d.get("vulns", [])
+          ]
+          print("## Security Scan (pip-audit)")
+          if found:
+              print(f"**{len(found)} CVE(s) found** — review exploitability in Claude:")
+              for name, vid, fix in found:
+                  print(f"- `{name}`: {vid} — fix: `{fix}`")
+          else:
+              print("✅ 0 CVEs found")
+          EOF
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "_Tests, mypy, ruff, and mkdocs run via ci.yml on every push — check CI tab for current status._" >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit scan results to repo
+        run: |
+          MONTH=$(date +'%B %Y')
+          STAMP=$(date +'%Y-%m-%d')
+
+          # Build scan_results.md — this is what kickoff.py will embed in RESEARCH.md
+          cat > maintenance/scan_results.md << SCANEOF
+          # Monthly Scan Results — $MONTH
+          Generated: $STAMP
+
+          ## Security (pip-audit)
+          SCANEOF
+
+          python3 - >> maintenance/scan_results.md <<'EOF'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("/tmp/audit.json").read_text())
+          found = [
+              (d["name"], v["id"], v.get("fix_versions", []))
+              for d in data.get("dependencies", [])
+              for v in d.get("vulns", [])
+          ]
+          if found:
+              print(f"{len(found)} CVE(s) found:")
+              for name, vid, fix in found:
+                  print(f"- {name}: {vid} — fix: {fix}")
+          else:
+              print("0 CVEs found — clean")
+          EOF
+
+          echo "" >> maintenance/scan_results.md
+          echo "## Dependency Updates Available" >> maintenance/scan_results.md
+          cat /tmp/dep_updates.txt >> maintenance/scan_results.md 2>/dev/null \
+            || echo "No updates available" >> maintenance/scan_results.md
+
+          echo "" >> maintenance/scan_results.md
+          echo "## CI Status" >> maintenance/scan_results.md
+          echo "Check the CI tab for tests, mypy, ruff, and mkdocs results on main." >> maintenance/scan_results.md
+
+          # Commit if changed
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add maintenance/scan_results.md
+          git diff --staged --quiet || \
+            git commit -m "chore: monthly scan results — $(date +'%B %Y')"
+          git push origin main 2>/dev/null || echo "Push skipped (no changes)"

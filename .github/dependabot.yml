@@ -1,13 +1,31 @@
+# .github/dependabot.yml
+# Dependabot watches for new dependency versions and opens PRs automatically.
+# Complements pip-audit (which catches CVEs) by also catching non-security updates.
+# PRs that pass CI can be auto-merged via the auto-merge.yml workflow.
+
 version: 2
 updates:
-  - package-ecosystem: "pip"
-    directory: "/"
+  # Python dependencies — one PR per package, weekly on Mondays
+  - package-ecosystem: pip
+    directory: /
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+      interval: weekly
+      day: monday
+      time: "09:00"
     open-pull-requests-limit: 5
+    groups:
+      # Group patch updates together — one PR for all patches
+      patch-updates:
+        update-types:
+          - patch
+    ignore:
+      # Hold major bumps for manual review
+      - dependency-name: pydantic
+        update-types: [version-update:semver-major]
+
+  # GitHub Actions — keep CI tooling current
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

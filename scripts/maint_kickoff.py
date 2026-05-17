@@ -34,8 +34,12 @@ def bump_patch(version: str) -> str:
 
 def load_state() -> dict:
     f = Path("maintenance/last_state.json")
-    defaults = {"version": "unknown", "test_count": "unknown",
-                "last_run_date": "never", "deferred": []}
+    defaults = {
+        "version": "unknown",
+        "test_count": "unknown",
+        "last_run_date": "never",
+        "deferred": [],
+    }
     if not f.exists():
         print("  NOTE: maintenance/last_state.json not found — using defaults.")
         return defaults
@@ -72,15 +76,16 @@ def main() -> None:
 
     tokens = {
         "{{GENERATED_TIMESTAMP}}": now.strftime("%Y-%m-%d %H:%M"),
-        "{{MONTH_YEAR}}":          now.strftime("%B %Y"),
-        "{{MONTH_YEAR_SLUG}}":     now.strftime("%Y-%m"),        # e.g. 2026-05 — safe for git branch names
-        "{{CURRENT_YEAR}}":        str(now.year),
-        "{{CURRENT_VERSION}}":     version,
-        "{{PATCH_VERSION}}":       bump_patch(version),
-        "{{LAST_TEST_COUNT}}":     str(state.get("test_count", "unknown")),
-        "{{LAST_RUN_DATE}}":       state.get("last_run_date", "never"),
-        "{{DEFERRED}}":            ", ".join(deferred) if deferred else "none",
-        "{{SCAN_RESULTS}}":        load_scan_results(),
+        "{{MONTH_YEAR}}": now.strftime("%B %Y"),
+        # e.g. 2026-05 — safe for git branch names
+        "{{MONTH_YEAR_SLUG}}": now.strftime("%Y-%m"),
+        "{{CURRENT_YEAR}}": str(now.year),
+        "{{CURRENT_VERSION}}": version,
+        "{{PATCH_VERSION}}": bump_patch(version),
+        "{{LAST_TEST_COUNT}}": str(state.get("test_count", "unknown")),
+        "{{LAST_RUN_DATE}}": state.get("last_run_date", "never"),
+        "{{DEFERRED}}": ", ".join(deferred) if deferred else "none",
+        "{{SCAN_RESULTS}}": load_scan_results(),
     }
 
     templates_dir = Path("maintenance/templates")
@@ -97,8 +102,8 @@ def main() -> None:
         print(f"  → {dst}")
 
     print(f"\n  Month: {now.strftime('%B %Y')} | Version: {version} | Patch: {bump_patch(version)}")
-    print(f"\nNext:")
-    print(f"  1. Trigger monthly-maintenance.yml in GitHub Actions (or check last run).")
+    print("\nNext:")
+    print("  1. Trigger monthly-maintenance.yml in GitHub Actions (or check last run).")
     print(f"  2. Paste step summary into RESEARCH_{stamp}.md → open in Claude.")
     print(f"  3. Paste Research Report into EXECUTION_{stamp}.md → open in Claude Code.")
 

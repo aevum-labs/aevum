@@ -55,9 +55,6 @@ if violations:
     print("See CLAUDE.md 'Namespace Package Rule' for explanation.")
     sys.exit(1)
 
-checked = sum(
-    1 for p in PACKAGES_DIR.iterdir()
-    if p.is_dir() and (p / "src").is_dir()
-)
+checked = sum(1 for p in PACKAGES_DIR.iterdir() if p.is_dir() and (p / "src").is_dir())
 print(f"OK — namespace discipline verified across {checked} package(s).")
 sys.exit(0)
