@@ -35,8 +35,12 @@ jobs:
         id: audit
         run: |
           pip install pip-audit --quiet
-          uv export --format requirements-txt --no-dev --no-editable \
+          uv export --format requirements-txt --no-dev \
             --output-file /tmp/reqs.txt 2>/dev/null
+          # Strip local workspace packages — pip-audit can't hash directories.
+          # uv export emits them as "-e file:///..." or "-e ./packages/..." depending on context.
+          grep -v -E '^(-e |file://)' /tmp/reqs.txt > /tmp/reqs_filtered.txt \
+            && mv /tmp/reqs_filtered.txt /tmp/reqs.txt
           pip-audit --requirement /tmp/reqs.txt \
             --format json --output /tmp/audit.json 2>&1 || true
 
