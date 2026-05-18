@@ -16,19 +16,25 @@ POST /v1/ingest/scan-results receives OIDC-verified scan results from GitHub
 Actions and records them as governed ingest operations in the sigchain.
 """
 import datetime
+import hashlib
+import hmac
 import json
 import logging
+import os
 import time
 import uuid
 from typing import Annotated, Any
 
 import httpx
 import jwt
+from aevum.core.audit.rekor_anchor import RekorAnchor
 from aevum.core.consent.models import ConsentGrant
 from aevum.core.engine import Engine
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from aevum_maintainer.a2a_tasks import issue_a2a_task
 from aevum_maintainer.compliance_pack import _safe_version, build_pack_payload
 
 logger = logging.getLogger(__name__)
@@ -118,6 +124,8 @@ class GenerateResponse(BaseModel):
 
 class ReviewRequest(BaseModel):
     action_description: str = Field(min_length=10)
+    action_type: str = "unknown"
+    payload: dict[str, Any] = {}
     actor: str = "maintainer"
 
 
@@ -150,6 +158,30 @@ class ScanIngestResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Application factory
 # ---------------------------------------------------------------------------
+
+
+def _try_anchor_sigchain(engine: Engine, audit_id: str) -> None:
+    """Anchor the sigchain head in Rekor. Advisory — never raises."""
+    try:
+        sc = engine._sigchain
+        chain_root_hash: str = sc._prior_hash
+        signer = sc._signer
+        hash_bytes = bytes.fromhex(chain_root_hash)
+        digest = hashlib.sha3_256(hash_bytes).digest()
+        ed25519_sig = signer.sign(digest)
+        if not hasattr(signer, "_private_key"):
+            logger.warning("Rekor anchor: signer type %s not supported", type(signer).__name__)
+            return
+        ed25519_pub = signer._private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+        rekor = RekorAnchor()
+        anchor_result = rekor.anchor_chain_root(chain_root_hash, ed25519_sig, ed25519_pub)
+        if anchor_result:
+            uuid_val = next(iter(anchor_result), "none")
+            logger.info("Rekor anchor: %s (audit_id=%s)", uuid_val, audit_id)
+        else:
+            logger.warning("Rekor anchor skipped (circuit breaker or verification failed)")
+    except Exception:
+        logger.warning("Rekor anchor failed — continuing (anchor is advisory)")
 
 
 def create_app(engine: Engine | None = None) -> FastAPI:
@@ -234,6 +266,8 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         requested_at = time.time()
         _pending_reviews[review_id] = {
             "action_description": req.action_description,
+            "action_type": req.action_type,
+            "payload": req.payload,
             "review_requested_at": requested_at,
         }
         envelope = engine.commit(
@@ -306,11 +340,93 @@ def create_app(engine: Engine | None = None) -> FastAPI:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=str(envelope.data.get("error_detail", "commit failed")),
             )
+
+        # A2A task issuance (Track A) — optional when AEVUM_AGENT_URL is set
+        agent_url = os.environ.get("AEVUM_AGENT_URL")
+        if agent_url:
+            await issue_a2a_task(
+                action_type=pending.get("action_type", "unknown"),
+                payload=pending.get("payload", {}),
+                agent_url=agent_url,
+                correlation_id=envelope.audit_id,
+            )
+
+        # Rekor anchor (Track C) — advisory, never blocks approval
+        try:
+            _try_anchor_sigchain(engine, envelope.audit_id)
+        except Exception:
+            logger.warning("Rekor anchor raised unexpectedly — continuing")
+
         return ApprovalResponse(
             audit_id=envelope.audit_id,
             dwell_time_seconds=dwell_time,
             automation_bias_warning=automation_bias_warning,
         )
+
+    @app.post("/v1/replay/{audit_id}")
+    async def replay_audit_event(
+        audit_id: str,
+        engine: Annotated[Engine, Depends(get_engine)],
+    ) -> Any:
+        """Replay the sigchain to the state at audit_id."""
+        result = engine.replay(audit_id=audit_id, actor="maintainer")
+        if result.status == "error":
+            raise HTTPException(status_code=404, detail=f"audit_id {audit_id!r} not found")
+        return {
+            "audit_id": audit_id,
+            "reconstructed_at": datetime.datetime.now(datetime.UTC).isoformat(),
+            "state": result.data,
+        }
+
+    @app.post("/v1/break-glass")
+    async def break_glass(
+        request: Request,
+        engine: Annotated[Engine, Depends(get_engine)],
+    ) -> Any:
+        """
+        Emergency bypass. Requires a pre-shared break-glass token (not the OIDC token).
+        Every invocation is recorded in the sigchain and cannot be suppressed.
+        """
+        provided_token = request.headers.get("X-Break-Glass-Token", "")
+        expected_token = os.environ.get("AEVUM_BREAK_GLASS_TOKEN", "")
+        if not expected_token:
+            raise HTTPException(status_code=503, detail="Break-glass not configured")
+        if not hmac.compare_digest(provided_token, expected_token):
+            logger.critical(
+                "Break-glass attempted with invalid token from %s",
+                request.client.host if request.client else "unknown",
+            )
+            raise HTTPException(status_code=403, detail="Invalid break-glass token")
+
+        body = await request.json()
+        # event_type "security.break_glass" avoids the kernel-reserved "barrier." prefix
+        # while making the break-glass nature explicit in the ledger.
+        result = engine.commit(
+            event_type="security.break_glass",
+            payload={
+                "break_glass_reason": body.get("reason", "no reason provided"),
+                "requester": body.get("requester", "unknown"),
+                "action": body.get("action", "unspecified"),
+                "classification": 3,
+            },
+            actor="maintainer",
+        )
+        if result.status == "error":
+            raise HTTPException(
+                status_code=500,
+                detail=str(result.data.get("error_detail", "commit failed")),
+            )
+        logger.critical(
+            "BREAK-GLASS INVOKED: reason=%r, requester=%r, audit_id=%s",
+            body.get("reason"),
+            body.get("requester"),
+            result.audit_id,
+        )
+        return {
+            "status": "break_glass_recorded",
+            "audit_id": result.audit_id,
+            "warning": "This event is permanently recorded in the sigchain.",
+        }
 
     @app.post("/v1/ingest/scan-results", response_model=ScanIngestResponse)
     async def ingest_scan_results(
