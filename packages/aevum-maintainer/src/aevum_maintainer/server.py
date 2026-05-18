@@ -28,9 +28,8 @@ def create_app(engine: Engine | None = None) -> FastAPI:
 
     class GenerateRequest(BaseModel):
         version: str
-        # sbom_path is intentionally not accepted from callers — it is derived
-        # from the validated version string inside build_pack_payload to prevent
-        # path traversal (CWE-22).
+        # File paths are never accepted from callers. All paths inside
+        # generate_manifest() are derived from hardcoded constants (CWE-22).
         actor: str = "aevum-maintainer"
 
     class GenerateResponse(BaseModel):

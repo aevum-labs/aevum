@@ -23,6 +23,10 @@ COMPLIANCE_DOCS = [
     "gdpr-article-17.md",
 ]
 
+# Hardcoded SBOM filename — never derived from user input (CWE-22 prevention).
+# The release workflow places the SBOM here before the compliance pack runs.
+_SBOM_FILENAME: str = "sbom.json"
+
 # Semver-like: optional leading v, three numeric components only.
 _VERSION_RE = re.compile(r"^v?\d+\.\d+\.\d+$")
 
@@ -34,27 +38,40 @@ def _safe_version(version: str) -> str:
     return version
 
 
+def compliance_docs_dir() -> Path:
+    """Return the canonical compliance docs directory relative to this file's repo root."""
+    # packages/aevum-maintainer/src/aevum_maintainer/compliance_pack.py
+    # → repo_root/docs/compliance/
+    return Path(__file__).parent.parent.parent.parent.parent / "docs" / "compliance"
+
+
 def generate_manifest(
-    docs_dir: Path,
-    sbom_path: Path,
     version: str,
+    *,
+    _docs_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Build a manifest of all compliance files with their SHA256 hashes."""
-    # Resolve to canonical absolute paths so traversal via symlinks or .. is impossible.
-    safe_docs_dir = docs_dir.resolve()
+    """
+    Build a manifest of all compliance files with their SHA256 hashes.
+
+    All file paths are derived from hardcoded constants or ``__file__`` — no
+    path is accepted from caller-controlled or user-controlled input (CWE-22).
+
+    ``_docs_dir`` is a keyword-only test-injection point. It is never passed
+    by the server endpoint; production code always uses ``compliance_docs_dir()``.
+    """
+    # Derive the docs directory from __file__ (hardcoded) unless a test overrides it.
+    safe_docs_dir = (_docs_dir or compliance_docs_dir()).resolve()
     files: dict[str, str] = {}
     for doc_name in COMPLIANCE_DOCS:
-        # doc_name comes from the hardcoded COMPLIANCE_DOCS list, but we still resolve
-        # and confine each path to safe_docs_dir as defence in depth.
+        # doc_name is from the hardcoded COMPLIANCE_DOCS list; resolve() + is_relative_to()
+        # confirms the path stays within safe_docs_dir (defence in depth).
         doc_path = (safe_docs_dir / doc_name).resolve()
-        if not doc_path.is_relative_to(safe_docs_dir):
-            continue
-        if doc_path.is_file():
+        if doc_path.is_relative_to(safe_docs_dir) and doc_path.is_file():
             files[doc_name] = hashlib.sha256(doc_path.read_bytes()).hexdigest()
-    # sbom_path must resolve within its own parent — no traversal, must be a .json file.
-    safe_sbom = sbom_path.resolve()
-    if safe_sbom.suffix == ".json" and safe_sbom.is_file():
-        files["sbom.json"] = hashlib.sha256(safe_sbom.read_bytes()).hexdigest()
+    # SBOM: looked up by hardcoded filename in CWD, never derived from any parameter.
+    sbom = Path(_SBOM_FILENAME)
+    if sbom.is_file():
+        files[_SBOM_FILENAME] = hashlib.sha256(sbom.read_bytes()).hexdigest()
     return {
         "version": version,
         "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
@@ -63,14 +80,7 @@ def generate_manifest(
     }
 
 
-def compliance_docs_dir() -> Path:
-    """Return the canonical compliance docs directory relative to this file's repo root."""
-    # packages/aevum-maintainer/src/aevum_maintainer/compliance_pack.py
-    # → repo_root/docs/compliance/
-    return Path(__file__).parent.parent.parent.parent.parent / "docs" / "compliance"
-
-
-def build_pack_payload(version: str, sbom_path: Path | None = None) -> dict[str, Any]:
+def build_pack_payload(version: str) -> dict[str, Any]:
     """
     Build the ingest payload for a compliance pack generation event.
 
@@ -78,10 +88,7 @@ def build_pack_payload(version: str, sbom_path: Path | None = None) -> dict[str,
     a governed, sigchain-backed record of the generation.
     """
     safe_ver = _safe_version(version)
-    docs_dir = compliance_docs_dir()
-    # Derive sbom filename from the validated version string; never from raw user input.
-    resolved_sbom = sbom_path if sbom_path is not None else Path(f"sbom-{safe_ver}.json")
-    manifest = generate_manifest(docs_dir, resolved_sbom, safe_ver)
+    manifest = generate_manifest(safe_ver)
     return {
         "event": "compliance_pack_generated",
         "manifest": manifest,
