@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("cedarpy", reason="cedarpy not installed — skip Cedar tests")
+
 from aevum.core.cedar_engine import CedarPolicyEngine, PolicyError
 
 # ---------------------------------------------------------------------------

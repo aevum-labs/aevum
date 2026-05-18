@@ -18,6 +18,12 @@ Aevum is a monorepo. Each package is independently installable.
 
 ## Install
 
+| Install | Includes |
+|---|---|
+| `pip install aevum-core` | Kernel + NullPolicyEngine (permissive) + Oxigraph |
+| `pip install "aevum-core[cedar]"` | + Cedar ABAC (recommended for production) |
+| `pip install "aevum-core[all]"` | Everything |
+
 ```bash
 pip install aevum-core                    # kernel only
 pip install aevum-server                  # + HTTP API

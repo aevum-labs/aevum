@@ -115,7 +115,6 @@ version = "0.4.0"
 source = { editable = "packages/aevum-core" }
 dependencies = [
     { name = "base58" },
-    { name = "cedarpy" },
     { name = "cryptography" },
     { name = "httpx" },
     { name = "liboqs-python" },
@@ -138,9 +137,13 @@ all = [
     { name = "aevum-server" },
     { name = "aevum-store-oxigraph" },
     { name = "aevum-store-postgres" },
+    { name = "cedarpy" },
 ]
 benchmark = [
     { name = "pytest-benchmark" },
+]
+cedar = [
+    { name = "cedarpy" },
 ]
 crewai = [
     { name = "crewai" },
@@ -179,6 +182,7 @@ server = [
 requires-dist = [
     { name = "aevum-agent", marker = "extra == 'a2a'", editable = "packages/aevum-agent" },
     { name = "aevum-core", extras = ["a2a"], marker = "extra == 'all'" },
+    { name = "aevum-core", extras = ["cedar"], marker = "extra == 'all'" },
     { name = "aevum-core", extras = ["mcp"], marker = "extra == 'all'" },
     { name = "aevum-core", extras = ["oxigraph"], marker = "extra == 'all'" },
     { name = "aevum-core", extras = ["postgres"], marker = "extra == 'all'" },
@@ -189,7 +193,7 @@ requires-dist = [
     { name = "aevum-store-oxigraph", marker = "extra == 'oxigraph'", editable = "packages/aevum-store-oxigraph" },
     { name = "aevum-store-postgres", marker = "extra == 'postgres'", editable = "packages/aevum-store-postgres" },
     { name = "base58", specifier = ">=2.1" },
-    { name = "cedarpy", specifier = ">=4.8.1" },
+    { name = "cedarpy", marker = "extra == 'cedar'", specifier = ">=4.8.1" },
     { name = "crewai", marker = "extra == 'crewai'", specifier = ">=0.80.0" },
     { name = "cryptography", specifier = ">=42.0" },
     { name = "cyclonedx-bom", marker = "extra == 'dev'", specifier = ">=4.0" },
@@ -211,7 +215,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
 ]
-provides-extras = ["default", "server", "mcp", "a2a", "oxigraph", "postgres", "langgraph", "crewai", "openai-agents", "benchmark", "all", "dev"]
+provides-extras = ["cedar", "default", "server", "mcp", "a2a", "oxigraph", "postgres", "langgraph", "crewai", "openai-agents", "benchmark", "all", "dev"]
 
 [[package]]
 name = "aevum-llm"

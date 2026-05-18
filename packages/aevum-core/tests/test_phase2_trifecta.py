@@ -2,6 +2,8 @@
 """Phase 2 — Trifecta enforcement tests."""
 import pytest
 
+pytest.importorskip("cedarpy", reason="cedarpy not installed — skip Cedar tests")
+
 from aevum.core.cedar_engine import CedarPolicyEngine
 
 

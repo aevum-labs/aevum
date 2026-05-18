@@ -1,0 +1,55 @@
+name: Policy Adapter Matrix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/aevum-core/**"
+  pull_request:
+    paths:
+      - "packages/aevum-core/**"
+  workflow_dispatch:
+
+jobs:
+  adapter-matrix:
+    name: "aevum-core / ${{ matrix.install-extra }} / py${{ matrix.python }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+        install-extra:
+          - "no-cedar"    # NullPolicyEngine path
+          - "with-cedar"  # CedarPolicyEngine path
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Install aevum-core (no Cedar)
+        if: matrix.install-extra == 'no-cedar'
+        run: uv pip install --system packages/aevum-core/
+
+      - name: Install aevum-core[cedar]
+        if: matrix.install-extra == 'with-cedar'
+        run: uv pip install --system "packages/aevum-core[cedar]"
+
+      - name: Install test dependencies
+        run: uv pip install --system pytest pytest-asyncio
+
+      - name: Run policy protocol tests
+        working-directory: packages/aevum-core
+        run: pytest tests/test_policy_protocol.py -v
+
+      - name: Run full test suite
+        working-directory: packages/aevum-core
+        run: pytest tests/ -v -m "not integration"
