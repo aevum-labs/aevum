@@ -68,7 +68,8 @@ Also check version consistency across all packages:
 python3 -c "
 from pathlib import Path
 pkgs = ['aevum-core','aevum-server','aevum-mcp','aevum-agent',
-        'aevum-store-oxigraph','aevum-store-postgres','aevum-cli','aevum-conformance']
+        'aevum-store-oxigraph','aevum-store-postgres','aevum-cli','aevum-conformance',
+        'aevum-maintainer']
 vers = {}
 for p in pkgs:
     t = Path(f'packages/{p}/pyproject.toml')
@@ -132,7 +133,7 @@ After ALL fixes — verify before moving to Phase 4:
   uv run pytest packages/ --tb=short -q 2>&1 | tail -3
   uv run pytest packages/aevum-conformance/ --tb=short -q 2>&1 | tail -3
   for pkg in aevum.core aevum.server aevum.mcp aevum.agent \
-             aevum.store.oxigraph aevum.store.postgres aevum.cli; do
+             aevum.store.oxigraph aevum.store.postgres aevum.cli aevum_maintainer; do
     uv run mypy --package $pkg 2>&1 | tail -2; done
   uv run ruff check packages/ 2>&1 | tail -3
   uv run ruff format --check packages/ 2>&1 | tail -3

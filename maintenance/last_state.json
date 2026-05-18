@@ -1,6 +1,12 @@
 {
   "version": "0.4.0",
-  "test_count": 290,
-  "last_run_date": "2026-05-15",
-  "deferred": []
+  "test_count": 895,
+  "last_run_date": "2026-05-18",
+  "deferred": [
+    "aevum-maintainer phases 2-5 (manifest Ed25519 signing, CI wiring, full compliance pack bundle)",
+    "SBOM copy step: sbom-{version}.json → sbom.json before compliance pack generator runs",
+    "zizmor verification of release.yml (needs network and uv tool install zizmor)",
+    "Re-verify actions/attest-build-provenance SHA before first real tagged release (G14)",
+    "Add aevum-maintainer to R9 version consistency check in EXECUTION.md"
+  ]
 }
