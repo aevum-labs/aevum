@@ -4,6 +4,7 @@ Uses mocked httpx and Engine — no real Rekor instance required.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import sys
@@ -28,14 +29,44 @@ def _make_mock_engine(entries: list[dict] | None = None) -> unittest.mock.MagicM
     return engine
 
 
+def _rekor_body_b64(digest_hex: str) -> str:
+    """Base64-encode a minimal hashedrekord body referencing digest_hex."""
+    body = {
+        "kind": "hashedrekord",
+        "apiVersion": "0.0.1",
+        "spec": {"data": {"hash": {"algorithm": "sha256", "value": digest_hex}}},
+    }
+    return base64.b64encode(json.dumps(body).encode()).decode()
+
+
+def _make_mock_rekor_post(log_index: int = 42, uuid: str = "abc123def456") -> object:
+    """
+    Returns an httpx.post side_effect that generates a structurally-valid Rekor
+    response mirroring the submitted digest (CVE-2026-22703 verification passes).
+    """
+    def _post(url: str, json: dict | None = None, **kwargs: object) -> unittest.mock.MagicMock:
+        submitted_hex = (
+            (json or {}).get("spec", {}).get("data", {}).get("hash", {}).get("value", "0" * 64)
+        )
+        resp = unittest.mock.MagicMock()
+        resp.raise_for_status = unittest.mock.MagicMock(return_value=None)
+        resp.json.return_value = {
+            uuid: {"logIndex": log_index, "body": _rekor_body_b64(submitted_hex)}
+        }
+        return resp
+    return _post
+
+
 def _make_mock_rekor_response(
-    log_index: int = 42, uuid: str = "abc123def456"
+    log_index: int = 42, uuid: str = "abc123def456", digest_hex: str = "0" * 64
 ) -> unittest.mock.MagicMock:
-    """Mock a successful Rekor submission response."""
+    """Mock a successful Rekor submission response with a valid body."""
     mock_resp = unittest.mock.MagicMock()
     mock_resp.status_code = 201
     mock_resp.raise_for_status = unittest.mock.MagicMock(return_value=None)
-    mock_resp.json.return_value = {uuid: {"logIndex": log_index, "body": "..."}}
+    mock_resp.json.return_value = {
+        uuid: {"logIndex": log_index, "body": _rekor_body_b64(digest_hex)}
+    }
     return mock_resp
 
 
@@ -47,9 +78,10 @@ class TestPublishComplicationCheckpoint:
 
         mock_engine = _make_mock_engine()
         comp = PublishComplication(rekor_url="https://mock.rekor.test")
-        mock_resp = _make_mock_rekor_response(log_index=1, uuid="uuid-0001")
 
-        with unittest.mock.patch("httpx.post", return_value=mock_resp) as mock_post:
+        with unittest.mock.patch(
+            "httpx.post", side_effect=_make_mock_rekor_post(log_index=1, uuid="uuid-0001")
+        ) as mock_post:
             comp.on_approved(mock_engine)
 
         mock_post.assert_called_once()
@@ -72,9 +104,8 @@ class TestPublishComplicationCheckpoint:
             every_n_events=3,
             every_seconds=9999,
         )
-        mock_resp = _make_mock_rekor_response()
 
-        with unittest.mock.patch("httpx.post", return_value=mock_resp) as mock_post:
+        with unittest.mock.patch("httpx.post", side_effect=_make_mock_rekor_post()) as mock_post:
             comp.on_approved(mock_engine)     # initial checkpoint (call 1)
             mock_post.reset_mock()
             mock_engine._ledger.append.reset_mock()
@@ -100,9 +131,8 @@ class TestPublishComplicationCheckpoint:
             every_n_events=9999,
             every_seconds=1,
         )
-        mock_resp = _make_mock_rekor_response()
 
-        with unittest.mock.patch("httpx.post", return_value=mock_resp) as mock_post:
+        with unittest.mock.patch("httpx.post", side_effect=_make_mock_rekor_post()) as mock_post:
             comp.on_approved(mock_engine)
             mock_post.reset_mock()
             mock_engine._ledger.append.reset_mock()
@@ -145,6 +175,25 @@ class TestPublishComplicationCheckpoint:
         with unittest.mock.patch.dict(sys.modules, {"httpx": None}):
             comp.on_approved(mock_engine)
 
+        mock_engine._ledger.append.assert_not_called()
+
+    def test_rekor_hash_mismatch_does_not_raise_to_caller(self) -> None:
+        """CVE-2026-22703: a mismatched Rekor response must warn and skip, not raise."""
+        from aevum.publish import PublishComplication
+
+        mock_engine = _make_mock_engine()
+        comp = PublishComplication(rekor_url="https://mock.rekor.test")
+
+        # Return a body that references a *different* hash — simulates a malicious response.
+        wrong_body = _rekor_body_b64("b" * 64)
+        bad_resp = unittest.mock.MagicMock()
+        bad_resp.raise_for_status = unittest.mock.MagicMock(return_value=None)
+        bad_resp.json.return_value = {"uuid": {"logIndex": 1, "body": wrong_body}}
+
+        with unittest.mock.patch("httpx.post", return_value=bad_resp):
+            comp.on_approved(mock_engine)
+
+        # Circuit breaker: verification failure is swallowed — no ledger entry written.
         mock_engine._ledger.append.assert_not_called()
 
     def test_checkpoint_digest_is_deterministic(self) -> None:
@@ -193,8 +242,6 @@ class TestPublishComplicationIntegration:
         from aevum.core import Engine  # noqa: I001
         from aevum.publish import PublishComplication
 
-        mock_resp = _make_mock_rekor_response(log_index=99, uuid="test-uuid-publish")
-
         comp = PublishComplication(
             rekor_url="https://mock.rekor.test",
             every_n_events=9999,
@@ -203,7 +250,10 @@ class TestPublishComplicationIntegration:
 
         engine = Engine()
 
-        with unittest.mock.patch("httpx.post", return_value=mock_resp):
+        with unittest.mock.patch(
+            "httpx.post",
+            side_effect=_make_mock_rekor_post(log_index=99, uuid="test-uuid-publish"),
+        ):
             engine.install_complication(comp)
             engine.approve_complication("aevum-publish")
             comp.on_approved(engine)  # must be called explicitly per aevum-spiffe pattern

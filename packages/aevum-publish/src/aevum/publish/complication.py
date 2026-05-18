@@ -19,6 +19,8 @@ import threading
 import time
 from typing import Any
 
+from aevum.core.audit.rekor_anchor import _verify_rekor_entry
+
 log = logging.getLogger(__name__)
 
 _DEFAULT_REKOR_URL = os.environ.get("AEVUM_REKOR_URL", "https://rekor.sigstore.dev")
@@ -201,6 +203,7 @@ class PublishComplication:
         Returns (log_index, entry_hash).
         Raises ImportError if httpx not installed.
         Raises httpx.HTTPError on submission failure.
+        Raises RekorVerificationError if the returned entry does not reference the submitted digest.
 
         NOTE: The format below matches the Rekor v1 hashedrekord spec. Rekor v2
         (rekor-tiles) uses a different tile-based API; verify against
@@ -238,6 +241,11 @@ class PublishComplication:
         resp.raise_for_status()
 
         data = resp.json()
+
+        # CVE-2026-22703 mitigation: verify the returned entry references the
+        # digest we submitted, not a different artifact.
+        _verify_rekor_entry(data, digest_hex)
+
         uuid_key = next(iter(data))
         entry = data[uuid_key]
         log_index = int(entry.get("logIndex", entry.get("log_index", -1)))
