@@ -28,7 +28,9 @@ constraints = [{ name = "python-multipart", specifier = ">=0.0.27" }]
 [manifest.dependency-groups]
 dev = [
     { name = "bandit", specifier = ">=1.7" },
+    { name = "dirty-equals", specifier = ">=0.7" },
     { name = "hypothesis", specifier = ">=6.100" },
+    { name = "inline-snapshot", specifier = ">=0.13" },
     { name = "mypy", specifier = ">=1.10" },
     { name = "pip-audit", specifier = ">=2.6" },
     { name = "pytest", specifier = ">=8.0" },

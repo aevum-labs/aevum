@@ -14,12 +14,15 @@ CI uses --inline-snapshot=disable so snapshots are never auto-updated in CI.
 """
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
 import pytest
-from inline_snapshot import snapshot
 
+# Skip the entire module at collection time if openai-agents is not installed.
+# This guard must precede all non-stdlib imports so collection never fails.
 pytest.importorskip("openai_agents", reason="openai-agents not installed")
+
+from unittest.mock import MagicMock, patch  # noqa: E402
+
+from inline_snapshot import snapshot  # noqa: E402
 
 from aevum.core.adapters.openai_agents import AevumAgentHooks  # noqa: E402
 
