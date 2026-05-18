@@ -9,9 +9,17 @@ together and that are hardest to add after the fact.
 [![Python](https://img.shields.io/pypi/pyversions/aevum-core)](https://pypi.org/project/aevum-core/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-**Live demo:** [demo.aevum.build](https://demo.aevum.build) — see the governed
-maintenance pipeline in action, with a live sigchain, interactive sandbox,
-and Article 12 compliance reports.
+**Self-governance pipeline status** — Aevum governs its own maintenance
+workflow using its own governed functions. Pipeline implementation in
+`packages/aevum-maintainer`:
+
+| Phase | Deliverable | Status |
+|---|---|---|
+| 1 | Scaffold + compliance pack generator | Stub — scaffold and compliance pack done; OIDC ingest and Cedar policies not yet wired |
+| 2 | MCP research interface (6 read-only tools) | Not implemented |
+| 3 | Structured consent gate (HITL approval + dwell time) | Implemented — `POST /v1/consent/review` + `/approve` with sigchain recording |
+| 4 | Replay endpoint + Rekor anchor + break-glass | Not implemented |
+| 5 | Demo page (demo.aevum.build) | Not implemented |
 
 ## The problem
 

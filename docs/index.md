@@ -54,12 +54,18 @@ No vendor API. No licensing server. No SaaS dependency.
 
 ## See It in Action
 
-Aevum governs its own development. Every change to Aevum flows through
-Aevum's own governance pipeline — OIDC-verified ingest, Cedar policy
-enforcement, human consent gates, and a cryptographic audit trail.
+Aevum governs its own development using its own governed functions.
+The self-governance pipeline (`packages/aevum-maintainer`) demonstrates
+what an Aevum-governed workflow looks like end-to-end.
 
-**[demo.aevum.build](https://demo.aevum.build)** — explore the live
-sigchain, replay any maintenance session, try the sandbox workflow, and
-export an Article 12 compliance report.
+**Self-governance pipeline status:**
+
+| Phase | Deliverable | Status |
+|---|---|---|
+| 1 | Scaffold + compliance pack generator | Stub — scaffold and compliance pack done; OIDC ingest and Cedar policies not yet wired |
+| 2 | MCP research interface (6 read-only tools) | Not implemented |
+| 3 | Structured consent gate (HITL approval + dwell time) | Implemented — `POST /v1/consent/review` + `/approve` with sigchain recording |
+| 4 | Replay endpoint + Rekor anchor + break-glass | Not implemented |
+| 5 | Demo page (demo.aevum.build) | Not implemented |
 
 Read how it works: [How Aevum Governs Itself](/learn/self-governance/)
