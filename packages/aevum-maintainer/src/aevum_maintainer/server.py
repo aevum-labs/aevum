@@ -9,14 +9,13 @@ entry that records who requested generation, when, and what was produced.
 """
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated, Any
 
 from aevum.core.engine import Engine
 from fastapi import Depends, FastAPI, HTTPException, status
 from pydantic import BaseModel
 
-from aevum_maintainer.compliance_pack import build_pack_payload
+from aevum_maintainer.compliance_pack import _safe_version, build_pack_payload
 
 
 def create_app(engine: Engine | None = None) -> FastAPI:
@@ -29,7 +28,9 @@ def create_app(engine: Engine | None = None) -> FastAPI:
 
     class GenerateRequest(BaseModel):
         version: str
-        sbom_path: str | None = None
+        # sbom_path is intentionally not accepted from callers — it is derived
+        # from the validated version string inside build_pack_payload to prevent
+        # path traversal (CWE-22).
         actor: str = "aevum-maintainer"
 
     class GenerateResponse(BaseModel):
@@ -47,8 +48,14 @@ def create_app(engine: Engine | None = None) -> FastAPI:
 
         Returns the sigchain audit_id for the generation event.
         """
-        sbom_path = Path(req.sbom_path) if req.sbom_path else None
-        payload = build_pack_payload(req.version, sbom_path)
+        try:
+            safe_ver = _safe_version(req.version)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from exc
+        payload = build_pack_payload(safe_ver)
         provenance: dict[str, Any] = {
             "source_id": "aevum-maintainer",
             "ingest_audit_id": "bootstrap",
