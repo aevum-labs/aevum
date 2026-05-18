@@ -14,8 +14,12 @@ class TestTrifectaEnforcement:
 
     def _call(self, engine, ctx):
         return engine.is_permitted(
-            "AevumAgent", "test-agent", "tool_call",
-            "ToolAction", "some-tool", ctx,
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="tool_call",
+            resource_type="ToolAction",
+            resource_id="some-tool",
+            context=ctx,
         )
 
     def test_all_three_taint_labels_denied(self, engine):
@@ -90,9 +94,12 @@ class TestTrifectaEnforcement:
     def test_trifecta_applies_to_all_tool_names(self, engine):
         for tool_id in ["send-email", "web-search", "file-write", "exfil-tool"]:
             permitted = engine.is_permitted(
-                "AevumAgent", "agent", "tool_call",
-                "ToolAction", tool_id,
-                {
+                principal_type="AevumAgent",
+                principal_id="agent",
+                action="tool_call",
+                resource_type="ToolAction",
+                resource_id=tool_id,
+                context={
                     "taint_reads_untrusted": True,
                     "taint_reads_private": True,
                     "taint_can_exfiltrate": True,
@@ -103,9 +110,12 @@ class TestTrifectaEnforcement:
     def test_trifecta_only_applies_to_tool_call_action(self, engine):
         # relate_graph_write is not gated by trifecta
         permitted = engine.is_permitted(
-            "AevumAgent", "agent", "relate_graph_write",
-            "DataGraph", "knowledge",
-            {
+            principal_type="AevumAgent",
+            principal_id="agent",
+            action="relate_graph_write",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={
                 "taint_reads_untrusted": True,
                 "taint_reads_private": True,
                 "taint_can_exfiltrate": True,
