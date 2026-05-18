@@ -11,8 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     permissions:
-      id-token: write     # Required for Trusted Publishing (OIDC)
+      id-token: write     # Required for Trusted Publishing (OIDC) and Sigstore attestation
       contents: write     # Required for GitHub release creation
+      attestations: write # Required for attest-build-provenance
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
@@ -43,14 +44,19 @@ jobs:
           pip install "aevum-core" --find-links dist/ || true
           cyclonedx-py environment \
             --output-format json \
-            --output-file sbom.json
-          echo "SBOM generated: $(wc -l < sbom.json) lines"
+            --output-file sbom-${{ github.ref_name }}.json
+          echo "SBOM generated: $(wc -l < sbom-${{ github.ref_name }}.json) lines"
+
+      - name: Attest SBOM
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2  # v2.2.3
+        with:
+          subject-path: sbom-${{ github.ref_name }}.json
 
       - name: Upload SBOM as artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: sbom
-          path: sbom.json
+          path: sbom-${{ github.ref_name }}.json
           retention-days: 90
 
       - name: Publish to PyPI (Trusted Publishing — no API key)
@@ -66,4 +72,4 @@ jobs:
         run: |
           gh release create "$RELEASE_TAG" \
             --generate-notes \
-            dist/*.whl dist/*.tar.gz sbom.json
+            dist/*.whl dist/*.tar.gz sbom-${{ github.ref_name }}.json

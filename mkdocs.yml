@@ -161,6 +161,12 @@ nav:
       - Healthcare (FHIR R4): domain-examples/healthcare.md
       - Finance (SOX): domain-examples/finance.md
       - Legal (GDPR): domain-examples/legal.md
+  - Compliance:
+    - NIST AI RMF: compliance/nist-ai-rmf.md
+    - HIPAA: compliance/hipaa.md
+    - EU AI Act: compliance/eu-ai-act.md
+    - SOC 2: compliance/soc2.md
+    - GDPR Article 17: compliance/gdpr-article-17.md
   - ADRs:
     - adr-001 Single Sigchain: adrs/adr-001-single-sigchain.md
     - adr-002 HLC Bounds: adrs/adr-002-hlc-bounds.md
