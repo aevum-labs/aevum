@@ -1,0 +1,61 @@
+name: Policy Adapter Matrix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/aevum-core/**"
+  pull_request:
+    paths:
+      - "packages/aevum-core/**"
+  workflow_dispatch:
+
+jobs:
+  adapter-matrix:
+    name: "aevum-core / ${{ matrix.install-extra }} / py${{ matrix.python }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+        install-extra:
+          - "no-cedar"    # NullPolicyEngine path
+          - "with-cedar"  # CedarPolicyEngine path
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Set up Python ${{ matrix.python }}
+        run: uv python install ${{ matrix.python }}
+
+      - name: Build liboqs C library (required by liboqs-python)
+        run: |
+          sudo apt-get install -y --no-install-recommends cmake ninja-build
+          curl -fsSL https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.14.0.tar.gz | tar xz
+          cmake -GNinja \
+            -DCMAKE_INSTALL_PREFIX="$HOME/_oqs" \
+            -DBUILD_SHARED_LIBS=ON \
+            -DOQS_USE_OPENSSL=OFF \
+            -S liboqs-0.14.0 -B liboqs-build
+          ninja -C liboqs-build -j$(nproc) install
+          rm -rf liboqs-0.14.0 liboqs-build
+
+      - name: Install workspace (no Cedar)
+        if: matrix.install-extra == 'no-cedar'
+        run: uv sync --frozen --python ${{ matrix.python }}
+
+      - name: Install workspace (with Cedar)
+        if: matrix.install-extra == 'with-cedar'
+        run: |
+          uv sync --frozen --python ${{ matrix.python }}
+          uv pip install --python ${{ matrix.python }} "cedarpy>=4.8.1"
+
+      - name: Run policy protocol tests
+        run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/test_policy_protocol.py -v
+
+      - name: Run aevum-core test suite
+        run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/ -v -m "not integration"

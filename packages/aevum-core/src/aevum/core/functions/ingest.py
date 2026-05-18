@@ -21,6 +21,7 @@ from typing import Any
 from aevum.core.audit.sigchain import _uuid7
 from aevum.core.barriers import BarrierError, check_consent, check_crisis, check_provenance, crisis_barrier_check
 from aevum.core.envelope.models import OutputEnvelope, ProvenanceRecord
+from aevum.core.policy import NullPolicyEngine, PolicyEngine
 from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
@@ -171,6 +172,7 @@ def ingest(
     episode_id: str | None = None,
     correlation_id: str | None = None,
     model_context: dict[str, Any] | None = None,
+    policy_engine: PolicyEngine | None = None,
 ) -> OutputEnvelope:
     if idempotency_key and idempotency_cache is not None and idempotency_key in idempotency_cache:
         return idempotency_cache[idempotency_key]
@@ -223,41 +225,36 @@ def ingest(
 
     classification = provenance.get("classification", 0)
 
-    # Step 4 — Cedar ABAC: action="relate_graph_write"
-    try:
-        from aevum.core.cedar_engine import CedarPolicyEngine
-        cedar_engine = CedarPolicyEngine.default()
-        cedar_context: dict[str, Any] = {
-            "has_crisis_content": False,
-            "data_classification_level": classification,
-            "deployment_ceiling_level": 3,
-            "has_active_consent": True,
-            "consent_purpose_matches": True,
-            "autonomy_level": 1,
-        }
-        permitted = cedar_engine.is_permitted(
-            principal_type="AevumAgent",
-            principal_id=actor,
-            action="relate_graph_write",
-            resource_type="DataGraph",
-            resource_id="knowledge",
-            context=cedar_context,
+    # Step 4 — ABAC: action="relate_graph_write"
+    _abac_engine: PolicyEngine = policy_engine if policy_engine is not None else NullPolicyEngine()
+    abac_context: dict[str, Any] = {
+        "has_crisis_content": False,
+        "data_classification_level": classification,
+        "deployment_ceiling_level": 3,
+        "has_active_consent": True,
+        "consent_purpose_matches": True,
+        "autonomy_level": 1,
+    }
+    if not _abac_engine.is_permitted(
+        principal_type="AevumAgent",
+        principal_id=actor,
+        action="relate_graph_write",
+        resource_type="DataGraph",
+        resource_id="knowledge",
+        context=abac_context,
+    ):
+        ledger.append(event_type="barrier.triggered",
+                      payload={"barrier": 2, "function": "ingest", "reason": "policy_deny"},
+                      actor=actor, episode_id=episode_id, correlation_id=correlation_id)
+        return OutputEnvelope.error(
+            audit_id=provisional_id,
+            error_code="policy_denied",
+            error_detail="Policy engine denied relate_graph_write",
+            provenance=ProvenanceRecord(
+                source_id="aevum-core", ingest_audit_id=provisional_id,
+                chain_of_custody=["aevum-core"], classification=0,
+            ),
         )
-        if not permitted:
-            ledger.append(event_type="barrier.triggered",
-                          payload={"barrier": 2, "function": "ingest", "reason": "cedar_deny"},
-                          actor=actor, episode_id=episode_id, correlation_id=correlation_id)
-            return OutputEnvelope.error(
-                audit_id=provisional_id,
-                error_code="cedar_denied",
-                error_detail="Cedar ABAC denied relate_graph_write",
-                provenance=ProvenanceRecord(
-                    source_id="aevum-core", ingest_audit_id=provisional_id,
-                    chain_of_custody=["aevum-core"], classification=0,
-                ),
-            )
-    except Exception:  # noqa: BLE001
-        logger.debug("Cedar ABAC check skipped (engine unavailable)", exc_info=True)
 
     # Step 5 — Build TypedFact and run pySHACL validation (when applicable)
     typed_fact: TypedFact | None = _build_typed_fact(subject_id, data, provenance, provisional_id)

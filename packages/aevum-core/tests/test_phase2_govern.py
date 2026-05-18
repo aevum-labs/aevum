@@ -46,6 +46,10 @@ def _rev_action(**kw):
 # Veto-as-default
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(
+    not __import__("importlib").util.find_spec("cedarpy"),
+    reason="cedarpy not installed"
+)
 class TestGovernCheckpointVetoDefault:
     def test_irrev_consequential_vetoed_without_callback(self, engine):
         gov = GovernCheckpoint(engine, "test-session", review_callback=None)
@@ -98,6 +102,10 @@ class TestGovernCheckpointVetoDefault:
 # CheckpointResult fields
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(
+    not __import__("importlib").util.find_spec("cedarpy"),
+    reason="cedarpy not installed"
+)
 class TestCheckpointResult:
     @pytest.fixture
     def gov(self, engine):

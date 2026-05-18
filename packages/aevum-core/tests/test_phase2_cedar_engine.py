@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("cedarpy", reason="cedarpy not installed — skip Cedar tests")
+
 from aevum.core.cedar_engine import CedarPolicyEngine, PolicyError
 
 # ---------------------------------------------------------------------------
@@ -40,13 +42,13 @@ class TestCedarPolicyEngineLoad:
         assert "govern_review" in engine.policy_text        # permits
 
     def test_missing_policy_dir_raises_policy_error(self, monkeypatch):
-        import aevum.core.cedar_engine as mod
+        import aevum.core.policy.cedar_engine as mod
         monkeypatch.setattr(mod, "_POLICY_DIR", Path("/nonexistent/path/policies"))
         with pytest.raises(PolicyError, match="not found"):
             CedarPolicyEngine.default()
 
     def test_empty_policy_dir_raises_policy_error(self, tmp_path, monkeypatch):
-        import aevum.core.cedar_engine as mod
+        import aevum.core.policy.cedar_engine as mod
         monkeypatch.setattr(mod, "_POLICY_DIR", tmp_path)
         with pytest.raises(PolicyError, match="No .cedar files"):
             CedarPolicyEngine.default()
@@ -70,8 +72,12 @@ class TestCedarPolicyEngineLoad:
     def test_is_permitted_returns_bool(self):
         engine = CedarPolicyEngine.default()
         result = engine.is_permitted(
-            "AevumAgent", "agent", "relate_graph_write",
-            "DataGraph", "knowledge", {"has_crisis_content": False},
+            principal_type="AevumAgent",
+            principal_id="agent",
+            action="relate_graph_write",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={"has_crisis_content": False},
         )
         assert isinstance(result, bool)
 
@@ -87,35 +93,47 @@ class TestBarrier1Crisis:
 
     def test_crisis_content_denied(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "relate_graph_write",
-            "DataGraph", "knowledge",
-            {"has_crisis_content": True},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="relate_graph_write",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={"has_crisis_content": True},
         )
         assert not permitted
 
     def test_no_crisis_content_permitted(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "relate_graph_write",
-            "DataGraph", "knowledge",
-            {"has_crisis_content": False},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="relate_graph_write",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={"has_crisis_content": False},
         )
         assert permitted
 
     def test_missing_crisis_context_defaults_to_no_crisis(self, engine):
         # No has_crisis_content in context → barrier 1 `when` does not fire
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "relate_graph_write",
-            "DataGraph", "knowledge",
-            {},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="relate_graph_write",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={},
         )
         assert permitted
 
     def test_crisis_overrides_all_permits(self, engine):
         # Even with all other good context, crisis still blocks
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "relate_graph_write",
-            "DataGraph", "knowledge",
-            {
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="relate_graph_write",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={
                 "has_crisis_content": True,
                 "has_active_consent": True,
                 "consent_purpose_matches": True,
@@ -128,9 +146,12 @@ class TestBarrier1Crisis:
     def test_crisis_barrier_different_principal_ids(self, engine):
         for principal_id in ["agent-1", "session-abc", "system"]:
             permitted = engine.is_permitted(
-                "AevumAgent", principal_id, "relate_graph_write",
-                "DataGraph", "knowledge",
-                {"has_crisis_content": True},
+                principal_type="AevumAgent",
+                principal_id=principal_id,
+                action="relate_graph_write",
+                resource_type="DataGraph",
+                resource_id="knowledge",
+                context={"has_crisis_content": True},
             )
             assert not permitted, f"Barrier 1 failed for principal {principal_id!r}"
 
@@ -146,51 +167,69 @@ class TestBarrier2Consent:
 
     def test_no_consent_denied(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "navigate",
-            "DataGraph", "knowledge",
-            {"has_active_consent": False, "consent_purpose_matches": False},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="navigate",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={"has_active_consent": False, "consent_purpose_matches": False},
         )
         assert not permitted
 
     def test_active_consent_with_matching_purpose_permitted(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "navigate",
-            "DataGraph", "knowledge",
-            {"has_active_consent": True, "consent_purpose_matches": True},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="navigate",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={"has_active_consent": True, "consent_purpose_matches": True},
         )
         assert permitted
 
     def test_consent_without_purpose_match_denied(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "navigate",
-            "DataGraph", "knowledge",
-            {"has_active_consent": True, "consent_purpose_matches": False},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="navigate",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={"has_active_consent": True, "consent_purpose_matches": False},
         )
         assert not permitted
 
     def test_purpose_match_without_active_consent_denied(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "navigate",
-            "DataGraph", "knowledge",
-            {"has_active_consent": False, "consent_purpose_matches": True},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="navigate",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={"has_active_consent": False, "consent_purpose_matches": True},
         )
         assert not permitted
 
     def test_missing_consent_context_denied(self, engine):
         # No consent context at all → unless clause not satisfied → forbid fires
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "navigate",
-            "DataGraph", "knowledge",
-            {},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="navigate",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={},
         )
         assert not permitted
 
     def test_consent_barrier_only_applies_to_navigate(self, engine):
         # relate_graph_write is NOT gated by consent barrier
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "relate_graph_write",
-            "DataGraph", "knowledge",
-            {"has_crisis_content": False},  # no consent needed for relate
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="relate_graph_write",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={"has_crisis_content": False},  # no consent needed for relate
         )
         assert permitted
 
@@ -206,9 +245,12 @@ class TestBarrier3Classification:
 
     def test_data_above_ceiling_denied(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "navigate",
-            "DataGraph", "knowledge",
-            {
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="navigate",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={
                 "has_active_consent": True, "consent_purpose_matches": True,
                 "data_classification_level": 4,   # SECRET
                 "deployment_ceiling_level": 2,    # CONFIDENTIAL ceiling
@@ -218,9 +260,12 @@ class TestBarrier3Classification:
 
     def test_data_at_ceiling_permitted(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "navigate",
-            "DataGraph", "knowledge",
-            {
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="navigate",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={
                 "has_active_consent": True, "consent_purpose_matches": True,
                 "data_classification_level": 2,
                 "deployment_ceiling_level": 2,
@@ -230,9 +275,12 @@ class TestBarrier3Classification:
 
     def test_data_below_ceiling_permitted(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "navigate",
-            "DataGraph", "knowledge",
-            {
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="navigate",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={
                 "has_active_consent": True, "consent_purpose_matches": True,
                 "data_classification_level": 0,
                 "deployment_ceiling_level": 3,
@@ -242,9 +290,12 @@ class TestBarrier3Classification:
 
     def test_phi_above_confidential_ceiling_denied(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "navigate",
-            "DataGraph", "knowledge",
-            {
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="navigate",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={
                 "has_active_consent": True, "consent_purpose_matches": True,
                 "data_classification_level": 3,   # PHI
                 "deployment_ceiling_level": 1,    # INTERNAL ceiling
@@ -256,9 +307,12 @@ class TestBarrier3Classification:
         # Barrier 3 uses bare `action` (all actions)
         for action in ["navigate", "relate_graph_write", "govern_approve"]:
             permitted = engine.is_permitted(
-                "AevumAgent", "test-agent", action,
-                "DataGraph", "knowledge",
-                {
+                principal_type="AevumAgent",
+                principal_id="test-agent",
+                action=action,
+                resource_type="DataGraph",
+                resource_id="knowledge",
+                context={
                     "data_classification_level": 4,
                     "deployment_ceiling_level": 1,
                     # include consent context for navigate
@@ -283,46 +337,69 @@ class TestBarrier4AuditSeal:
 
     def test_delete_audit_event_always_denied(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "delete_audit_event",
-            "DataGraph", "provenance", {},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="delete_audit_event",
+            resource_type="DataGraph",
+            resource_id="provenance",
+            context={},
         )
         assert not permitted
 
     def test_update_audit_event_always_denied(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "update_audit_event",
-            "DataGraph", "provenance", {},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="update_audit_event",
+            resource_type="DataGraph",
+            resource_id="provenance",
+            context={},
         )
         assert not permitted
 
     def test_truncate_audit_chain_always_denied(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "truncate_audit_chain",
-            "DataGraph", "provenance", {},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="truncate_audit_chain",
+            resource_type="DataGraph",
+            resource_id="provenance",
+            context={},
         )
         assert not permitted
 
     def test_rewrite_audit_chain_always_denied(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "rewrite_audit_chain",
-            "DataGraph", "provenance", {},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="rewrite_audit_chain",
+            resource_type="DataGraph",
+            resource_id="provenance",
+            context={},
         )
         assert not permitted
 
     def test_remember_commit_permitted(self, engine):
         """Appending to the audit chain is permitted — barrier 4 only blocks mutations."""
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "remember_commit",
-            "DataGraph", "provenance", {},
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="remember_commit",
+            resource_type="DataGraph",
+            resource_id="provenance",
+            context={},
         )
         assert permitted
 
     def test_audit_seal_is_unconditional(self, engine):
         # Even with a full permissive context, delete is still denied
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "delete_audit_event",
-            "DataGraph", "provenance",
-            {
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="delete_audit_event",
+            resource_type="DataGraph",
+            resource_id="provenance",
+            context={
                 "has_active_consent": True, "consent_purpose_matches": True,
                 "human_checkpoint_completed": True,
                 "data_classification_level": 0, "deployment_ceiling_level": 4,
@@ -355,43 +432,58 @@ class TestBarrier5Provenance:
 
     def test_irrev_consequential_without_review_denied(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "govern_approve",
-            "DataGraph", "knowledge",
-            self._ctx(reviewed=False, reversible=False, consequential=True),
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="govern_approve",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context=self._ctx(reviewed=False, reversible=False, consequential=True),
         )
         assert not permitted
 
     def test_irrev_consequential_after_review_permitted(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "govern_approve",
-            "DataGraph", "knowledge",
-            self._ctx(reviewed=True, reversible=False, consequential=True),
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="govern_approve",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context=self._ctx(reviewed=True, reversible=False, consequential=True),
         )
         assert permitted
 
     def test_reversible_action_permitted_without_review(self, engine):
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "govern_approve",
-            "DataGraph", "knowledge",
-            self._ctx(reviewed=False, reversible=True, consequential=True),
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="govern_approve",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context=self._ctx(reviewed=False, reversible=True, consequential=True),
         )
         assert permitted
 
     def test_irrev_non_consequential_permitted_without_review(self, engine):
         # Barrier 5 requires BOTH irreversible AND consequential
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "govern_approve",
-            "DataGraph", "knowledge",
-            self._ctx(reviewed=False, reversible=False, consequential=False),
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="govern_approve",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context=self._ctx(reviewed=False, reversible=False, consequential=False),
         )
         assert permitted
 
     def test_barrier5_only_applies_to_govern_approve(self, engine):
         # relate_graph_write is not gated by barrier 5
         permitted = engine.is_permitted(
-            "AevumAgent", "test-agent", "relate_graph_write",
-            "DataGraph", "knowledge",
-            {
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="relate_graph_write",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={
                 "action_reversible": False,
                 "action_consequential": True,
                 "human_checkpoint_completed": False,

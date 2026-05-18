@@ -24,13 +24,13 @@ dependencies = [
     "rfc3161-client>=1.0.0",
     "pyyaml>=6.0",
     "base58>=2.1",
-    "cedarpy>=4.8.1",
     "pyshacl>=0.25.0",
     "rdflib>=7.0.0",
     "oxrdflib>=0.4.0",
 ]
 
 [project.optional-dependencies]
+cedar = ["cedarpy>=4.8.1"]
 default = ["aevum-store-oxigraph"]
 server = [
     "aevum-server>=0.3.0",
@@ -61,6 +61,7 @@ benchmark = [
     "pytest-benchmark>=4.0.0",
 ]
 all = [
+    "aevum-core[cedar]",
     "aevum-core[server]",
     "aevum-core[mcp]",
     "aevum-core[a2a]",

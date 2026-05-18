@@ -154,7 +154,11 @@ Never publish the root. Only publish individual packages under packages/.
 
 ## Policy Architecture
 
-Hybrid OPA + Cedar:
-- Cedar (cedarpy, in-process): consent and purpose decisions
-- OPA (sidecar, HTTP): infrastructure policy
-- Absolute barriers (barriers.py): hardcoded, not policy, not configurable
+Hybrid Cedar + OPA — both optional, both externalised:
+- Cedar (cedarpy, in-process, optional extra [cedar]): consent + ABAC decisions
+- OPA (HTTP sidecar, optional, pass opa_url to Engine): content/infrastructure policy
+- NullPolicyEngine: permissive fallback when no engine configured (warns on first use)
+- Absolute barriers (barriers.py): hardcoded, unconditional, never policy-controlled
+
+PolicyEngine Protocol lives at aevum.core.policy.PolicyEngine.
+Any object implementing is_permitted(**kwargs) -> bool is a valid engine.

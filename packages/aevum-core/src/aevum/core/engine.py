@@ -29,12 +29,22 @@ from aevum.core.functions.replay import replay as _replay
 from aevum.core.functions.review import ReviewStore
 from aevum.core.functions.review import review as _review
 from aevum.core.graph.memory import InMemoryGraphStore
+from aevum.core.policy import NullPolicyEngine, PolicyEngine
 from aevum.core.policy.bridge import PolicyBridge
 from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
 
 _logger = logging.getLogger(__name__)
+
+
+def _resolve_default_policy_engine() -> PolicyEngine:
+    """Load Cedar if available, fall back to Null with a warning."""
+    try:
+        from aevum.core.policy.cedar_engine import CedarPolicyEngine
+        return CedarPolicyEngine.default()
+    except (ImportError, RuntimeError):
+        return NullPolicyEngine()
 
 
 class Engine:
@@ -53,6 +63,7 @@ class Engine:
         sigchain: Sigchain | None = None,
         consent_ledger: ConsentLedgerProtocol | None = None,
         ledger: AuditLedgerProtocol | None = None,
+        policy_engine: PolicyEngine | None = None,
     ) -> None:
         self._sigchain = sigchain or Sigchain()
         self._ledger = ledger or InMemoryLedger(self._sigchain)
@@ -68,6 +79,7 @@ class Engine:
                 "See THREAT_MODEL.md — Assumption 4."
             )
         self._policy = PolicyBridge(opa_url=opa_url)
+        self._policy_engine: PolicyEngine = policy_engine or _resolve_default_policy_engine()
         self._review_store = ReviewStore()
         self._idempotency_cache: dict[str, OutputEnvelope] = {}
 
@@ -248,6 +260,7 @@ class Engine:
             idempotency_cache=self._idempotency_cache,
             episode_id=episode_id, correlation_id=correlation_id,
             model_context=model_context,
+            policy_engine=self._policy_engine,
         )
         if session is not None and hasattr(session, "record_relate_event"):
             try:
@@ -290,6 +303,7 @@ class Engine:
             episode_id=episode_id, correlation_id=correlation_id,
             model_context=model_context,
             capture_witness=capture_witness,
+            policy_engine=self._policy_engine,
         )
         if session is not None and hasattr(session, "record_navigate_event"):
             try:

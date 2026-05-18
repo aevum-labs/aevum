@@ -29,6 +29,7 @@ from aevum.core.envelope.models import (
     UncertaintyAnnotation,
 )
 from aevum.core.functions.ingest import _merge_model_context
+from aevum.core.policy import NullPolicyEngine, PolicyEngine
 from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.consent_ledger import ConsentLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
@@ -295,6 +296,7 @@ def query(
     correlation_id: str | None = None,
     model_context: dict[str, Any] | None = None,
     capture_witness: bool = True,
+    policy_engine: PolicyEngine | None = None,
 ) -> OutputEnvelope:
     """
     Traverse the knowledge graph for a declared purpose.
@@ -326,41 +328,36 @@ def query(
                           actor=actor, episode_id=episode_id, correlation_id=correlation_id)
             return consent_err
 
-    # Cedar ABAC: action="navigate" with consent context
-    try:
-        from aevum.core.cedar_engine import CedarPolicyEngine
-        cedar_engine = CedarPolicyEngine.default()
-        cedar_context: dict[str, Any] = {
-            "has_crisis_content": False,
-            "has_active_consent": True,
-            "consent_purpose_matches": True,
-            "data_classification_level": 0,
-            "deployment_ceiling_level": 3,
-            "autonomy_level": 1,
-        }
-        permitted = cedar_engine.is_permitted(
-            principal_type="AevumAgent",
-            principal_id=actor,
-            action="navigate",
-            resource_type="DataGraph",
-            resource_id="knowledge",
-            context=cedar_context,
+    # ABAC: action="navigate" with consent context
+    _abac_engine: PolicyEngine = policy_engine if policy_engine is not None else NullPolicyEngine()
+    abac_context: dict[str, Any] = {
+        "has_crisis_content": False,
+        "has_active_consent": True,
+        "consent_purpose_matches": True,
+        "data_classification_level": 0,
+        "deployment_ceiling_level": 3,
+        "autonomy_level": 1,
+    }
+    if not _abac_engine.is_permitted(
+        principal_type="AevumAgent",
+        principal_id=actor,
+        action="navigate",
+        resource_type="DataGraph",
+        resource_id="knowledge",
+        context=abac_context,
+    ):
+        ledger.append(event_type="barrier.triggered",
+                      payload={"barrier": 2, "function": "query", "reason": "policy_deny"},
+                      actor=actor, episode_id=episode_id, correlation_id=correlation_id)
+        return OutputEnvelope.error(
+            audit_id=provisional_id,
+            error_code="policy_denied",
+            error_detail="Policy engine denied navigate",
+            provenance=ProvenanceRecord(
+                source_id="aevum-core", ingest_audit_id=provisional_id,
+                chain_of_custody=["aevum-core"], classification=0,
+            ),
         )
-        if not permitted:
-            ledger.append(event_type="barrier.triggered",
-                          payload={"barrier": 2, "function": "query", "reason": "cedar_deny"},
-                          actor=actor, episode_id=episode_id, correlation_id=correlation_id)
-            return OutputEnvelope.error(
-                audit_id=provisional_id,
-                error_code="cedar_denied",
-                error_detail="Cedar ABAC denied navigate",
-                provenance=ProvenanceRecord(
-                    source_id="aevum-core", ingest_audit_id=provisional_id,
-                    chain_of_custody=["aevum-core"], classification=0,
-                ),
-            )
-    except Exception:  # noqa: BLE001
-        logger.debug("Cedar ABAC check skipped (engine unavailable)", exc_info=True)
 
     # Graph read (Barrier 2 enforced by GraphStore)
     graph_results = graph.query_entities(
