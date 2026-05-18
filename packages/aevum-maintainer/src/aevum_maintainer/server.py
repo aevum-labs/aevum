@@ -11,14 +11,22 @@ Also exposes structured HITL consent endpoints (/v1/consent/*) that require
 explicit typed acknowledgment from reviewers — satisfying EU AI Act Article 14
 automation bias obligations. Dwell time is recorded in the sigchain so auditors
 can distinguish genuine human review from rubber-stamp approvals.
+
+POST /v1/ingest/scan-results receives OIDC-verified scan results from GitHub
+Actions and records them as governed ingest operations in the sigchain.
 """
+import datetime
+import json
 import logging
 import time
 import uuid
 from typing import Annotated, Any
 
+import httpx
+import jwt
+from aevum.core.consent.models import ConsentGrant
 from aevum.core.engine import Engine
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from aevum_maintainer.compliance_pack import _safe_version, build_pack_payload
@@ -27,6 +35,68 @@ logger = logging.getLogger(__name__)
 
 # Dwell time below this threshold triggers an automation_bias_warning in the sigchain.
 _BIAS_WARNING_THRESHOLD_SECONDS = 30.0
+
+# GitHub Actions OIDC constants.
+_GITHUB_OIDC_ISSUER = "https://token.actions.githubusercontent.com"
+_GITHUB_JWKS_URL = f"{_GITHUB_OIDC_ISSUER}/.well-known/jwks"
+_OIDC_AUDIENCE = "aevum-maintainer"
+_EXPECTED_REPO = "aevum-labs/aevum"
+
+# ---------------------------------------------------------------------------
+# OIDC verification (GitHub Actions)
+# ---------------------------------------------------------------------------
+
+
+async def _fetch_jwks() -> dict[str, Any]:
+    """Fetch GitHub Actions OIDC JWKS. Isolated for testability."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(_GITHUB_JWKS_URL)
+        resp.raise_for_status()
+        result: dict[str, Any] = resp.json()
+        return result
+
+
+async def verify_github_oidc_token(token: str) -> dict[str, Any]:
+    """
+    Verify a GitHub Actions OIDC token against the JWKS endpoint.
+    Returns decoded claims on success. Raises HTTPException on failure.
+    """
+    jwks = await _fetch_jwks()
+    try:
+        header = jwt.get_unverified_header(token)
+    except jwt.DecodeError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail=f"Invalid OIDC token: {exc}") from exc
+
+    kid = header.get("kid")
+    public_key: Any = None
+    for key_data in jwks.get("keys", []):
+        if key_data.get("kid") == kid:
+            public_key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(key_data))
+            break
+
+    if public_key is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="No matching key in JWKS for token kid")
+
+    try:
+        claims: dict[str, Any] = jwt.decode(
+            token,
+            public_key,
+            algorithms=["RS256"],
+            audience=_OIDC_AUDIENCE,
+        )
+    except jwt.PyJWTError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail=f"Invalid OIDC token: {exc}") from exc
+
+    repo = claims.get("repository", "")
+    if repo != _EXPECTED_REPO:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"Token from unexpected repo: {repo!r}")
+
+    return claims
+
 
 # ---------------------------------------------------------------------------
 # Request / response models (module-level so FastAPI can resolve annotations)
@@ -72,6 +142,11 @@ class ApprovalResponse(BaseModel):
     automation_bias_warning: bool
 
 
+class ScanIngestResponse(BaseModel):
+    audit_id: str
+    status: str
+
+
 # ---------------------------------------------------------------------------
 # Application factory
 # ---------------------------------------------------------------------------
@@ -81,6 +156,21 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     """Create the maintainer FastAPI application."""
     _engine = engine or Engine()
     app = FastAPI(title="aevum-maintainer", version="0.4.0")
+
+    # Bootstrap consent grant so ingest() does not 500 on first call.
+    # subject_id="aevum-maintainer" covers all governed operations this server performs.
+    _boot_grant = ConsentGrant(
+        grant_id=str(uuid.uuid4()),
+        subject_id="aevum-maintainer",
+        grantee_id="maintainer",
+        operations=["ingest", "query", "replay"],
+        purpose="aevum-maintainer governed operations",
+        classification_max=0,
+        granted_at=datetime.datetime.now(datetime.UTC).isoformat(),
+        expires_at="2099-12-31T00:00:00Z",
+        authorization_ref="system-bootstrap",
+    )
+    _engine.add_consent_grant(_boot_grant)
 
     # In-memory pending reviews: review_id → {action_description, review_requested_at}
     _pending_reviews: dict[str, dict[str, Any]] = {}
@@ -221,5 +311,46 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             dwell_time_seconds=dwell_time,
             automation_bias_warning=automation_bias_warning,
         )
+
+    @app.post("/v1/ingest/scan-results", response_model=ScanIngestResponse)
+    async def ingest_scan_results(
+        request: Request,
+        engine: Annotated[Engine, Depends(get_engine)],
+    ) -> Any:
+        """
+        Receive OIDC-verified scan results from GitHub Actions and record them
+        in the Aevum sigchain as a governed ingest operation.
+
+        Authorization: Bearer <GitHub Actions OIDC token>
+        The token must be issued for the aevum-labs/aevum repository.
+        """
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing or malformed Authorization header (expected Bearer token)",
+            )
+        token = auth_header.removeprefix("Bearer ")
+        claims = await verify_github_oidc_token(token)
+        body = await request.json()
+        provenance: dict[str, Any] = {
+            "source_id": "github-actions",
+            "ingest_audit_id": "oidc-verified",
+            "chain_of_custody": ["github-actions", "aevum-maintainer"],
+            "classification": 0,
+        }
+        envelope = engine.ingest(
+            data={"scan_results": body, "oidc_claims": claims},
+            actor=claims.get("repository", "github-actions"),
+            provenance=provenance,
+            purpose="aevum-maintainer governed operations",
+            subject_id="aevum-maintainer",
+        )
+        if envelope.status == "error":
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(envelope.data.get("error_detail", "ingest failed")),
+            )
+        return ScanIngestResponse(audit_id=envelope.audit_id, status=envelope.status)
 
     return app
