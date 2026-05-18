@@ -75,6 +75,8 @@ dev = [
     "ruff>=0.4",
     "cyclonedx-bom>=4.0",
     "types-PyYAML>=6.0",
+    "inline-snapshot>=0.13",
+    "dirty-equals>=0.7",
 ]
 
 [project.urls]

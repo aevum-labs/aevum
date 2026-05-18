@@ -49,3 +49,7 @@ class SignatureError(AevumError):
 
 class ConfigurationError(AevumError):
     """Invalid or missing configuration."""
+
+
+class RekorVerificationError(AevumError):
+    """Rekor entry does not reference the expected artifact hash (CVE-2026-22703 mitigation)."""

@@ -21,7 +21,7 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
-_DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
+_DEFAULT_REKOR_URL = os.environ.get("AEVUM_REKOR_URL", "https://rekor.sigstore.dev")
 _DEFAULT_EVERY_N = int(os.environ.get("AEVUM_PUBLISH_EVERY_N_EVENTS", "100"))
 _DEFAULT_EVERY_S = int(os.environ.get("AEVUM_PUBLISH_EVERY_SECONDS", "300"))
 

@@ -141,6 +141,7 @@ nav:
     - Compliance Mapping: learn/compliance-mapping.md
     - Replay vs. Observability: concepts/replay-vs-observability.md
     - Audit Trails and Article 12: concepts/audit-trails.md
+    - GDPR Article 17 Pattern: compliance/gdpr-article-17.md
     - Memory Poisoning Defense: concepts/memory-poisoning.md
     - Tamper-Evident Logging: concepts/tamper-evident-logs.md
     - Research Foundations: concepts/research-foundations.md

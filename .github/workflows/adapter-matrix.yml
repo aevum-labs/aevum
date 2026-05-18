@@ -10,6 +10,9 @@ on:
       - "packages/aevum-core/**"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   adapter-matrix:
     name: "aevum-core / ${{ matrix.install-extra }} / py${{ matrix.python }}"
@@ -23,9 +26,11 @@ jobs:
           - "with-cedar"  # CedarPolicyEngine path
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081  # v5
         with:
           version: "latest"
 

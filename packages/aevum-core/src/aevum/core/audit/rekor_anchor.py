@@ -19,6 +19,8 @@ Rekor v2 API (Sigstore production):
 Note: Rekor v2 uses DSSE (Dead Simple Signing Envelope) format.
 This implementation uses the dsse entry type with Ed25519 signature.
 
+URL override: set AEVUM_REKOR_URL env var to point at a private Rekor instance.
+
 Usage:
   anchor = RekorAnchor()
   entry = anchor.anchor_chain_root(
@@ -31,15 +33,63 @@ Usage:
 from __future__ import annotations
 
 import base64
+import json
 import logging
+import os
 from typing import Any
 
 import httpx
 
+from aevum.core.exceptions import RekorVerificationError
+
 logger = logging.getLogger(__name__)
 
-REKOR_URL = "https://rekor.sigstore.dev/api/v2/log/entries"
+_DEFAULT_REKOR_URL = "https://rekor.sigstore.dev/api/v2/log/entries"
+REKOR_URL = os.environ.get("AEVUM_REKOR_URL", _DEFAULT_REKOR_URL)
 REKOR_TIMEOUT = 15.0
+
+
+def _verify_rekor_entry(entry: dict[str, Any], expected_sha256: str) -> None:
+    """
+    Assert the Rekor entry references the expected artifact hash.
+
+    Mitigation for Cosign CVE-2026-22703: a malicious Rekor server (or MITM)
+    could return an entry for a *different* artifact. Verifying locally that
+    the returned inclusion proof references the correct digest closes this gap.
+
+    entry: Rekor API response dict (keys are UUIDs mapping to entry objects)
+    expected_sha256: hex-encoded SHA-256 digest of the anchored artifact
+
+    Raises RekorVerificationError if the entry does not reference expected_sha256.
+    """
+    for _uuid, record in entry.items():
+        body_b64 = record.get("body", "")
+        if not body_b64:
+            raise RekorVerificationError("Rekor entry has no body field")
+
+        try:
+            body = json.loads(base64.b64decode(body_b64))
+        except Exception as exc:  # noqa: BLE001
+            raise RekorVerificationError(f"Could not decode Rekor entry body: {exc}") from exc
+
+        kind = body.get("kind", "")
+
+        # hashedrekord: spec.data.hash.value
+        if kind == "hashedrekord":
+            actual = body.get("spec", {}).get("data", {}).get("hash", {}).get("value", "")
+        # dsse: spec.payloadHash.value
+        elif kind == "dsse":
+            actual = body.get("spec", {}).get("payloadHash", {}).get("value", "")
+        else:
+            raise RekorVerificationError(f"Unknown Rekor entry kind: {kind!r}")
+
+        if actual.lower() != expected_sha256.lower():
+            raise RekorVerificationError(
+                f"Rekor entry hash mismatch: got {actual!r}, expected {expected_sha256!r}"
+            )
+        return  # first entry verified — done
+
+    raise RekorVerificationError("Rekor response contained no entries")
 
 
 class RekorAnchor:
@@ -94,9 +144,11 @@ class RekorAnchor:
         ed25519_pub: bytes,
     ) -> dict[str, Any] | None:
         """
-        POST a hashedrekord entry to Rekor.
-        The hashedrekord type is the simplest Rekor entry type —
-        it records a hash + signature without the full artifact.
+        POST a hashedrekord entry to Rekor and verify the returned entry.
+
+        The hashedrekord type records a hash + signature without the full artifact.
+        After a successful POST, _verify_rekor_entry() checks that the returned
+        entry references chain_root_hash (CVE-2026-22703 mitigation).
         """
         sig_b64 = base64.b64encode(ed25519_sig).decode("ascii")
         pub_b64 = base64.b64encode(ed25519_pub).decode("ascii")
@@ -129,11 +181,13 @@ class RekorAnchor:
         )
 
         if response.status_code in (200, 201):
+            result: dict[str, Any] = response.json()
+            _verify_rekor_entry(result, chain_root_hash)
             logger.info(
                 "Rekor anchor success for chain root %s...",
                 chain_root_hash[:8],
             )
-            return response.json()  # type: ignore[no-any-return]
+            return result
 
         logger.warning(
             "Rekor returned HTTP %d for chain root %s...",

@@ -40,6 +40,9 @@ class AuditEvent:
     mldsa65_pub: str | None = None   # hex, 3904 chars
     tsa_url: str | None = None
     tsa_token: str | None = None     # hex of DER bytes
+    # Crypto-agility: informational scheme label; verify_sigchain() treats all as Ed25519 until
+    # hybrid signing is enabled. Future value: "Ed25519+ML-DSA".
+    signature_scheme: str = "Ed25519"
 
     def __post_init__(self) -> None:
         if not self.actor:
