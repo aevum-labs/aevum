@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write   # needed to commit scan_results.md back to repo
+  id-token: write   # needed to obtain GitHub Actions OIDC token for aevum-maintainer ingest
 
 jobs:
   scan:
@@ -113,6 +114,23 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "_Tests, mypy, ruff, and mkdocs run via ci.yml on every push — check CI tab for current status._" >> $GITHUB_STEP_SUMMARY
+
+      - name: Post scan results to aevum-maintainer
+        # Skipped if AEVUM_MAINTAINER_URL is not set (local runs, forks without the secret).
+        if: ${{ env.AEVUM_MAINTAINER_URL != '' }}
+        env:
+          AEVUM_MAINTAINER_URL: ${{ vars.AEVUM_MAINTAINER_URL }}
+        run: |
+          OIDC_TOKEN=$(curl -sf \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=aevum-maintainer" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${OIDC_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d @maintenance/scan_results.md \
+            "${AEVUM_MAINTAINER_URL}/v1/ingest/scan-results" \
+            || echo "aevum-maintainer ingest skipped (server not reachable)"
 
       - name: Commit scan results to repo
         run: |
