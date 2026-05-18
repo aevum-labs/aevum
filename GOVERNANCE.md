@@ -57,6 +57,14 @@ All participants in the Aevum project are expected to follow the
 [Code of Conduct](CODE_OF_CONDUCT.md). Maintainers are responsible for enforcing
 it. Violations should be reported to the address in SECURITY.md.
 
+## Development pipeline
+
+The tooling used to develop and maintain this project is operated as a private
+internal system. The public artifact of this project is the kernel and its
+release artifacts — the packages, compliance documentation, conformance suite,
+and signed releases published to PyPI. The internal development pipeline is not
+part of the open-source project and is not subject to the governance terms above.
+
 ## Amendments
 
 This document may be amended by pull request with approval from all active
