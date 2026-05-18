@@ -25,31 +25,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v5
         with:
           version: "latest"
 
-      - name: Install aevum-core (no Cedar)
+      - name: Set up Python ${{ matrix.python }}
+        run: uv python install ${{ matrix.python }}
+
+      - name: Build liboqs C library (required by liboqs-python)
+        run: |
+          sudo apt-get install -y --no-install-recommends cmake ninja-build
+          curl -fsSL https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.14.0.tar.gz | tar xz
+          cmake -GNinja \
+            -DCMAKE_INSTALL_PREFIX="$HOME/_oqs" \
+            -DBUILD_SHARED_LIBS=ON \
+            -DOQS_USE_OPENSSL=OFF \
+            -S liboqs-0.14.0 -B liboqs-build
+          ninja -C liboqs-build -j$(nproc) install
+          rm -rf liboqs-0.14.0 liboqs-build
+
+      - name: Install workspace (no Cedar)
         if: matrix.install-extra == 'no-cedar'
-        run: uv pip install --system packages/aevum-core/
+        run: uv sync --frozen --python ${{ matrix.python }}
 
-      - name: Install aevum-core[cedar]
+      - name: Install workspace (with Cedar)
         if: matrix.install-extra == 'with-cedar'
-        run: uv pip install --system "packages/aevum-core[cedar]"
-
-      - name: Install test dependencies
-        run: uv pip install --system pytest pytest-asyncio
+        run: |
+          uv sync --frozen --python ${{ matrix.python }}
+          uv pip install --python ${{ matrix.python }} "cedarpy>=4.8.1"
 
       - name: Run policy protocol tests
-        working-directory: packages/aevum-core
-        run: pytest tests/test_policy_protocol.py -v
+        run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/test_policy_protocol.py -v
 
-      - name: Run full test suite
-        working-directory: packages/aevum-core
-        run: pytest tests/ -v -m "not integration"
+      - name: Run aevum-core test suite
+        run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/ -v -m "not integration"
