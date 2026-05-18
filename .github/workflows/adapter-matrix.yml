@@ -22,8 +22,9 @@ jobs:
       matrix:
         python: ["3.11", "3.12", "3.13"]
         install-extra:
-          - "no-cedar"    # NullPolicyEngine path
-          - "with-cedar"  # CedarPolicyEngine path
+          - "no-cedar"         # NullPolicyEngine path
+          - "with-cedar"       # CedarPolicyEngine path
+          - "openai-agents"    # openai-agents adapter snapshot tests
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
@@ -59,8 +60,20 @@ jobs:
           uv sync --frozen --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} "cedarpy>=4.8.1"
 
+      - name: Install workspace (openai-agents)
+        if: matrix.install-extra == 'openai-agents'
+        run: |
+          uv sync --frozen --python ${{ matrix.python }}
+          uv pip install --python ${{ matrix.python }} "openai-agents>=0.0.17"
+
       - name: Run policy protocol tests
+        if: matrix.install-extra != 'openai-agents'
         run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/test_policy_protocol.py -v
 
       - name: Run aevum-core test suite
-        run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/ -v -m "not integration"
+        if: matrix.install-extra != 'openai-agents'
+        run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/ -v -m "not integration" --inline-snapshot=disable
+
+      - name: Run openai-agents adapter snapshot tests
+        if: matrix.install-extra == 'openai-agents'
+        run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/adapters/ -v --inline-snapshot=disable

@@ -18,7 +18,7 @@ import pytest
 
 # Skip the entire module at collection time if openai-agents is not installed.
 # This guard must precede all non-stdlib imports so collection never fails.
-pytest.importorskip("openai_agents", reason="openai-agents not installed")
+pytest.importorskip("agents", reason="openai-agents not installed")
 
 from unittest.mock import MagicMock, patch  # noqa: E402
 
