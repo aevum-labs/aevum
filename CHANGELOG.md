@@ -6,6 +6,66 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Aevum follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
+## [Unreleased]
+
+## [0.5.0] — 2026-05-19
+
+### Added
+
+- **Vendor-agnostic `PolicyEngine` protocol** — Cedar is now an optional extra
+  (`pip install "aevum-core[cedar]"`); `NullPolicyEngine` and `OPAPolicyEngine`
+  included; any object implementing `is_permitted(**kwargs) -> bool` is a valid engine
+- **GDPR Article 17 integration pattern** — off-chain PII storage, on-chain hash
+  pointer, crypto-shredding on revocation; Cedar policy `gdpr_pii.cedar` enforces
+  the pattern at ingest time
+- **`AuditEvent.signature_scheme`** — informational field excluded from chain hash;
+  crypto-agility groundwork for post-quantum migration
+- **Rekor v2 verification** — `_verify_rekor_entry()` validates that the returned
+  Rekor entry references the correct artifact hash (CVE-2026-22703 mitigation);
+  `AEVUM_REKOR_URL` env var for self-hosted Rekor
+- **Semantic drift snapshot tests** for openai-agents adapter — 4 snapshot tests
+  guard against silent behavioral changes in adapter output
+- **Compliance documentation** — NIST AI RMF 1.0, HIPAA §164.312(b),
+  EU AI Act Article 25(4), SOC 2 TSC CC6/CC7/CC8 mapping docs
+- **SBOM (CycloneDX JSON)** generated and attested via `attest-build-provenance`
+  on every release tag; attached to GitHub Release
+- **OpenSSF Scorecard** workflow — weekly runs with results published to the
+  GitHub Security tab
+- **Adapter version matrix CI** — tests openai-agents adapter against oldest,
+  latest, and pre-release versions on Python 3.11, 3.12, 3.13
+- **`aevum-maintainer` package** — self-governance layer:
+  - Phase 1: OIDC-authenticated ingest + startup consent grant
+  - Phase 3+4: A2A task issuance, replay, Rekor anchor, break-glass escalation
+  - Phase 5: demo page and deployment configuration
+
+### Changed
+
+- `CedarPolicyEngine` moved to `aevum.core.policy.cedar_engine`; old import path
+  (`aevum.core.policy.CedarPolicyEngine`) retained as a re-export shim for
+  backward compatibility
+- All `is_permitted()` calls enforce keyword-only arguments (`*` separator);
+  positional invocations are a `TypeError`
+
+### Fixed
+
+- Removed `from __future__ import annotations` from all FastAPI/FastMCP files
+  (G20 — was silently breaking dependency injection in Python 3.11+)
+- Fixed 2 positional `is_permitted()` calls in `bench_core.py` that would raise
+  `TypeError` at runtime when Cedar is installed
+- Path traversal (CWE-22) in `aevum-maintainer` compliance_pack — two targeted
+  fixes eliminating the root cause
+- API endpoint consistency and missing smoke-test coverage in `aevum-server`
+- pip-audit requirements export now correctly excludes editable workspace packages
+- License file relative path removed (Python 3.12 tarfile security regression)
+
+### Security
+
+- **CVE-2026-22703** (Rekor hash confusion): `_verify_rekor_entry()` validates
+  the returned Rekor entry references the correct artifact hash before accepting it
+- All GitHub Actions workflows SHA-pinned to exact commit hashes; minimum-scope
+  `permissions:` blocks on every job
+- `zizmor` integrated into CI; all 11 workflows pass with zero findings
+
 ## [0.4.0] — 2026-05-15 (First public release)
 
 ### Added
@@ -79,5 +139,6 @@ Initial private development release. Not published to PyPI.
 - Conformance test suite repository (`aevum-conformance`)
 - Domain packs repository (`aevum-domains`)
 
+[0.5.0]: https://github.com/aevum-labs/aevum/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/aevum-labs/aevum/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/aevum-labs/aevum/releases/tag/v0.3.0
