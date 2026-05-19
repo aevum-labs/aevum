@@ -9,8 +9,6 @@ Phase 6 endpoints:
 Note: server uses the legacy Engine API (not Kernel.local()).
 Full migration to Kernel.local() is deferred to Phase 8.
 """
-from __future__ import annotations
-
 import uuid
 from typing import Annotated, Any
 

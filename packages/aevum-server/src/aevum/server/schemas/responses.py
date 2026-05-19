@@ -4,8 +4,6 @@ Most routes return OutputEnvelope directly.
 These are supplementary schemas for non-envelope responses.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 from pydantic import BaseModel

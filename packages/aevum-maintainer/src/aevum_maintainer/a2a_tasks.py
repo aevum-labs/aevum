@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2024-2026 Aevum Labs contributors
 """A2A task issuance for governed aevum-maintainer operations."""
-from __future__ import annotations
-
 import logging
 from typing import Any
 

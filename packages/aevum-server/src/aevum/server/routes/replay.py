@@ -2,8 +2,6 @@
 GET /v1/replay/{audit_id} — reconstruct a past decision. Spec Section 10.3.
 """
 
-from __future__ import annotations
-
 from typing import Annotated
 
 from aevum.core.engine import Engine

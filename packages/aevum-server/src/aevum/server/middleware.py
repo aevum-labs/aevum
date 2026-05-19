@@ -3,8 +3,6 @@ Middleware — correlation IDs, security headers, rate limit headers.
 Applied to every response via app.middleware("http").
 """
 
-from __future__ import annotations
-
 import time
 import uuid
 from collections.abc import Awaitable, Callable

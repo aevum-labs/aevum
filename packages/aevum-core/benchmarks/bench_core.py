@@ -82,7 +82,12 @@ def test_bench_cedar_permit(benchmark: object, cedar_engine: object) -> None:
 
     def _eval() -> None:
         cedar_engine.is_permitted(
-            "AevumAgent", "agent", "relate_graph_write", "DataGraph", "knowledge", ctx
+            principal_type="AevumAgent",
+            principal_id="agent",
+            action="relate_graph_write",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context=ctx,
         )
 
     benchmark.pedantic(_eval, iterations=100, rounds=10)
@@ -93,7 +98,12 @@ def test_bench_cedar_deny_crisis(benchmark: object, cedar_engine: object) -> Non
 
     def _eval() -> None:
         cedar_engine.is_permitted(
-            "AevumAgent", "agent", "relate_graph_write", "DataGraph", "knowledge", ctx
+            principal_type="AevumAgent",
+            principal_id="agent",
+            action="relate_graph_write",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context=ctx,
         )
 
     benchmark.pedantic(_eval, iterations=100, rounds=10)

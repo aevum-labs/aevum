@@ -6,8 +6,6 @@ Read-only MCP tools for aevum-maintainer research sessions.
 Claude uses these six tools to query the sigchain and inspect system state
 before proposing changes. All tools are read-only — no state is modified.
 """
-from __future__ import annotations
-
 import json
 import pathlib
 import time

@@ -2,8 +2,6 @@
 /_aevum/v1/* — admin API for complication lifecycle and server diagnostics.
 """
 
-from __future__ import annotations
-
 from typing import Annotated, Any
 
 from aevum.core.engine import Engine

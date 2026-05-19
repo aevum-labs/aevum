@@ -3,8 +3,6 @@ HTTP request schemas — Pydantic models for incoming JSON bodies.
 These are HTTP wire types. They map to Engine function parameters.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict

@@ -5,8 +5,6 @@ API key authentication only. For JWT validation, use any standard library (e.g. 
 and pass the validated actor identity via the X-Actor header.
 """
 
-from __future__ import annotations
-
 from fastapi import HTTPException, status
 from fastapi.security import APIKeyHeader
 
