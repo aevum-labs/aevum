@@ -14,6 +14,8 @@ jobs:
       id-token: write     # Required for Trusted Publishing (OIDC) and Sigstore attestation
       contents: write     # Required for GitHub release creation
       attestations: write # Required for attest-build-provenance
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
@@ -44,19 +46,24 @@ jobs:
           pip install "aevum-core" --find-links dist/ || true
           cyclonedx-py environment \
             --output-format json \
-            --output-file sbom-${{ github.ref_name }}.json
-          echo "SBOM generated: $(wc -l < sbom-${{ github.ref_name }}.json) lines"
+            --output-file "sbom-$RELEASE_TAG.json"
+          echo "SBOM generated: $(wc -l < "sbom-$RELEASE_TAG.json") lines"
+
+      - name: Copy SBOM for compliance pack
+        run: cp "sbom-$RELEASE_TAG.json" sbom.json
+        # G16: compliance_pack.py looks for sbom.json in CWD;
+        # release.yml generates sbom-{version}.json. This bridges the gap.
 
       - name: Attest SBOM
         uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2  # v2.2.3
         with:
-          subject-path: sbom-${{ github.ref_name }}.json
+          subject-path: sbom-${{ env.RELEASE_TAG }}.json
 
       - name: Upload SBOM as artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: sbom
-          path: sbom-${{ github.ref_name }}.json
+          path: sbom-${{ env.RELEASE_TAG }}.json
           retention-days: 90
 
       - name: Publish to PyPI (Trusted Publishing — no API key)
@@ -68,8 +75,7 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           gh release create "$RELEASE_TAG" \
             --generate-notes \
-            dist/*.whl dist/*.tar.gz sbom-${{ github.ref_name }}.json
+            dist/*.whl dist/*.tar.gz "sbom-$RELEASE_TAG.json"
