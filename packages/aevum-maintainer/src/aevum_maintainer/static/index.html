@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aevum — Governance Pipeline</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: ui-monospace, "Cascadia Code", "Fira Mono", monospace;
+      background: #0a0a0a;
+      color: #d4d4d4;
+      padding: 28px 32px;
+      line-height: 1.6;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 36px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #1e1e1e;
+    }
+    h1 { font-size: 1.4rem; letter-spacing: -0.01em; color: #f0f0f0; }
+    .subtitle { color: #6b7280; font-size: 0.82rem; margin-top: 4px; }
+    .refresh-note { color: #3f3f46; font-size: 0.72rem; margin-top: 6px; }
+    #integrity-badge {
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+    .badge-ok   { background: #0d2818; color: #4ade80; border: 1px solid #14532d; }
+    .badge-warn { background: #2a0f0f; color: #f87171; border: 1px solid #7f1d1d; }
+    .badge-pending { background: #0f1629; color: #93c5fd; border: 1px solid #1e3a5f; }
+    section { margin-bottom: 32px; }
+    h2 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #52525b;
+      margin-bottom: 10px;
+    }
+    .card {
+      background: #111;
+      border: 1px solid #1c1c1c;
+      border-radius: 5px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 5px 0;
+      border-bottom: 1px solid #161616;
+      font-size: 0.85rem;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { color: #71717a; }
+    .stat-value { color: #e4e4e7; }
+    .stat-ok    { color: #4ade80; }
+    .stat-warn  { color: #f87171; }
+    .stat-amber { color: #fbbf24; }
+    ul.event-list { list-style: none; }
+    ul.event-list li {
+      padding: 7px 0;
+      border-bottom: 1px solid #141414;
+      font-size: 0.83rem;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    ul.event-list li:last-child { border-bottom: none; }
+    .ev-type  { color: #60a5fa; flex-shrink: 0; }
+    .ev-actor { color: #a78bfa; flex-shrink: 0; }
+    .ev-ts    { color: #3f3f46; font-size: 0.78rem; margin-left: auto; }
+    ul.doc-list { list-style: none; }
+    ul.doc-list li {
+      padding: 6px 0;
+      border-bottom: 1px solid #141414;
+      font-size: 0.83rem;
+      display: flex;
+      gap: 10px;
+    }
+    ul.doc-list li:last-child { border-bottom: none; }
+    .doc-check { width: 14px; text-align: center; flex-shrink: 0; }
+    .doc-ok   { color: #4ade80; }
+    .doc-miss { color: #f87171; }
+    .doc-ts   { color: #3f3f46; font-size: 0.78rem; margin-left: auto; }
+    .muted    { color: #3f3f46; font-size: 0.82rem; padding: 8px 0; }
+    footer {
+      margin-top: 48px;
+      padding-top: 16px;
+      border-top: 1px solid #1a1a1a;
+      color: #3f3f46;
+      font-size: 0.75rem;
+    }
+    footer a { color: #4b5563; text-decoration: none; }
+    footer a:hover { color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Aevum</h1>
+      <p class="subtitle">Open-source AI governance kernel — live pipeline view</p>
+      <p class="refresh-note" id="last-refresh"></p>
+    </div>
+    <span id="integrity-badge" class="badge-pending">checking…</span>
+  </header>
+
+  <section>
+    <h2>System integrity</h2>
+    <div class="card">
+      <div class="stat-row">
+        <span class="stat-label">Sigchain</span>
+        <span id="chain-integrity" class="stat-value">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Chain length</span>
+        <span id="chain-length" class="stat-value">—</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sigchain — recent entries</h2>
+    <ul class="event-list card" id="recent-entries">
+      <li><span class="muted">loading…</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Consent gate</h2>
+    <div class="card">
+      <div class="stat-row">
+        <span class="stat-label">Pending reviews</span>
+        <span id="pending-count" class="stat-value">—</span>
+      </div>
+    </div>
+    <ul class="event-list" id="pending-list"></ul>
+  </section>
+
+  <section>
+    <h2>Compliance pack</h2>
+    <ul class="doc-list card" id="compliance-docs">
+      <li><span class="muted">loading…</span></li>
+    </ul>
+  </section>
+
+  <footer>
+    <a href="https://github.com/aevum-labs/aevum">github.com/aevum-labs/aevum</a>
+    &nbsp;·&nbsp;
+    <a href="https://aevum.build">aevum.build</a>
+  </footer>
+
+  <script>
+    const BASE = "";  // same-origin — no hardcoded URL
+
+    async function load(path) {
+      try {
+        const r = await fetch(BASE + path);
+        if (!r.ok) return null;
+        return r.json();
+      } catch { return null; }
+    }
+
+    function fmtTs(ts) {
+      if (ts == null) return "";
+      // valid_from is ISO string; last_modified is Unix float
+      const d = (typeof ts === "number") ? new Date(ts * 1000) : new Date(ts);
+      return d.toLocaleString();
+    }
+
+    async function refresh() {
+      // --- Integrity ---
+      const integrity = await load("/v1/mcp/verify_sigchain_integrity");
+      const badge = document.getElementById("integrity-badge");
+      const chainInt = document.getElementById("chain-integrity");
+      const chainLen = document.getElementById("chain-length");
+      if (integrity) {
+        const ok = integrity.result.integrity_ok;
+        badge.textContent = ok ? "✓ chain intact" : "⚠ check failed";
+        badge.className = ok ? "badge-ok" : "badge-warn";
+        chainInt.textContent = ok ? "verified" : "FAILED";
+        chainInt.className = "stat-value " + (ok ? "stat-ok" : "stat-warn");
+        chainLen.textContent = integrity.result.chain_length + " entries";
+      } else {
+        badge.textContent = "not configured";
+        badge.className = "badge-warn";
+        chainInt.textContent = "not configured";
+        chainLen.textContent = "—";
+      }
+
+      // --- Recent sigchain entries ---
+      const summary = await load("/v1/mcp/get_sigchain_summary");
+      const recentEl = document.getElementById("recent-entries");
+      if (summary && summary.result.recent.length > 0) {
+        const rows = summary.result.recent.slice().reverse();
+        recentEl.innerHTML = rows.map(e =>
+          `<li>
+            <span class="ev-type">${e.event_type}</span>
+            <span class="ev-actor">${e.actor}</span>
+            <span class="ev-ts">${fmtTs(e.valid_from)}</span>
+          </li>`
+        ).join("");
+      } else if (summary) {
+        recentEl.innerHTML = `<li><span class="muted">no events recorded yet</span></li>`;
+      } else {
+        recentEl.innerHTML = `<li><span class="muted">not configured</span></li>`;
+      }
+
+      // --- Consent gate ---
+      const reviews = await load("/v1/mcp/get_pending_reviews");
+      const pendingCount = document.getElementById("pending-count");
+      const pendingList = document.getElementById("pending-list");
+      if (reviews) {
+        const cnt = reviews.result.open_count;
+        pendingCount.textContent = cnt;
+        pendingCount.className = "stat-value " + (cnt > 0 ? "stat-amber" : "stat-ok");
+        if (reviews.result.reviews.length > 0) {
+          pendingList.innerHTML = reviews.result.reviews.map(r =>
+            `<li>
+              <span class="ev-type">${r.review_id.slice(0, 8)}…</span>
+              <span class="ev-ts">${Math.round(r.age_seconds)}s old</span>
+            </li>`
+          ).join("");
+        } else {
+          pendingList.innerHTML = "";
+        }
+      } else {
+        pendingCount.textContent = "not configured";
+      }
+
+      // --- Compliance pack ---
+      const compliance = await load("/v1/mcp/get_compliance_pack_status");
+      const docsEl = document.getElementById("compliance-docs");
+      if (compliance) {
+        const entries = Object.entries(compliance.result.docs);
+        docsEl.innerHTML = entries.map(([name, info]) => {
+          const ok = info.exists;
+          const ts = ok ? `<span class="doc-ts">${fmtTs(info.last_modified)}</span>` : "";
+          return `<li>
+            <span class="doc-check ${ok ? 'doc-ok' : 'doc-miss'}">${ok ? "✓" : "✗"}</span>
+            <span>${name}</span>${ts}
+          </li>`;
+        }).join("");
+      } else {
+        docsEl.innerHTML = `<li><span class="muted">not configured</span></li>`;
+      }
+
+      document.getElementById("last-refresh").textContent =
+        "Refreshed " + new Date().toLocaleTimeString();
+    }
+
+    refresh();
+    setInterval(refresh, 30_000);
+  </script>
+</body>
+</html>
