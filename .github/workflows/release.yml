@@ -66,6 +66,9 @@ jobs:
           path: sbom-${{ env.RELEASE_TAG }}.json
           retention-days: 90
 
+      - name: Remove private packages from dist
+        run: rm -f dist/aevum_maintainer-*.whl dist/aevum_maintainer-*.tar.gz
+
       - name: Publish to PyPI (Trusted Publishing — no API key)
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # release/v1
         with:
