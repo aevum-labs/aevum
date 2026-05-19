@@ -149,6 +149,26 @@ def test_review_not_found(authed_client: TestClient) -> None:
     assert r.json()["data"]["error_code"] == "review_not_found"
 
 
+def test_review_approve_not_found(authed_client: TestClient) -> None:
+    r = authed_client.post(
+        "/v1/review/urn:aevum:audit:00000000-0000-7000-8000-000000000999/approve",
+        json={},
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "error"
+    assert r.json()["data"]["error_code"] == "review_not_found"
+
+
+def test_review_veto_not_found(authed_client: TestClient) -> None:
+    r = authed_client.post(
+        "/v1/review/urn:aevum:audit:00000000-0000-7000-8000-000000000999/veto",
+        json={},
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "error"
+    assert r.json()["data"]["error_code"] == "review_not_found"
+
+
 # ── OpenAPI ──────────────────────────────────────────────────────────────────
 
 def test_openapi_schema_served(authed_client: TestClient) -> None:
