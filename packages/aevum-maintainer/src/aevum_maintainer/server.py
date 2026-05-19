@@ -23,6 +23,7 @@ import logging
 import os
 import time
 import uuid
+from pathlib import Path
 from typing import Annotated, Any
 
 import httpx
@@ -32,8 +33,11 @@ from aevum.core.consent.models import ConsentGrant
 from aevum.core.engine import Engine
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from aevum_maintainer import mcp_tools
 from aevum_maintainer.a2a_tasks import issue_a2a_task
 from aevum_maintainer.compliance_pack import _safe_version, build_pack_payload
 
@@ -209,6 +213,18 @@ def create_app(engine: Engine | None = None) -> FastAPI:
 
     def get_engine() -> Engine:
         return _engine
+
+    _static_dir = Path(__file__).parent / "static"
+    if _static_dir.is_dir():
+        app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+
+    @app.get("/")
+    async def demo_page() -> FileResponse:
+        return FileResponse(Path(__file__).parent / "static" / "index.html")
+
+    @app.get("/health")
+    async def health() -> dict[str, Any]:
+        return {"status": "ok", "version": app.version}
 
     @app.post("/v1/compliance-pack/generate", response_model=GenerateResponse)
     async def generate_compliance_pack(
@@ -468,5 +484,33 @@ def create_app(engine: Engine | None = None) -> FastAPI:
                 detail=str(envelope.data.get("error_detail", "ingest failed")),
             )
         return ScanIngestResponse(audit_id=envelope.audit_id, status=envelope.status)
+
+    @app.get("/v1/mcp/{tool_name}")
+    async def call_mcp_tool(tool_name: str) -> Any:
+        """Read-only MCP tool proxy for the demo page."""
+        _read_only = {
+            "get_sigchain_summary",
+            "get_pending_reviews",
+            "get_compliance_pack_status",
+            "get_test_count",
+            "get_backlog_items",
+            "verify_sigchain_integrity",
+        }
+        if tool_name not in _read_only:
+            raise HTTPException(status_code=404, detail=f"Unknown tool: {tool_name}")
+        result: dict[str, Any]
+        if tool_name == "get_sigchain_summary":
+            result = mcp_tools.get_sigchain_summary(_engine)
+        elif tool_name == "get_pending_reviews":
+            result = mcp_tools.get_pending_reviews(_pending_reviews)
+        elif tool_name == "get_compliance_pack_status":
+            result = mcp_tools.get_compliance_pack_status()
+        elif tool_name == "get_test_count":
+            result = mcp_tools.get_test_count()
+        elif tool_name == "get_backlog_items":
+            result = mcp_tools.get_backlog_items()
+        else:
+            result = mcp_tools.verify_sigchain_integrity(_engine)
+        return {"tool": tool_name, "result": result}
 
     return app
