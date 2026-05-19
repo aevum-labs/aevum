@@ -13,8 +13,6 @@ Usage:
     # gunicorn aevum.server.app:create_app -k uvicorn.workers.UvicornWorker
 """
 
-from __future__ import annotations
-
 import logging
 from typing import Any
 

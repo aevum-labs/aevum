@@ -3,8 +3,6 @@ FastAPI shared dependencies.
 Injected via Depends() into route handlers.
 """
 
-from __future__ import annotations
-
 from typing import Annotated, Any
 
 from aevum.core.engine import Engine

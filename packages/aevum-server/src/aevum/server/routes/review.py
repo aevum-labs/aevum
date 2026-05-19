@@ -5,8 +5,6 @@ POST /v1/review/{audit_id}/veto — veto
 Spec Section 10.3.
 """
 
-from __future__ import annotations
-
 from typing import Annotated
 
 from aevum.core.engine import Engine

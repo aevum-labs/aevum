@@ -3,8 +3,6 @@ Server configuration via environment variables.
 All settings have safe defaults for development.
 """
 
-from __future__ import annotations
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

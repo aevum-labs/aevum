@@ -6,8 +6,6 @@ Compliance pack generator.
 Bundles compliance docs + SBOM into a signed, verifiable package.
 Every generation is a governed Aevum operation with a sigchain entry.
 """
-from __future__ import annotations
-
 import datetime
 import hashlib
 import json
