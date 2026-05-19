@@ -60,3 +60,11 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "langgraph.checkpoint.*"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "cedarpy"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "fastmcp.*"
+ignore_missing_imports = true

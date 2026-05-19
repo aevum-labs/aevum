@@ -147,7 +147,7 @@ class ConformanceSuite:
         results.sort(key=lambda r: r.invariant_id)
 
         try:
-            import aevum.core  # type: ignore[import-untyped]
+            import aevum.core
             version = getattr(aevum.core, "__version__", "unknown")
         except ImportError:
             version = "unknown"
