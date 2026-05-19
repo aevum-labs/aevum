@@ -15,11 +15,11 @@ workflow using its own governed functions. Pipeline implementation in
 
 | Phase | Deliverable | Status |
 |---|---|---|
-| 1 | Scaffold + compliance pack generator | Stub — scaffold and compliance pack done; OIDC ingest and Cedar policies not yet wired |
-| 2 | MCP research interface (6 read-only tools) | Not implemented |
+| 1 | Scaffold + compliance pack generator | Implemented — OIDC ingest, Cedar policies, compliance pack generation |
+| 2 | MCP research interface (6 read-only tools) | Implemented — `GET /v1/mcp/{tool_name}` (sigchain, reviews, test count, backlog, integrity) |
 | 3 | Structured consent gate (HITL approval + dwell time) | Implemented — `POST /v1/consent/review` + `/approve` with sigchain recording |
-| 4 | Replay endpoint + Rekor anchor + break-glass | Not implemented |
-| 5 | Demo page (demo.aevum.build) | Not implemented |
+| 4 | Replay endpoint + Rekor anchor + break-glass | Implemented — `GET /v1/replay/{audit_id}`, Rekor v2 anchoring, `POST /v1/break-glass` |
+| 5 | Demo page (demo.aevum.build) | Implemented — served at `GET /` |
 
 ## The problem
 
