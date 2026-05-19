@@ -1,0 +1,4 @@
+EAR §742.15(b) notification sent: 2026-05-19 at 11:41 AM CDT
+To: crypt@bis.doc.gov
+CC: enc@nsa.gov
+Subject: Open source encryption software notification — Aevum
