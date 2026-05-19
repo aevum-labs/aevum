@@ -1,14 +1,13 @@
 # Adopters
 
-Organizations and projects using Aevum in production.
+Organizations and individuals using Aevum in production or evaluation.
 
-*Be the first — open a pull request to add your organization.*
+## Adding your name
 
-| Organization | Use Case | Since |
+Open a pull request adding your entry below.
+
+## Users
+
+| Name | Use case | Since |
 |---|---|---|
-
----
-
-To add your organization, open a pull request editing this file.
-Include your organization name, a brief description of how you use Aevum,
-and the approximate date you moved to production.
+| [aevum-labs](https://github.com/aevum-labs) | Governs the Aevum project's own development pipeline via aevum-maintainer | v0.5.0 |
