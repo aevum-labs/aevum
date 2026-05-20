@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   audit:
-    name: Dependency audit (uv audit)
+    name: Dependency audit (pip-audit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
@@ -21,4 +21,7 @@ jobs:
         with:
           version: "latest"
       - name: Audit dependencies
-        run: uv audit
+        run: |
+          # uv audit is not a valid uv subcommand; use pip-audit via uv run.
+          # PYSEC-2025-183 (pyjwt): disputed by supplier, no fix version available.
+          uv run pip-audit --desc on --ignore-vuln PYSEC-2025-183
