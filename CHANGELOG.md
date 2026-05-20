@@ -8,6 +8,47 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added (v0.6.0 Phase A — Adapter Completeness)
+
+- **`AevumAnthropicAdapter`** — governed wrapper for `anthropic.Anthropic`;
+  W3C traceparent injected on every outbound call; `tool_use` response blocks
+  Cedar-evaluated before returning; `record_capture_gap()` detects out-of-adapter
+  SDK usage; `AEVUM_SKIP_ANTHROPIC_TRACE=1` opt-out
+  (`aevum.core.adapters.anthropic_adapter`)
+
+- **`AevumLangChainCallback`** — `BaseCallbackHandler`-compatible governance callback;
+  `on_tool_start` → Cedar ABAC evaluation; `on_chain_error` → capture gap with
+  `reason='langchain_chain_error'`; verified to propagate through LangGraph
+  `StateGraph` nodes via `RunnableConfig`
+  (`aevum.core.adapters.langchain_callback`)
+
+- **MCP traceparent auto-injection** — `aevum.mcp.traceparent` module implements
+  OTel SEP-414 `_meta.traceparent` / `_meta.tracestate` / `_meta.baggage` injection
+  on every outgoing JSON-RPC call and extraction on incoming calls; `trace_id` now
+  recorded in sigchain; `AEVUM_MCP_SKIP_TRACE_INJECT=1` opt-out
+
+- **LangGraph and CrewAI CI coverage** — both adapters now appear in
+  `adapter-matrix.yml` with dedicated snapshot tests
+  (`test_langgraph_adapter.py`, `test_crewai_adapter.py`)
+
+- **OpenAI Agents carry-forwards** — Pydantic TypeAdapter boundary guards on
+  `on_tool_start` / `on_tool_end`; `on_tool_end` snapshot tests; nightly canary
+  workflow (`openai-agents-canary.yml`) opens a GitHub issue on pre-release
+  breakage
+
+- **OpenClaw drift detector** (`openclaw-drift.yml`) — weekly workflow diffs the
+  openclaw plugin hook interface against the pinned SHA in
+  `packages/aevum-core/adapters/openclaw-pin.txt`; opens a GitHub issue on change
+
+- **`anthropic>=0.50.0`** and **`langchain-core>=0.2.0`** optional extras in
+  `aevum-core` pyproject.toml
+
+### Security / Docs
+
+- **THREAT_MODEL.md (G-13)** — added "Classification Ceiling Limitation" section
+  documenting that Barrier 2 is enforced at query time only; data can be ingested
+  at any classification level; `replay()` does not re-apply the ceiling
+
 ## [0.5.0] — 2026-05-19
 
 ### Added
