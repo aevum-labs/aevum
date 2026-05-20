@@ -1,0 +1,193 @@
+{
+  "schema_version": "1.0",
+  "aevum_version": "0.5.0",
+  "phase": "G-01 through G-05 / G-06 through G-16 / G-22",
+  "captured_at": "2026-05-20T01:08:00Z",
+  "branch": "claude/phase-g-investigation-BhtnW",
+  "commit": "4b5a1c3d82140313c295254d885a43f0fb7e01ea",
+  "environment": {
+    "python": "3.11.15",
+    "platform": "Linux 6.18.5 x86_64",
+    "cpu": "Intel Xeon @ 2.10GHz (4 cores)",
+    "memory_note": "cloud VM — numbers are directional, not production hardware"
+  },
+  "benchmarks": {
+    "G-01_ed25519_sign": {
+      "description": "Ed25519 signing (PyNaCl, without ML-DSA-65)",
+      "mean_us": 24.8,
+      "median_us": 24.18,
+      "stddev_us": 1.39,
+      "ops_per_sec": 40326.1,
+      "rounds": 10,
+      "iterations": 100,
+      "gate_item": "G-01",
+      "unblocks": "Phase C acceptance criteria"
+    },
+    "G-01b_ed25519_verify": {
+      "description": "Ed25519 verify (PyNaCl)",
+      "mean_us": 58.74,
+      "median_us": 58.22,
+      "stddev_us": 1.21,
+      "ops_per_sec": 17025.0,
+      "rounds": 10,
+      "iterations": 100,
+      "gate_item": "G-01",
+      "unblocks": "Phase C acceptance criteria"
+    },
+    "G-02_cedar_permit": {
+      "description": "Cedar ABAC permit evaluation (CedarPolicyEngine.default())",
+      "mean_us": 496.05,
+      "median_us": 498.16,
+      "stddev_us": 25.07,
+      "ops_per_sec": 2015.9,
+      "rounds": 10,
+      "iterations": 100,
+      "gate_item": "G-02",
+      "unblocks": "Phase C acceptance criteria — Cedar latency budget"
+    },
+    "G-02b_cedar_deny_crisis": {
+      "description": "Cedar ABAC forbid evaluation (crisis content)",
+      "mean_us": 509.37,
+      "median_us": 509.01,
+      "stddev_us": 53.79,
+      "ops_per_sec": 1963.2,
+      "rounds": 10,
+      "iterations": 100,
+      "gate_item": "G-02",
+      "unblocks": "Phase C acceptance criteria — Cedar latency budget"
+    },
+    "G-03_merkle_root_10_events": {
+      "description": "Merkle root computation over 10 SessionEvents",
+      "mean_us": 17.42,
+      "median_us": 17.42,
+      "stddev_us": 1.21,
+      "ops_per_sec": 57413.3,
+      "rounds": 10,
+      "iterations": 100,
+      "gate_item": "G-03",
+      "unblocks": "Phase C acceptance criteria — sigchain throughput"
+    },
+    "G-03b_merkle_root_100_events": {
+      "description": "Merkle root computation over 100 SessionEvents",
+      "mean_us": 137.66,
+      "median_us": 137.57,
+      "stddev_us": 0.82,
+      "ops_per_sec": 7264.0,
+      "rounds": 5,
+      "iterations": 20,
+      "gate_item": "G-03",
+      "unblocks": "Phase C acceptance criteria — sigchain throughput"
+    },
+    "G-04_consent_grant_check": {
+      "description": "Consent ledger grant + check roundtrip (SQLite-backed)",
+      "mean_us": 9068.58,
+      "median_us": 9164.68,
+      "stddev_us": 370.19,
+      "ops_per_sec": 110.3,
+      "rounds": 5,
+      "iterations": 20,
+      "gate_item": "G-04",
+      "unblocks": "Phase C acceptance criteria — consent throughput",
+      "note": "9ms per grant+check — SQLite I/O dominates; acceptable for consent operations that occur once per session"
+    },
+    "G-22_dx_first_ingest_ms": {
+      "description": "Time from Engine() init to first governed ingest (in-process, Cedar installed)",
+      "mean_ms": 1.97,
+      "gate_item": "G-22",
+      "unblocks": "Phase B-15 getting-started rewrite",
+      "note": "Includes Engine init + ConsentGrant creation + ingest call. No network. Cedar installed. In-memory store."
+    }
+  },
+  "correctness_probes": {
+    "G-06_ingest_query_roundtrip": {
+      "PASS": true,
+      "ingest_status": "ok",
+      "query_status": "ok"
+    },
+    "G-07_replay_determinism": {
+      "PASS": true,
+      "states_match": true,
+      "note": "Same audit_id produces identical replayed state across two calls"
+    },
+    "G-08_consent_revocation": {
+      "PASS": true,
+      "pre_revoke_status": "ok",
+      "post_revoke_status": "error",
+      "probe_note": "'degraded' is returned when consent is valid but no data exists for subject; 'error' when consent is revoked"
+    },
+    "G-09_sigchain_integrity_50": {
+      "PASS": true,
+      "entries": 51,
+      "integrity_ok": true
+    },
+    "G-10_five_function_contract": {
+      "PASS": true,
+      "ingest": "ok",
+      "query": "ok",
+      "commit": "ok",
+      "replay": "ok",
+      "review": "error",
+      "review_note": "review returns 'error' when audit_id has no pending review; expected behavior — not a defect"
+    }
+  },
+  "adversarial_probes": {
+    "G-11_crisis_barrier": {
+      "PASS": true,
+      "status": "crisis",
+      "note": "Keyword 'i want to kill myself' in data triggers crisis envelope before graph write"
+    },
+    "G-12_consent_barrier": {
+      "PASS": true,
+      "status": "error",
+      "error_code": "consent_required",
+      "note": "No consent grant → ingest blocked immediately"
+    },
+    "G-13_classification_ceiling": {
+      "PASS": true,
+      "note": "classification ceiling applied at query via apply_classification_ceiling(); ingest records provenance.classification; ceiling enforced on read path. Ingest with classification=3 proceeds but is filtered on query when ceiling=1."
+    },
+    "G-14_audit_seal": {
+      "PASS": true,
+      "sigchain_integrity": true,
+      "entries_after_50_commits": 51,
+      "note": "Barrier 4 enforced by InMemoryLedger.__delitem__/__setitem__ raising; sigchain remains intact after 50 commits"
+    },
+    "G-15_provenance_veto": {
+      "PASS": true,
+      "status": "error",
+      "note": "Empty source_id in provenance dict → provenance_required error before graph write"
+    },
+    "G-16_lethal_trifecta": {
+      "PASS": true,
+      "all_three_taints_action_tool_call_permitted": false,
+      "two_taints_action_tool_call_permitted": true,
+      "note": "Trifecta Cedar forbid fires on action='tool_call', not 'relate_graph_write'. Probe initially used wrong action — corrected. trifecta.cedar is correctly scoped."
+    }
+  },
+  "test_suite": {
+    "G-05_full_suite": {
+      "passed": 966,
+      "skipped": 87,
+      "deselected": 2,
+      "failed": 0,
+      "duration_seconds": 52.1
+    },
+    "G-05b_conformance_suite": {
+      "passed": 21,
+      "skipped": 0,
+      "failed": 0,
+      "duration_seconds": 5.91,
+      "conformance_invariants": 9,
+      "note": "aevum-conformance v0.5.0; all 9 machine-verifiable invariants pass"
+    }
+  },
+  "known_gaps": [
+    "G-05: Cedar benchmarks require 'aevum-core[cedar]' extra — not installed by default",
+    "G-08: query returns 'degraded' (not 'ok') when consent is valid but no data for subject — needs documentation",
+    "G-13: Classification ceiling applied at query (read path), not ingest (write path) — consequence: above-ceiling data is ingested but filtered on query. THREAT_MODEL.md should document this explicitly.",
+    "G-16: Trifecta Cedar forbid scoped to action='tool_call', not 'relate_graph_write' — users integrating the Cedar policy must use the correct action type in their tool call context",
+    "G-22: consent_grant.operations does not include 'commit' — Engine.commit() uses a different auth path. Confirm this is intentional.",
+    "G-23: Getting-started guide timing not yet measured — requires a clean pip install in an isolated environment. Blocked on B-15 scope.",
+    "G-25: OPA sidecar not tested in this environment (no OPA process available). OPA engine tested at unit level only (test_opa_policy.py)."
+  ]
+}
