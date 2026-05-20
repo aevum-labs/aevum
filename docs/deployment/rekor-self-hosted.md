@@ -218,4 +218,4 @@ Ensure you are running Rekor v2.
 - [ADR-007: Transparency log](../adrs/adr-007-transparency-log.md)
 - [rekor-tiles project](https://github.com/sigstore/rekor-tiles)
 - [Deployment guide](../learn/deployment.md)
-- [THREAT_MODEL.md](../../THREAT_MODEL.md) — trust assumptions for external anchoring
+- [THREAT_MODEL.md](https://github.com/aevum-labs/aevum/blob/main/THREAT_MODEL.md) — trust assumptions for external anchoring
