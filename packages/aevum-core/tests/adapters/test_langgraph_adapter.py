@@ -77,12 +77,15 @@ def test_put_return_shape(tmp_path: Path) -> None:
 def test_get_tuple_shape_after_put(tmp_path: Path) -> None:
     """
     CheckpointTuple field names must stay stable — LangGraph reads them by name.
+    Uses a config without checkpoint_id (no parent) so parent_config is None.
     """
     from langgraph.checkpoint.base import CheckpointTuple
 
     c = AevumCheckpointer.local(state_dir=tmp_path)
     ckpt = _make_checkpoint(1)
-    c.put(_write_cfg("snap-thread", ckpt["id"]), ckpt, {"source": "test", "step": 1}, {"state": 1})
+    # No checkpoint_id in config → parent_id = None → parent_config = None
+    c.put({"configurable": {"thread_id": "snap-thread", "checkpoint_ns": ""}},
+          ckpt, {"source": "test", "step": 1}, {"state": 1})
     tup = c.get_tuple(_read_cfg("snap-thread"))
     c.close()
 

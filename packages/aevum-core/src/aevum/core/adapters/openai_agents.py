@@ -66,9 +66,9 @@ class AevumAgentHooks:
         Raises ValidationError if inputs do not match expected types.
         """
         try:
-            tool_name = _StrAdapter.validate_python(tool_name)
-            tool_input = _DictOrNoneAdapter.validate_python(tool_input)
-            agent_name = _StrAdapter.validate_python(agent_name)
+            tool_name = _StrAdapter.validate_python(tool_name, strict=True)
+            tool_input = _DictOrNoneAdapter.validate_python(tool_input, strict=True)
+            agent_name = _StrAdapter.validate_python(agent_name, strict=True)
         except ValidationError as exc:
             raise TypeError(f"AevumAgentHooks.on_tool_start: invalid argument types: {exc}") from exc
 
@@ -121,7 +121,7 @@ class AevumAgentHooks:
         Raises ValidationError if success is not a bool.
         """
         try:
-            success = _BoolAdapter.validate_python(success)
+            success = _BoolAdapter.validate_python(success, strict=True)
         except ValidationError as exc:
             raise TypeError(f"AevumAgentHooks.on_tool_end: invalid argument types: {exc}") from exc
 
