@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from aevum.core.audit.rekor_anchor import REKOR_TIMEOUT, REKOR_URL, RekorAnchor
+from aevum.core.audit.rekor_anchor import REKOR_TIMEOUT, RekorAnchor
 from aevum.core.exceptions import RekorVerificationError
 
 
@@ -59,7 +59,7 @@ class TestRekorAnchorUnit:
         mock_resp.status_code = 200
         mock_resp.json.return_value = _make_rekor_response(chain_hash)
         with patch("aevum.core.audit.rekor_anchor.httpx.post", return_value=mock_resp):
-            anchor = RekorAnchor()
+            anchor = RekorAnchor(rekor_url="https://test.rekor.example/api/v2/log/entries")
             result = anchor.anchor_chain_root(chain_hash, b"\x00" * 64, b"\x00" * 32)
         assert isinstance(result, dict)
         assert "abc123uuid" in result
@@ -70,7 +70,7 @@ class TestRekorAnchorUnit:
         mock_resp.status_code = 201
         mock_resp.json.return_value = _make_rekor_response(chain_hash, uuid="def456uuid")
         with patch("aevum.core.audit.rekor_anchor.httpx.post", return_value=mock_resp):
-            anchor = RekorAnchor()
+            anchor = RekorAnchor(rekor_url="https://test.rekor.example/api/v2/log/entries")
             result = anchor.anchor_chain_root(chain_hash, b"\x00" * 64, b"\x00" * 32)
         assert isinstance(result, dict)
         assert "def456uuid" in result
@@ -83,7 +83,7 @@ class TestRekorAnchorUnit:
         mock_resp.status_code = 200
         mock_resp.json.return_value = _make_rekor_response(wrong_hash)
         with patch("aevum.core.audit.rekor_anchor.httpx.post", return_value=mock_resp):
-            anchor = RekorAnchor()
+            anchor = RekorAnchor(rekor_url="https://test.rekor.example/api/v2/log/entries")
             result = anchor.anchor_chain_root(chain_hash, b"\x00" * 64, b"\x00" * 32)
         assert result is None  # circuit breaker caught RekorVerificationError
 
@@ -115,13 +115,31 @@ class TestRekorAnchorUnit:
         anchor = RekorAnchor(rekor_url="https://example.com/api/entries", enabled=False)
         assert anchor._url == "https://example.com/api/entries"
 
-    def test_default_url_is_sigstore(self) -> None:
+    def test_default_url_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Without AEVUM_REKOR_URL set, REKOR_URL is None (no hardcoded default)."""
+        monkeypatch.delenv("AEVUM_REKOR_URL", raising=False)
+        import importlib
+
+        import aevum.core.audit.rekor_anchor as mod
+        importlib.reload(mod)
+        try:
+            assert mod.REKOR_URL is None, (
+                "REKOR_URL must be None when AEVUM_REKOR_URL is unset — "
+                "no hardcoded production URL allowed (D-08 lint rule)"
+            )
+        finally:
+            importlib.reload(mod)
+
+    def test_no_url_disables_anchor(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """RekorAnchor must auto-disable when AEVUM_REKOR_URL is not configured."""
+        monkeypatch.delenv("AEVUM_REKOR_URL", raising=False)
         anchor = RekorAnchor()
-        assert anchor._url == REKOR_URL
-        assert "rekor.sigstore.dev" in anchor._url
+        assert not anchor._enabled, "RekorAnchor must be disabled when URL is unconfigured"
+        result = anchor.anchor_chain_root("a" * 64, b"\x00" * 64, b"\x00" * 32)
+        assert result is None
 
     def test_aevum_rekor_url_env_overrides_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """AEVUM_REKOR_URL env var must override the module-level default."""
+        """AEVUM_REKOR_URL env var configures the module-level REKOR_URL."""
         import importlib
 
         import aevum.core.audit.rekor_anchor as mod
@@ -162,7 +180,7 @@ class TestRekorAnchorUnit:
             return mock_resp
 
         with patch("aevum.core.audit.rekor_anchor.httpx.post", side_effect=mock_post):
-            anchor = RekorAnchor()
+            anchor = RekorAnchor(rekor_url="https://test.rekor.example/api/v2/log/entries")
             sig = b"A" * 64
             pub = b"B" * 32
             anchor.anchor_chain_root(chain_hash, sig, pub)

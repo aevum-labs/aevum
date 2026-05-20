@@ -231,3 +231,39 @@ Use `replay` when an auditor needs to understand what an agent knew at
 a specific moment in the past.
 
 These are not interchangeable.
+
+## record_capture_gap() — ordering limitation
+
+`engine.record_capture_gap()` writes a `capture.gap` AuditEvent declaring that
+an out-of-band call (LLM, tool, MCP) was made outside the complication framework.
+
+**Important:** The gap event is written *after* the out-of-band call returns,
+not before. The sigchain records the gap retroactively.
+
+**Consequence:** If the process is interrupted between the out-of-band call and
+the `record_capture_gap()` invocation, no gap event is written. An auditor
+reviewing the sigchain would see no record of that call.
+
+**Best practice:** Write the gap event *before* making the out-of-band call
+where possible — declare intent, then execute. Pass `model_hint`, `reason`,
+and `extra` to give auditors maximum forensic context:
+
+```python
+engine.record_capture_gap(
+    gap_type="llm",
+    actor="billing-agent",
+    reason="direct_api_call",
+    model_hint="claude-sonnet-4-6",
+    extra={"endpoint": "messages", "intent": "invoice-summary"},
+)
+# Now make the out-of-band call
+response = raw_client.messages.create(...)
+```
+
+For higher-assurance audit coverage, use the appropriate adapter complication
+(e.g., `AevumAnthropicAdapter`, `AevumLangChainCallback`) rather than calling
+`record_capture_gap()` manually. Adapter complications instrument the SDK at
+the call site and do not have this ordering gap.
+
+For the full threat model entry, see
+[THREAT_MODEL.md — record_capture_gap() Ordering Limitation](../../THREAT_MODEL.md).

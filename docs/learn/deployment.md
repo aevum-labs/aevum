@@ -331,6 +331,32 @@ Recommended alerts:
 | `consent_required` rate | Spike | Misconfigured grants or attack |
 | PostgreSQL connection errors | Any | DB unavailable |
 
+#### OTEL_SEMCONV_STABILITY_OPT_IN — GenAI semantic conventions
+
+Aevum's MCP traceparent injection (`aevum.mcp.traceparent`) and the
+`AevumAnthropicAdapter` emit spans using the OpenTelemetry GenAI semantic
+conventions (OTel SEP-414, `gen_ai.*` attribute namespace).
+
+**Warning:** The GenAI semantic conventions are currently in **Development**
+status in the OpenTelemetry specification. Development-status conventions may
+change in breaking ways between OTel releases without a deprecation period.
+
+To opt into the current GenAI conventions in SDKs that require an explicit
+opt-in, set:
+
+```bash
+export OTEL_SEMCONV_STABILITY_OPT_IN=genai
+```
+
+Without this flag, some OpenTelemetry SDK versions will emit `gen_ai.*`
+attributes under an older experimental namespace, or suppress them entirely.
+
+**Implication for deployers:** If you depend on `gen_ai.*` attributes in your
+dashboards, alerts, or compliance tooling, pin your OpenTelemetry SDK version
+and test after upgrades. The GenAI conventions are expected to reach Stable
+status in a future OTel release, at which point this opt-in flag will no longer
+be required.
+
 ### Backup and recovery
 
 Back up three things:
