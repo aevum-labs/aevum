@@ -27,6 +27,7 @@ jobs:
           - "openai-agents"    # openai-agents adapter snapshot tests
           - "langgraph"        # LangGraph AevumCheckpointer snapshot tests
           - "crewai"           # CrewAI AevumCrewHooks snapshot tests
+          - "anthropic"        # Anthropic SDK AevumAnthropicAdapter snapshot tests
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
@@ -80,17 +81,23 @@ jobs:
           uv sync --frozen --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} "crewai>=0.80.0"
 
+      - name: Install workspace (anthropic)
+        if: matrix.install-extra == 'anthropic'
+        run: |
+          uv sync --frozen --python ${{ matrix.python }}
+          uv pip install --python ${{ matrix.python }} "anthropic>=0.50.0"
+
       - name: Run policy protocol tests
-        if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\"]'), matrix.install-extra)"
+        if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\",\"anthropic\"]'), matrix.install-extra)"
         run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/test_policy_protocol.py -v
 
       - name: Run aevum-core test suite
-        if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\"]'), matrix.install-extra)"
+        if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\",\"anthropic\"]'), matrix.install-extra)"
         run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/ -v -m "not integration" --inline-snapshot=disable
 
       - name: Run openai-agents adapter snapshot tests
         if: matrix.install-extra == 'openai-agents'
-        run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/adapters/ -v --inline-snapshot=disable
+        run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/adapters/test_openai_agents_adapter.py -v --inline-snapshot=disable
 
       - name: Run langgraph adapter snapshot tests
         if: matrix.install-extra == 'langgraph'
@@ -99,3 +106,7 @@ jobs:
       - name: Run crewai adapter snapshot tests
         if: matrix.install-extra == 'crewai'
         run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/adapters/test_crewai_adapter.py -v --inline-snapshot=disable
+
+      - name: Run anthropic adapter snapshot tests
+        if: matrix.install-extra == 'anthropic'
+        run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/adapters/test_anthropic_adapter.py -v --inline-snapshot=disable
