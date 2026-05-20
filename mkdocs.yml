@@ -137,6 +137,7 @@ nav:
     - Security: learn/security.md
     - Deployment: learn/deployment.md
     - Deployment Patterns: learn/deployment-patterns.md
+    - Dev to Production: learn/dev-to-production.md
     - Standards Alignment: learn/standards-alignment.md
     - Compliance Mapping: learn/compliance-mapping.md
     - Replay vs. Observability: concepts/replay-vs-observability.md
@@ -150,6 +151,8 @@ nav:
     - Quickstart: getting-started/quickstart.md
     - MCP Setup: getting-started/mcp-setup.md
     - Guides:
+      - Pure Python: learn/guides/pure-python.md
+      - LangChain: learn/guides/langchain.md
       - Guide by User Type: guides/non-enterprise.md
       - Integration Layer: guides/integration-layer.md
       - Billing Walkthrough: use-cases/billing-inquiry.md

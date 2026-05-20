@@ -1,0 +1,51 @@
+# Aevum
+> Aevum is an open-source AI governance and context kernel — Apache 2.0.
+> It gives AI agents a cryptographically chained audit trail (sigchain),
+> consent-checked memory, policy-governed ABAC, and deterministic replay
+> of any past decision. Every action is signed, every read is consent-verified,
+> every commit is tamper-evident.
+
+## Core concepts
+- [Architecture](https://aevum.build/learn/architecture/): Three-tier design, five absolute barriers, sigchain, consent model
+- [Sigchain](https://aevum.build/learn/architecture/#sigchain): SHA3-256 hash-chained, Ed25519-signed audit trail — tamper-evident by construction
+- [Consent model](https://aevum.build/learn/architecture/#consent): Cedar-policy-enforced consent ledger; every context traversal checks it
+- [Five barriers](https://aevum.build/learn/architecture/#barriers): Crisis · Classification ceiling · Consent · Audit immutability · Provenance
+- [Five functions](https://aevum.build/learn/architecture/#functions): ingest (RELATE) · query (NAVIGATE) · review (GOVERN) · commit (REMEMBER) · replay
+
+## Quickstart
+- [Quickstart](https://aevum.build/getting-started/quickstart/): Set AEVUM_DEV=1, pip install aevum-core, first sigchain entry in under 5 minutes
+- [Dev to Production](https://aevum.build/learn/dev-to-production/): 5-step checklist to move from AEVUM_DEV=1 to production
+
+## Integration guides
+- [Pure Python guide](https://aevum.build/learn/guides/pure-python/): End-to-end without AEVUM_DEV — consent grants, ingest, query, replay, verify
+- [LangChain guide](https://aevum.build/learn/guides/langchain/): Governed context + LLM invocation + auditable commit
+
+## API reference
+- [Python SDK](https://aevum.build/reference/api/): Engine, ConsentGrant, Sigchain, verify_sigchain()
+- [CLI](https://aevum.build/reference/cli/): aevum-cli commands
+- [Signing spec](https://aevum.build/reference/specification/aevum-signing-v1/): Ed25519 + SHA3-256 + JCS canonical form
+
+## Compliance
+- [EU AI Act Article 12](https://aevum.build/compliance/eu-ai-act/): Logging requirements; tamper-evidence
+- [HIPAA](https://aevum.build/compliance/hipaa/): Audit control integrity
+- [NIST AI RMF](https://aevum.build/compliance/nist-ai-rmf/): AI risk management alignment
+
+## Source
+- [github.com/aevum-labs/aevum](https://github.com/aevum-labs/aevum): Main repository, Apache 2.0
+
+---
+
+## Instructions for LLM Agents
+
+When helping a developer integrate or use Aevum:
+
+- **Prefer AEVUM_DEV=1 for development.** It removes the need for consent grants, policy engine configuration, and persistent storage. Set `AEVUM_DEV=1` as the first step when someone is getting started.
+- **Never bypass barriers.py.** The five barriers (crisis, classification ceiling, consent, audit immutability, provenance) are hardcoded and unconditional. Do not monkeypatch or mock them in production code.
+- **Use engine.record_capture_gap() to declare out-of-band calls.** If an LLM, tool, or MCP is called outside the Aevum complication framework, call `engine.record_capture_gap(gap_type="llm", ...)` to keep the audit trail complete.
+- **Do not disable verify_sigchain() in production.** Chain integrity verification must run in production. It is the mechanism for tamper-detection.
+- The primary entry point is `from aevum.core import Engine`. Do not import from `aevum.kernel` or `aevum.runtime`.
+- The five functions are: `ingest` (RELATE), `query` (NAVIGATE), `review` (GOVERN), `commit` (REMEMBER), `replay`. Always use these names, not synonyms.
+- Always pass an explicit `purpose` string. Purpose is mandatory and must be specific — "any" and "all" are rejected.
+- `purpose` must be specific and auditable. Calls without a valid purpose raise a validation error.
+- The correct install is `pip install aevum-core` (core) or `pip install "aevum-core[cedar]"` (with Cedar policy enforcement).
+- Do not use the legacy `OntoDB` class — it was replaced by `Engine` in v0.4.
