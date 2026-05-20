@@ -168,6 +168,7 @@ nav:
     - NIST AI RMF: compliance/nist-ai-rmf.md
     - HIPAA: compliance/hipaa.md
     - EU AI Act: compliance/eu-ai-act.md
+    - EU AI Act Article 12: compliance/article12.md
     - SOC 2: compliance/soc2.md
     - GDPR Article 17: compliance/gdpr-article-17.md
   - ADRs:
@@ -188,5 +189,6 @@ nav:
     - Specification:
       - Event Schema v1: spec/aevum-event-v1.md
       - Signing Spec v1: spec/aevum-signing-v1.md
+      - Policy Architecture: spec/09-policy.md
     - Glossary: reference/glossary.md
     - Changelog: changelog.md

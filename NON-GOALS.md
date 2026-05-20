@@ -41,7 +41,8 @@ any other consumer.
 
 Aevum does not replace Kafka, Pulsar, or NATS. Events are appended to the
 episodic ledger; they are not streamed to consumers in real time. Complications
-may bridge to streaming systems, but Aevum itself is not one.
+may bridge to streaming systems, but Aevum itself is not one. Aevum will not
+add a streaming API — this boundary is normative and enforced by the RFC process.
 
 ## Aevum is not an observability backend
 

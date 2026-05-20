@@ -2,6 +2,9 @@
 
 AEVUM — OWASP Agentic Security Initiative Top 10 Crosswalk
 =================================================================
+Reference: OWASP GenAI Security Project, Agentic AI Top 10 (published 2025-12-09)
+Identifiers: ASI01 through ASI10
+Last updated: v0.6.0 (2026-05-20)
 
 ✓ ASI01: Prompt Injection / Goal Hijacking
   Coverage: FULL
@@ -42,7 +45,11 @@ AEVUM — OWASP Agentic Security Initiative Top 10 Crosswalk
   • Sigchain with dual-sig — every session commit is signed
   • Session Merkle root — tampering detected across agent handoffs
   • GOVERN at each consequential step — no silent propagation
-  Note: Aevum's sigchain detects tampering in replay. Full multi-agent trust chain validation requires A2A integration (Phase 6).
+  • v0.6.0: AevumOTelBridge emits one OTel span per sigchain event; distributed
+    tracing across agents surfaces cascading failure chains in any OTLP backend
+    (Grafana Tempo, Langfuse, Jaeger). Privacy-safe by default: only audit_id
+    is emitted unless OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true.
+  Note: Aevum's sigchain detects tampering in replay. Full multi-agent trust chain validation requires A2A integration (Phase 6). OTel spans complement sigchain replay with real-time failure detection.
 
 ✓ ASI06: Human-in-the-Loop Bypass
   Coverage: FULL
@@ -68,6 +75,11 @@ AEVUM — OWASP Agentic Security Initiative Top 10 Crosswalk
   • Conformance suite — 9 invariants verified on every installation
   • pip-audit in CI — dependency vulnerability scanning
   • Trusted Publishing — signed PyPI wheels, no stored API keys
+  • v0.6.0: key_scheme field in every AuditEvent wire format (Phase C-01) makes
+    the signing algorithm explicit in every chain entry. Auditors can verify that
+    the key scheme has not changed unexpectedly across the chain. Valid registry:
+    {"ed25519", "ed25519+ml-dsa-65", "ed25519+vault-transit"}. Conformance layer
+    test_wire_format.py verifies this on every installation.
   Note: Principle signing + conformance suite address behavioral supply chain. Full SBOM and Trusted Publishing in Phase 9.
 
 ~ ASI09: Unbounded Resource Consumption
@@ -84,4 +96,8 @@ AEVUM — OWASP Agentic Security Initiative Top 10 Crosswalk
   • L1-L5 autonomy enforcement — spawn requests require govern_approve
   • A2A v1.0 interceptor — all agent spawns signed and chained (Phase 6)
   • Sigchain — every agent action recorded and verifiable
+  • v0.6.0: AevumOTelBridge makes agent spawn events visible as OTel spans in
+    real time. Operators can configure span-based alerts in Grafana, Datadog,
+    or Honeycomb to detect unexpected spawn patterns before the sigchain is
+    reviewed post-hoc.
   Note: L1-L5 enforcement addresses spawn control. Full A2A interception in Phase 6.

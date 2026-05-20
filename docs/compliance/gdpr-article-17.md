@@ -156,6 +156,109 @@ print('OK')
 
 ---
 
+## Formal Tombstoning Procedure
+
+When a data subject exercises their Article 17 right, Aevum's erasure
+pattern produces a **tombstone**: a sigchain entry whose on-chain hash pointer
+is permanently rendered cryptographically inert.
+
+### What a tombstone is
+
+A tombstone is an existing sigchain `AuditEvent` in `urn:aevum:provenance`
+that:
+
+1. **Retains its chain position.** The event's `prior_hash`, `signature`, and
+   `sequence` remain intact. Removing or modifying it would break the hash
+   chain — Barrier 4 (Audit Seal) prevents this unconditionally.
+
+2. **Contains only non-identifying fields.** The `payload` stores a
+   pseudonymous `subject_id`, a `data_hash` (SHA-256 of the now-deleted
+   personal data), and a `key_id` (identifier of the now-deleted KEK). No
+   personal data is stored in the sigchain payload — `gdpr_pii.cedar` enforces
+   this unconditionally at ingest time.
+
+3. **References data that no longer exists.** After erasure, the off-chain
+   personal data store is empty for this subject and the KEK is deleted
+   (crypto-shredded). The `data_hash` cannot be reversed — the pre-image data
+   is gone. The `key_id` references a key that no longer exists.
+
+The sigchain entry is preserved to maintain chain integrity. It is opaque: it
+proves that a governed operation occurred at a specific time with a specific
+actor, but it reveals no personal data.
+
+### Tombstoning procedure (normative)
+
+The following steps constitute the complete Article 17 erasure procedure for
+an Aevum deployment:
+
+```
+1. Identify all sigchain entries referencing subject_id.
+   → These are tombstones-in-waiting; they stay.
+
+2. Delete the subject's personal data from the off-chain datastore.
+   → The data_hash in chain entries now references a deleted object.
+
+3. Crypto-shred the subject's KEK:
+   a. Derive all per-period keys from the KEK (they are now unrecoverable).
+   b. Delete the KEK from the secrets manager (Vault, AWS KMS, etc.).
+   → Any ciphertext encrypted under derived keys is permanently inaccessible.
+
+4. Optionally: append a GDPR.erasure.complete AuditEvent to the sigchain
+   recording the erasure timestamp and actor.
+   → This creates an auditable record that the erasure was performed.
+```
+
+!!! warning "What operators must NOT do"
+    Do not delete or mutate sigchain entries. Barrier 4 (Audit Seal) prevents
+    this at the kernel level — any attempt raises `ImmutableLedgerError`.
+    An auditor examining the sigchain must be able to confirm the chain was
+    intact at every point in time. The tombstone's presence is itself evidence
+    of compliance: it shows the operation was governed when it occurred.
+
+### Crypto-shredding path (technical)
+
+```python
+def execute_article17_erasure(
+    subject_id: str,
+    secrets_manager: SecretsManager,
+    personal_data_store: DataStore,
+    engine: Engine,
+    actor: str,
+) -> None:
+    """
+    Execute GDPR Article 17 erasure. Sigchain entries are NOT touched.
+    """
+    # Step 2: Delete personal data from off-chain store
+    personal_data_store.delete_subject(subject_id)
+
+    # Step 3: Crypto-shred KEK — all derived per-period keys become irrecoverable
+    secrets_manager.delete(f"kek/{subject_id}")
+
+    # Step 4 (optional): Record erasure in the sigchain
+    engine.commit(
+        event_type="gdpr.erasure.complete",
+        payload={"subject_id": subject_id, "basis": "article_17"},
+        actor=actor,
+    )
+    # The commit appends a signed AuditEvent to the sigchain.
+    # It does NOT contain personal data — it records that erasure occurred.
+```
+
+After this procedure, any attempt to decrypt ciphertext that was encrypted
+under a derived key from the now-deleted KEK will fail with a key-not-found
+error. The personal data is permanently inaccessible even to an operator
+with direct database access.
+
+### ConsentLedger integration
+
+`ConsentLedger.shred(subject_id)` performs the in-memory crypto-shredding
+path for Aevum's built-in DEK store. After `shred()`, any call to
+`ConsentLedger.decrypt_for_subject(subject_id, ...)` raises `ConsentRequired`.
+This is verified by conformance invariant 9
+(`consent_revoke_destroys_dek`) on every installation.
+
+---
+
 ## References
 
 - GDPR Article 17: Right to erasure ('right to be forgotten')
