@@ -1,6 +1,6 @@
 [project]
 name = "aevum-publish"
-version = "0.5.0"
+version = "0.6.0"
 description = "Aevum — Sigstore Rekor v2 transparency log complication."
 readme = "README.md"
 requires-python = ">=3.11"

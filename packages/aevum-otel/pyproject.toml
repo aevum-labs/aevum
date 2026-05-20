@@ -1,28 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
-name = "aevum-conformance"
+name = "aevum-otel"
 version = "0.6.0"
-description = "Aevum conformance test suite — 9 behavioral invariants."
+description = "Aevum — OpenTelemetry bridge complication. Routes sigchain events to OTel GenAI spans."
+readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "Apache-2.0" }
-keywords = ["ai", "governance", "conformance", "audit"]
+license = "Apache-2.0"
+keywords = ["aevum", "opentelemetry", "otel", "observability", "genai", "audit"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.11",
-    "Typing :: Typed",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "aevum-core>=0.3.0",
+    "aevum-core>=0.6.0",
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-api>=1.27.0",
+]
+
+[project.optional-dependencies]
+otlp = [
+    "opentelemetry-exporter-otlp-proto-grpc>=1.27.0",
+]
+otlp-http = [
+    "opentelemetry-exporter-otlp-proto-http>=1.27.0",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "mypy>=1.9",
+    "ruff>=0.4",
 ]
 
 [project.urls]
 Homepage = "https://aevum.build"
 Repository = "https://github.com/aevum-labs/aevum"
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+Issues = "https://github.com/aevum-labs/aevum/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aevum"]
@@ -34,10 +53,6 @@ aevum-core = { workspace = true }
 mypy_path = "src"
 strict = true
 python_version = "3.11"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "oqs"
 ignore_missing_imports = true
 
 [tool.ruff]
@@ -54,8 +69,5 @@ ignore = ["ANN401"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "--tb=short -m 'not integration'"
+addopts = "--tb=short"
 pythonpath = ["src", "tests"]
-markers = [
-    "integration: live network tests (run with: pytest -m integration)",
-]

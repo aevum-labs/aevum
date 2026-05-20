@@ -20,6 +20,16 @@ class InMemoryLedger:
         self._events: list[AuditEvent] = []
         self._index: dict[str, AuditEvent] = {}
         self._lock = threading.Lock()
+        self._observers: list[Any] = []
+
+    def add_observer(self, observer: Any) -> None:
+        """
+        Register an observer to be called after each successful append.
+        Observer must implement on_event(event: AuditEvent) -> None.
+        Observer errors are logged and suppressed — they must not interrupt the sigchain.
+        """
+        with self._lock:
+            self._observers.append(observer)
 
     def append(
         self,
@@ -42,7 +52,16 @@ class InMemoryLedger:
             )
             self._events.append(event)
             self._index[event.audit_id()] = event
-            return event
+            observers = list(self._observers)
+
+        import logging as _logging
+        _obs_log = _logging.getLogger("aevum.core.ledger")
+        for obs in observers:
+            try:
+                obs.on_event(event)
+            except Exception as exc:  # noqa: BLE001
+                _obs_log.error("ledger observer error (suppressed): %s", exc)
+        return event
 
     def get(self, audit_id: str) -> AuditEvent:
         event = self._index.get(audit_id)

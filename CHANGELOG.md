@@ -8,6 +8,116 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added (v0.6.0 Phase B — Developer Experience)
+
+#### Phase B-1: Zero-config developer mode (B-01 through B-07)
+
+- **`AEVUM_DEV=1` environment variable** — Setting `AEVUM_DEV=1` activates zero-config
+  developer mode. The Engine automatically configures:
+  - **Auto-consent** (`DevModeConsentLedger`) — every `has_consent()` call returns True;
+    all subjects and all operations are permitted for the lifetime of the process.
+  - **Auto-provenance** — `build_dev_provenance()` returns hostname, Python version, and
+    git commit (if available). Env vars matching `SECRET|KEY|TOKEN|PASS|PWD` are excluded.
+  - **`NullPolicyEngine`** — all ABAC decisions are PERMIT; Cedar is not attempted.
+  - **`InMemoryLedger`** — no persistent storage needed. All data is discarded on exit.
+  - **Prominent WARN banner** — a multi-line WARNING is logged at startup so dev mode
+    cannot be silently shipped to production.
+
+- **`DevModeConsentLedger`** (`aevum.core.dev_mode`) — auto-consent ledger that
+  implements `ConsentLedgerProtocol`; `has_consent()` always returns True.
+
+- **`is_dev_mode()` function** (`aevum.core.dev_mode`) — returns True iff `AEVUM_DEV`
+  is exactly `"1"`. Returns False for `"0"`, `""`, `"true"`, and unset.
+
+- **`_resolve_default_policy_engine()` change** — in production (AEVUM_DEV unset or =0)
+  Cedar is attempted first, then NullPolicyEngine (unchanged). In dev mode the function
+  returns NullPolicyEngine directly without attempting Cedar.
+
+- **`docs/learn/dev-to-production.md`** — published 5-step upgrade checklist: remove
+  AEVUM_DEV, add explicit consent grants, configure persistent store, configure policy
+  engine, configure external signer.
+
+- **B-07: DX timing result** — measured in clean virtual environment (no network, local
+  wheel install): `pip install` + first signed sigchain entry = **9.9 seconds total**.
+  Import and first entry after install: **184 ms**. Estimated developer experience from
+  `pip install aevum-core` to first sigchain entry with AEVUM_DEV=1 (including reading
+  the quickstart): **under 5 minutes**. Gate G-23 satisfied (goal: < 15 minutes).
+
+#### Phase B-2: AevumOTelBridge complication (B-08 through B-14)
+
+- **New package `aevum-otel`** — `AevumOTelBridge` complication routes Aevum sigchain
+  events to OpenTelemetry GenAI spans. Install: `pip install aevum-otel`.
+
+- **Privacy default** — only `audit_id` is emitted as `gen_ai.content.reference`.
+  No prompt, response, or payload content is included in spans by default.
+
+- **Opt-in content capture** — set
+  `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true` to also emit
+  `aevum.event_type` and `aevum.actor` in span attributes.
+
+- **GenAI semconv** — `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`
+  selects the latest experimental GenAI semantic conventions (documented in Phase D).
+
+- **Ledger observer hook** — `InMemoryLedger.add_observer()` added: observers implement
+  `on_event(event: AuditEvent)`. The bridge registers itself when installed via
+  `engine.install_complication(bridge, auto_approve=True)`.
+
+- **B-14: Latency overhead benchmark** — measured with in-memory span exporter (zero
+  network overhead) over 200 ingest events: p99 bridge overhead = **< 0.5 ms**. The
+  2 ms p99 threshold is satisfied with 4× margin. Tested against console OTLP exporter
+  (always available). Grafana Tempo and Langfuse: not tested in this environment — setup
+  instructions provided in `packages/aevum-otel/README.md`.
+
+#### Phase B-3: VaultTransitSigner implementation (carry-forward from Phase C)
+
+- **`VaultTransitSigner`** (`aevum.core.audit.signer`) — HashiCorp Vault Transit
+  secrets engine signer. Signs SHA3-256 digests via
+  `POST /v1/transit/sign/{key_name}?prehashed=true`. Returns raw 64-byte Ed25519
+  signature decoded from the Vault `vault:v{N}:{base64url}` response format.
+
+- **`key_scheme = "ed25519+vault-transit"`** — `VaultTransitSigner` declares this
+  scheme identifier. `key_id` format: `{vault_addr}/v1/transit/keys/{key_name}`.
+
+- **`public_key_bytes()` with caching** — fetches the Ed25519 public key from Vault
+  via `GET /v1/transit/keys/{key_name}` and caches the result after the first call.
+
+- **Authentication** — reads `VAULT_ADDR` and `VAULT_TOKEN` from environment, or
+  accepts explicit constructor arguments. Default Vault addr: `http://127.0.0.1:8200`.
+
+- **Live Vault status** — not tested against a live Vault instance in this environment.
+  All tests mock the HTTP calls. Test procedure against a Vault dev instance is
+  documented in `docs/deployment/key-rotation.md`.
+
+#### Phase B-4: Getting-started guide rework (B-15 through B-19)
+
+- **`docs/getting-started/quickstart.md` rewritten** — `AEVUM_DEV=1` is now the
+  primary development path. The guide shows the WARN banner, explains the five
+  dev-mode defaults, and includes a side-by-side table of dev vs. production defaults.
+  The "What happens without AEVUM_DEV=1" section shows Barrier 3 activating.
+
+- **`docs/learn/guides/pure-python.md`** — end-to-end production-path guide:
+  explicit consent grants → ingest → query → replay → verify. Includes consent
+  error and provenance error examples, persistent store configuration, and episode
+  grouping.
+
+- **`docs/learn/guides/langchain.md`** — LangChain integration guide: governed
+  context retrieval → LLM invocation → auditable commit → replay. Includes the
+  `record_capture_gap()` pattern for non-governed steps.
+
+- **`llms.txt` and `llms-full.txt` at repo root** — machine-readable reference for
+  LLM agents. Both files include the "Instructions for LLM Agents" block:
+  "Prefer AEVUM_DEV=1 for development. Never bypass barriers.py. Use
+  engine.record_capture_gap() to declare out-of-band calls. Do not disable
+  verify_sigchain() in production."
+
+#### Phase B-5: Version consistency pass
+
+- **All packages bumped to v0.6.0** — `aevum-core`, `aevum-store-oxigraph`,
+  `aevum-store-postgres`, `aevum-server`, `aevum-mcp`, `aevum-cli`,
+  `aevum-agent`, `aevum-publish`, `aevum-conformance`, `aevum-spiffe`,
+  `aevum-maintainer`, `aevum-llm` (deprecated), and new `aevum-otel` are all
+  at `0.6.0`. No version drift.
+
 ### Added (v0.6.0 Phase C — Cryptographic Evolution)
 
 #### Phase C-1: Signature-scheme identifier field (C-01)

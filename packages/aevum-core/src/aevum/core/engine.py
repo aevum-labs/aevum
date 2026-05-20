@@ -38,8 +38,13 @@ from aevum.core.protocols.graph_store import GraphStore
 _logger = logging.getLogger(__name__)
 
 
-def _resolve_default_policy_engine() -> PolicyEngine:
-    """Load Cedar if available, fall back to Null with a warning."""
+def _resolve_default_policy_engine(*, dev_mode: bool = False) -> PolicyEngine:
+    """
+    Load Cedar if available (production), fall back to Null.
+    In dev mode: always return NullPolicyEngine without attempting Cedar.
+    """
+    if dev_mode:
+        return NullPolicyEngine()
     try:
         from aevum.core.policy.cedar_engine import CedarPolicyEngine
         return CedarPolicyEngine.default()
@@ -65,11 +70,23 @@ class Engine:
         ledger: AuditLedgerProtocol | None = None,
         policy_engine: PolicyEngine | None = None,
     ) -> None:
+        from aevum.core.dev_mode import (
+            DevModeConsentLedger,
+            is_dev_mode,
+            warn_dev_startup,
+        )
+        _dev = is_dev_mode()
+
         self._sigchain = sigchain or Sigchain()
         self._ledger = ledger or InMemoryLedger(self._sigchain)
-        self._consent_ledger: ConsentLedgerProtocol = consent_ledger or ConsentLedger()
+        if consent_ledger is not None:
+            self._consent_ledger: ConsentLedgerProtocol = consent_ledger
+        elif _dev:
+            self._consent_ledger = DevModeConsentLedger()
+        else:
+            self._consent_ledger = ConsentLedger()
         self._graph: GraphStore = graph_store or InMemoryGraphStore()
-        if graph_store is None:
+        if graph_store is None and not _dev:
             _logger.warning(
                 "Engine initialized with in-memory storage. "
                 "All data, the sigchain, and consent records will be lost on "
@@ -78,8 +95,10 @@ class Engine:
                 "persistent workload. "
                 "See THREAT_MODEL.md — Assumption 4."
             )
+        if _dev:
+            warn_dev_startup()
         self._policy = PolicyBridge(opa_url=opa_url)
-        self._policy_engine: PolicyEngine = policy_engine or _resolve_default_policy_engine()
+        self._policy_engine: PolicyEngine = policy_engine or _resolve_default_policy_engine(dev_mode=_dev)
         self._review_store = ReviewStore()
         self._idempotency_cache: dict[str, OutputEnvelope] = {}
 
@@ -157,6 +176,10 @@ class Engine:
         # Inject review callback for AgentComplication autonomy enforcement
         if hasattr(instance, "set_review_callback"):
             instance.set_review_callback(self.create_review)
+
+        # Inject ledger observer for telemetry complications (e.g. AevumOTelBridge)
+        if hasattr(instance, "set_event_observer"):
+            instance.set_event_observer(self._ledger)
 
         # Log to ledger
         self._ledger.append(

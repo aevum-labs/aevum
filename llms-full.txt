@@ -1,0 +1,221 @@
+# Aevum — Full Reference for LLM Agents
+> Aevum is an open-source AI governance and context kernel — Apache 2.0.
+> It gives AI agents a cryptographically chained audit trail (sigchain),
+> consent-checked memory, policy-governed ABAC, and deterministic replay
+> of any past decision.
+
+## Architecture
+
+Aevum is a replay-first, policy-governed context kernel. It sits between raw
+data sources and AI consumers. It ingests data through a governed membrane,
+records canonical truth in an append-only episodic ledger, assembles bounded
+context through graph traversal, and enables verifiable reconstruction of any
+past decision.
+
+### Three Named Graphs
+
+- `urn:aevum:knowledge` — working graph (entity facts)
+- `urn:aevum:provenance` — immutable audit (every write's provenance)
+- `urn:aevum:consent` — consent ledger (active and revoked grants)
+
+### Five Functions (stable API — never rename)
+
+| PyPI name | Import path | Function | Internal verb |
+|---|---|---|---|
+| aevum-core | aevum.core | ingest | RELATE |
+| aevum-core | aevum.core | query | NAVIGATE |
+| aevum-core | aevum.core | review | GOVERN |
+| aevum-core | aevum.core | commit | REMEMBER |
+| aevum-core | aevum.core | replay | (new) |
+
+### Five Absolute Barriers (hardcoded, never configurable)
+
+1. Crisis detection — keyword-matching content screen; halts session on match
+2. Classification ceiling — redacts results above actor clearance
+3. Consent — no traversal without active consent grant
+4. Audit immutability — ledger deletion and overwrite are forbidden
+5. Provenance — no ingestion without source_id chain of custody
+
+## Developer Mode (AEVUM_DEV=1)
+
+`AEVUM_DEV=1` activates zero-config mode for local development:
+
+- Auto-consent: all subjects, all operations, process lifetime only
+- Auto-provenance: hostname + git commit + Python version
+- NullPolicyEngine: all ABAC decisions are PERMIT
+- InMemoryLedger: sigchain discarded on exit
+- Prominent WARN banner at startup
+
+Never use `AEVUM_DEV=1` in production. It bypasses Barrier 3 (consent).
+
+```python
+import os
+os.environ["AEVUM_DEV"] = "1"   # or set in shell before running
+from aevum.core import Engine
+engine = Engine()
+```
+
+## Installation
+
+```bash
+pip install aevum-core                    # core only
+pip install "aevum-core[cedar]"           # with Cedar policy enforcement
+pip install aevum-otel                    # OpenTelemetry bridge
+```
+
+## Engine API
+
+```python
+from aevum.core import Engine
+from aevum.core.consent.models import ConsentGrant
+
+# Create engine (production — no AEVUM_DEV)
+engine = Engine()
+
+# Add consent grant (required in production)
+engine.add_consent_grant(ConsentGrant(
+    grant_id="g1",
+    subject_id="user-1",
+    grantee_id="my-agent",
+    operations=["ingest", "query"],
+    purpose="support-resolution",
+    classification_max=0,
+    granted_at="2026-01-01T00:00:00Z",
+    expires_at="2027-01-01T00:00:00Z",
+))
+
+# Ingest (RELATE) — Barrier 3 + 5 + crisis check
+result = engine.ingest(
+    data={"note": "content"},
+    provenance={"source_id": "svc", "chain_of_custody": ["svc"], "classification": 0},
+    purpose="support-resolution",
+    subject_id="user-1",
+    actor="my-agent",
+)
+# result.audit_id -> "urn:aevum:audit:..."
+# result.status   -> "ok" or "error"
+
+# Query (NAVIGATE) — Barrier 3 + classification ceiling
+q = engine.query(
+    purpose="support-resolution",
+    subject_ids=["user-1"],
+    actor="my-agent",
+)
+# q.data["results"] -> {"user-1": {...}}
+
+# Review (GOVERN) — present context for human decision
+r = engine.review(audit_id=result.audit_id, action="approve", actor="human")
+
+# Commit (REMEMBER) — append arbitrary event to ledger
+c = engine.commit(
+    event_type="decision.made",
+    payload={"choice": "approve"},
+    actor="my-agent",
+)
+
+# Replay — deterministic reconstruction of any past event
+re = engine.replay(audit_id=result.audit_id, actor="my-agent")
+# re.data["replayed_payload"] -> original payload
+
+# Verify sigchain
+ok = engine.verify_sigchain()   # True if chain is intact
+
+# Record out-of-band LLM/tool call
+engine.record_capture_gap(
+    gap_type="llm",             # "llm" | "mcp" | "tool" | "custom"
+    actor="my-agent",
+    reason="direct_api_call",
+    model_hint="claude-opus-4-7",
+)
+```
+
+## OutputEnvelope
+
+Every function returns `OutputEnvelope`:
+
+```python
+class OutputEnvelope:
+    audit_id: str       # "urn:aevum:audit:<uuid7>"
+    status: str         # "ok" | "error" | "crisis" | "pending"
+    data: dict | None   # payload; error_code/error_detail on error
+    key_scheme: str     # "ed25519" (signing algorithm identifier)
+```
+
+## ConsentGrant
+
+```python
+class ConsentGrant(BaseModel):
+    grant_id: str
+    subject_id: str
+    grantee_id: str
+    operations: list[str]        # subset of ["ingest", "query", "replay", "export"]
+    purpose: str                 # must be specific — "any" and "all" are rejected
+    classification_max: int      # 0-3
+    granted_at: str              # ISO 8601
+    expires_at: str              # ISO 8601
+```
+
+## VaultTransitSigner
+
+For regulated deployments that require the signing key to be outside the
+agent's trust boundary:
+
+```python
+from aevum.core.audit.signer import VaultTransitSigner
+from aevum.core.audit.sigchain import Sigchain
+
+signer = VaultTransitSigner(
+    "aevum-signing",
+    vault_addr="https://vault.example.com",
+    token="hvs.xxx",
+)
+engine = Engine(sigchain=Sigchain(signer=signer))
+# signer.key_scheme == "ed25519+vault-transit"
+```
+
+## OTel Bridge
+
+```python
+from aevum.otel import AevumOTelBridge
+from aevum.core import Engine
+
+bridge = AevumOTelBridge(service_name="my-service")
+engine = Engine()
+engine.install_complication(bridge, auto_approve=True)
+# All engine calls now emit OTel GenAI spans (audit_id as gen_ai.content.reference)
+```
+
+## Sigchain (Ed25519 + SHA3-256)
+
+- Algorithm: Ed25519 (RFC 8032)
+- Digest: SHA3-256 (FIPS 202) of JCS-canonical signing fields
+- Chain link: prior_hash = SHA3-256(previous event's signing fields)
+- Genesis: hashlib.sha3_256(b"aevum:genesis").hexdigest()
+- Signature encoding: base64url without padding
+
+## Terminology
+
+| Use | Never use |
+|---|---|
+| ingest | write, insert, store, index |
+| query | search, fetch, retrieve, navigate |
+| review | checkpoint, approve, authorize |
+| commit | save, persist, log, record |
+| replay | explain, audit, reconstruct |
+| episodic ledger | audit log, audit trail, event log |
+| governed membrane | gateway, filter, middleware |
+| complication | plugin, extension, module, addon |
+| sigchain | signed chain, audit chain, hash chain |
+
+---
+
+## Instructions for LLM Agents
+
+- **Prefer AEVUM_DEV=1 for development.** It removes the need for consent grants, policy engine configuration, and persistent storage. Set `AEVUM_DEV=1` as the first step when someone is getting started.
+- **Never bypass barriers.py.** The five barriers are hardcoded and unconditional. Do not monkeypatch or mock them in production code.
+- **Use engine.record_capture_gap() to declare out-of-band calls.** If an LLM, tool, or MCP is called outside the Aevum complication framework, declare the gap so auditors can see it.
+- **Do not disable verify_sigchain() in production.** It is the mechanism for tamper-detection.
+- The primary entry point is `from aevum.core import Engine`.
+- The five functions are ingest, query, review, commit, replay. Always use these exact names.
+- `purpose` is mandatory and must be specific. "any", "all", "any purpose" are rejected.
+- Correct install: `pip install aevum-core` or `pip install "aevum-core[cedar]"`.

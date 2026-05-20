@@ -18,6 +18,7 @@ members = [
     "aevum-llm",
     "aevum-maintainer",
     "aevum-mcp",
+    "aevum-otel",
     "aevum-publish",
     "aevum-server",
     "aevum-spiffe",
@@ -44,7 +45,7 @@ dev = [
 
 [[package]]
 name = "aevum-agent"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-agent" }
 dependencies = [
     { name = "aevum-core" },
@@ -68,7 +69,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "aevum-cli"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-cli" }
 dependencies = [
     { name = "aevum-core" },
@@ -104,7 +105,7 @@ provides-extras = ["conform", "dev"]
 
 [[package]]
 name = "aevum-conformance"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-conformance" }
 dependencies = [
     { name = "aevum-core" },
@@ -115,7 +116,7 @@ requires-dist = [{ name = "aevum-core", editable = "packages/aevum-core" }]
 
 [[package]]
 name = "aevum-core"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-core" }
 dependencies = [
     { name = "base58" },
@@ -235,12 +236,12 @@ provides-extras = ["cedar", "default", "server", "mcp", "a2a", "oxigraph", "post
 
 [[package]]
 name = "aevum-llm"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-llm" }
 
 [[package]]
 name = "aevum-maintainer"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-maintainer" }
 dependencies = [
     { name = "aevum-core" },
@@ -263,7 +264,7 @@ requires-dist = [
 
 [[package]]
 name = "aevum-mcp"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-mcp" }
 dependencies = [
     { name = "aevum-core" },
@@ -290,8 +291,46 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [[package]]
+name = "aevum-otel"
+version = "0.6.0"
+source = { editable = "packages/aevum-otel" }
+dependencies = [
+    { name = "aevum-core" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+otlp = [
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+]
+otlp-http = [
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aevum-core", editable = "packages/aevum-core" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.9" },
+    { name = "opentelemetry-api", specifier = ">=1.27.0" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc", marker = "extra == 'otlp'", specifier = ">=1.27.0" },
+    { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'otlp-http'", specifier = ">=1.27.0" },
+    { name = "opentelemetry-sdk", specifier = ">=1.27.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
+]
+provides-extras = ["otlp", "otlp-http", "dev"]
+
+[[package]]
 name = "aevum-publish"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-publish" }
 dependencies = [
     { name = "aevum-core" },
@@ -321,7 +360,7 @@ provides-extras = ["rekor", "dev"]
 
 [[package]]
 name = "aevum-server"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-server" }
 dependencies = [
     { name = "aevum-core" },
@@ -346,7 +385,7 @@ requires-dist = [
 
 [[package]]
 name = "aevum-spiffe"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-spiffe" }
 dependencies = [
     { name = "aevum-core" },
@@ -374,7 +413,7 @@ provides-extras = ["spiffe", "dev"]
 
 [[package]]
 name = "aevum-store-oxigraph"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-store-oxigraph" }
 dependencies = [
     { name = "aevum-core" },
@@ -389,7 +428,7 @@ requires-dist = [
 
 [[package]]
 name = "aevum-store-postgres"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "packages/aevum-store-postgres" }
 dependencies = [
     { name = "aevum-core" },
