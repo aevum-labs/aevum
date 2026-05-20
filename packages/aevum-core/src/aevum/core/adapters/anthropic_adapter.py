@@ -73,7 +73,7 @@ def record_capture_gap(reason: str = "anthropic_sdk_used_outside_adapter") -> No
 
 def _make_traceparent() -> str:
     """Generate a W3C traceparent header value (version 00)."""
-    trace_id = uuid.uuid4().hex + uuid.uuid4().hex  # 32 hex chars
+    trace_id = uuid.uuid4().hex           # 16 bytes = 32 hex chars
     parent_id = uuid.uuid4().hex[:16]               # 16 hex chars
     return f"00-{trace_id}-{parent_id}-01"
 

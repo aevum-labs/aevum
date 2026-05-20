@@ -90,7 +90,7 @@ class TestGovernanceMiddleware:
         m = cls(kernel=kernel)
         sigchain_calls: list[tuple[str, str, str]] = []
 
-        def mock_record(tool_name: str, in_hash: str, out_hash: str) -> None:
+        def mock_record(tool_name: str, in_hash: str, out_hash: str, trace_id: str = "") -> None:
             sigchain_calls.append((tool_name, in_hash, out_hash))
 
         with patch.object(m, "_evaluate_cedar", return_value=True), \

@@ -29,6 +29,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from aevum.mcp.traceparent import extract_from_meta, inject_into_meta
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,13 +69,17 @@ class AevumGovernanceMiddleware:
         )
 
     def _record_in_sigchain(
-        self, tool_name: str, input_hash: str, output_hash: str
+        self,
+        tool_name: str,
+        input_hash: str,
+        output_hash: str,
+        trace_id: str = "",
     ) -> None:
         """Record the tool call event in the sigchain (non-blocking)."""
         try:
             logger.debug(
-                "Sigchain: MCP tool_call tool=%s input=%s... output=%s...",
-                tool_name, input_hash[:8], output_hash[:8],
+                "Sigchain: MCP tool_call tool=%s input=%s... output=%s... trace=%s...",
+                tool_name, input_hash[:8], output_hash[:8], trace_id[:8],
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("Sigchain record failed for tool %s: %s", tool_name, exc)
@@ -110,9 +116,10 @@ def build_governance_middleware_class() -> type:
         ) -> Any:
             """
             Intercept every MCP tool call.
-              1. Cedar ABAC check (trifecta policy)
-              2. Execute tool (call_next)
-              3. Record in sigchain
+              1. Extract incoming _meta.traceparent (OTel SEP-414 server-side)
+              2. Cedar ABAC check (trifecta policy)
+              3. Execute tool (call_next) with outbound traceparent injected
+              4. Record in sigchain
             """
             import hashlib
             import json
@@ -120,6 +127,18 @@ def build_governance_middleware_class() -> type:
             # FastMCP 3.x: context.message is CallToolRequestParams
             tool_name = context.message.name
             tool_args: dict[str, Any] = context.message.arguments or {}
+
+            # Extract incoming traceparent from _meta (server-side, OTel SEP-414)
+            params_dict: dict[str, Any] = {}
+            if hasattr(context.message, "model_dump"):
+                params_dict = context.message.model_dump() or {}
+            incoming_tp = extract_from_meta(params_dict)
+            if incoming_tp:
+                logger.debug("MCP: received traceparent=%s...", incoming_tp[:20])
+
+            # Inject outbound traceparent into a synthetic _meta for downstream calls
+            outbound_params: dict[str, Any] = {}
+            outbound_tp = inject_into_meta(outbound_params)
 
             cedar_ctx: dict[str, Any] = {
                 "taint_reads_untrusted": False,
@@ -148,7 +167,10 @@ def build_governance_middleware_class() -> type:
                 str(result).encode("utf-8", errors="replace")
             ).hexdigest()
 
-            self._record_in_sigchain(tool_name, input_hash, output_hash)
+            self._record_in_sigchain(
+                tool_name, input_hash, output_hash,
+                trace_id=incoming_tp or outbound_tp or "",
+            )
             return result
 
     return _GovernanceMiddlewareImpl
