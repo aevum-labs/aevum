@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """Phase 2 — GOVERN checkpoint tests."""
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
 from aevum.core.cedar_engine import CedarPolicyEngine
 from aevum.core.govern import (
     DEFAULT_GOVERN_TIMEOUT_SECONDS,
+    CheckpointResult,
     GovernCheckpoint,
     GovernOutcome,
     ProposedAction,
@@ -151,6 +152,14 @@ class TestCheckpointResult:
                     "checkpoint_id", "elapsed_seconds"}
         assert required.issubset(d.keys())
 
+    def test_to_dict_contains_article14_fields(self, gov):
+        """EU AI Act Article 14 oversight fields must be present in sigchain record."""
+        result = gov.checkpoint(_irrev_action())
+        d = result.to_dict()
+        article14_fields = {"review_started_at", "review_completed_at",
+                            "checklist_acknowledged", "reviewer_id"}
+        assert article14_fields.issubset(d.keys())
+
     def test_to_dict_outcome_is_string(self, gov):
         result = gov.checkpoint(_irrev_action())
         assert isinstance(result.to_dict()["outcome"], str)
@@ -170,6 +179,153 @@ class TestCheckpointResult:
         result = gov.checkpoint(action)
         assert result.proposed_action.action_type == "charge_payment"
         assert result.proposed_action.affects == ["user:bob"]
+
+
+# ---------------------------------------------------------------------------
+# CheckpointResult defaults — no cedarpy required
+# ---------------------------------------------------------------------------
+
+class TestCheckpointResultDefaults:
+    """Article 14 field defaults on CheckpointResult (no engine needed)."""
+
+    def _make_result(self, **overrides: object) -> CheckpointResult:
+        now = datetime.now(UTC)
+        defaults: dict = dict(
+            proposed_action=_irrev_action(),
+            outcome=GovernOutcome.VETOED,
+            decided_at=now,
+            decided_by=None,
+            session_id="s",
+            checkpoint_id="c",
+            timeout_seconds=300.0,
+            elapsed_seconds=0.1,
+        )
+        defaults.update(overrides)
+        return CheckpointResult(**defaults)
+
+    def test_article14_fields_default_to_none_or_false(self):
+        result = self._make_result()
+        assert result.review_started_at is None
+        assert result.review_completed_at is None
+        assert result.checklist_acknowledged is False
+        assert result.reviewer_id is None
+
+    def test_article14_fields_can_be_set(self):
+        now = datetime.now(UTC)
+        result = self._make_result(
+            outcome=GovernOutcome.APPROVED,
+            review_started_at=now,
+            review_completed_at=now,
+            checklist_acknowledged=True,
+            reviewer_id="alice",
+        )
+        assert result.review_started_at == now
+        assert result.checklist_acknowledged is True
+        assert result.reviewer_id == "alice"
+
+    def test_to_dict_article14_none_fields_serializable(self):
+        result = self._make_result()
+        d = result.to_dict()
+        assert d["review_started_at"] is None
+        assert d["review_completed_at"] is None
+        assert d["checklist_acknowledged"] is False
+        assert d["reviewer_id"] is None
+        json.dumps(d)  # must not raise
+
+    def test_to_dict_article14_set_fields_are_iso_strings(self):
+        now = datetime.now(UTC)
+        result = self._make_result(
+            outcome=GovernOutcome.APPROVED,
+            review_started_at=now,
+            review_completed_at=now,
+            checklist_acknowledged=True,
+            reviewer_id="bob",
+        )
+        d = result.to_dict()
+        assert isinstance(d["review_started_at"], str)
+        assert isinstance(d["review_completed_at"], str)
+        datetime.fromisoformat(d["review_started_at"])  # must not raise
+        json.dumps(d)  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# EU AI Act Article 14 — human oversight recording (p3-11)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.skipif(
+    not __import__("importlib").util.find_spec("cedarpy"),
+    reason="cedarpy not installed"
+)
+class TestArticle14OversightFields:
+    """p3-11: GOVERN checkpoint records dwell time and acknowledgment for Article 14."""
+
+    def test_auto_approved_has_no_review_timestamps(self, engine):
+        """Cedar-automatic-permit: no human was involved, timestamps are None."""
+        gov = GovernCheckpoint(engine, "sess", review_callback=None)
+        result = gov.checkpoint(_rev_action())  # reversible — auto-approved by Cedar
+        assert result.review_started_at is None
+        assert result.review_completed_at is None
+        assert result.checklist_acknowledged is False
+        assert result.reviewer_id is None
+
+    def test_human_approved_has_review_timestamps(self, engine):
+        """Human-approved checkpoint records when review started and completed."""
+        gov = GovernCheckpoint(engine, "sess", review_callback=lambda a: True)
+        result = gov.checkpoint(_irrev_action())
+        assert result.review_started_at is not None
+        assert result.review_completed_at is not None
+        assert isinstance(result.review_started_at, datetime)
+        assert isinstance(result.review_completed_at, datetime)
+        assert result.review_completed_at >= result.review_started_at
+
+    def test_human_approved_sets_checklist_acknowledged(self, engine):
+        """Human approval implies checklist acknowledgment."""
+        gov = GovernCheckpoint(engine, "sess", review_callback=lambda a: True)
+        result = gov.checkpoint(_irrev_action())
+        assert result.checklist_acknowledged is True
+        assert result.reviewer_id is not None
+
+    def test_veto_as_default_has_no_checklist_acknowledgment(self, engine):
+        """No callback: veto-as-default, no human acknowledgment recorded."""
+        gov = GovernCheckpoint(engine, "sess", review_callback=None)
+        result = gov.checkpoint(_irrev_action())
+        assert result.checklist_acknowledged is False
+        assert result.reviewer_id is None
+
+    def test_human_vetoed_has_review_timestamps_no_acknowledgment(self, engine):
+        """Human explicitly vetoed: timestamps recorded, checklist_acknowledged=False."""
+        gov = GovernCheckpoint(engine, "sess", review_callback=lambda a: False)
+        result = gov.checkpoint(_irrev_action())
+        assert result.review_started_at is not None
+        assert result.checklist_acknowledged is False
+        assert result.reviewer_id is None
+
+    def test_article14_fields_in_to_dict(self, engine):
+        """All Article 14 fields appear in the sigchain dict (even when None)."""
+        gov = GovernCheckpoint(engine, "sess", review_callback=lambda a: True)
+        result = gov.checkpoint(_irrev_action())
+        d = result.to_dict()
+        assert "review_started_at" in d
+        assert "review_completed_at" in d
+        assert "checklist_acknowledged" in d
+        assert "reviewer_id" in d
+
+    def test_article14_timestamps_are_iso_strings_in_to_dict(self, engine):
+        """Timestamps are ISO-format strings (or None) in sigchain dict."""
+        gov = GovernCheckpoint(engine, "sess", review_callback=lambda a: True)
+        result = gov.checkpoint(_irrev_action())
+        d = result.to_dict()
+        assert isinstance(d["review_started_at"], str)
+        assert isinstance(d["review_completed_at"], str)
+        # Validate ISO format — must not raise
+        datetime.fromisoformat(d["review_started_at"])
+        datetime.fromisoformat(d["review_completed_at"])
+
+    def test_to_dict_is_json_serializable_with_article14_fields(self, engine):
+        """Full sigchain record including Article 14 fields must be JSON-serializable."""
+        gov = GovernCheckpoint(engine, "sess", review_callback=lambda a: True)
+        result = gov.checkpoint(_irrev_action())
+        json.dumps(result.to_dict())  # must not raise
 
 
 # ---------------------------------------------------------------------------

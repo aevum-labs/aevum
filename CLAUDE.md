@@ -162,3 +162,42 @@ Hybrid Cedar + OPA — both optional, both externalised:
 
 PolicyEngine Protocol lives at aevum.core.policy.PolicyEngine.
 Any object implementing is_permitted(**kwargs) -> bool is a valid engine.
+
+---
+
+## Standing Rules — v0.6.0 Additions (S-11 through S-15)
+
+These rules were established during v0.6.0 development. They complement the
+existing rules (R1–R9) in the maintenance templates.
+
+**S-11 — Dev mode is isolated from production**
+`AEVUM_DEV=1` enables permissive dev behaviour (DevModeConsentLedger, dev
+provenance). It must never be set in production deployments. Dev mode bypasses
+policy engines but never bypasses crisis barriers (barriers.py). Tests that rely
+on dev mode must set/unset the env var in the test body and must not leak it.
+
+**S-12 — Sigchain fields are additive only**
+No field in `CheckpointResult.to_dict()`, `SessionRecord.to_dict()`, or any
+other sigchain-emitting method may be renamed or removed once it has appeared in
+a tagged release. New fields may be added with defaults. This invariant preserves
+replay fidelity across versions.
+
+**S-13 — No hardcoded Rekor URLs**
+All Rekor transparency-log endpoints must be resolved from the `AEVUM_REKOR_URL`
+environment variable or explicit constructor argument. The CI lint job enforces
+this (grep for `rekor.sigstore.dev` in Python source). Never hardcode
+`rekor.sigstore.dev` or any other transparency-log URL.
+
+**S-14 — OTel bridge defaults to privacy-preserving**
+`AevumOTelBridge` must emit only `audit_id` by default. Content capture
+(prompts, completions, tool arguments) requires explicit opt-in via
+`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`. This default must
+not be changed without a formal RFC.
+
+**S-15 — Automation bias warning at every substantive GOVERN checkpoint**
+`AUTOMATION_BIAS_WARNING` (defined in `aevum.core.govern`) must be logged at
+every GOVERN checkpoint where the action is irreversible or consequential.
+It must never be suppressed, made optional, or moved behind a feature flag.
+The ICLR 2025 finding (84.30% mixed-attack success; humans correct ~50% under
+automation bias) is the justification — this warning is the friction that makes
+independent review happen.

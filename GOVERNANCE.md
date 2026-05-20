@@ -65,6 +65,38 @@ release artifacts — the packages, compliance documentation, conformance suite,
 and signed releases published to PyPI. The internal development pipeline is not
 part of the open-source project and is not subject to the governance terms above.
 
+## Reviewer Rotation Policy — p3-12
+
+Aevum is currently maintained by a single person. The following self-review
+policy applies until a second active maintainer is added.
+
+### Self-review policy (solo project)
+
+**L-scope changes** (large: new packages, major architectural changes, new public
+API surface, new external dependencies, changes to barriers.py or the sigchain
+format) require a minimum 24-hour waiting period between committing and merging.
+This waiting period exists to allow independent re-evaluation with fresh eyes and
+to reduce automation bias — the risk that an AI-assisted change is approved
+immediately without genuine human review.
+
+**S-scope and M-scope changes** (small and medium) have no mandatory waiting
+period but must still pass the structured briefing checklist in the PR template.
+
+**What counts as L-scope:**
+- Any change to `barriers.py` (unconditional barriers)
+- Any change to the sigchain format (new mandatory fields, field removals)
+- Any new PyPI package or new external dependency
+- Any change to the five public function signatures
+- Any change to Cedar policy files that adds or removes a Barrier
+- Any new named graph URI
+
+**Enforcement:** This policy is documented, not code-enforced. Solo project
+means trust is self-imposed. Record compliance in the PR description under
+Lineage ("L-scope: 24h wait observed — committed YYYY-MM-DD, merging YYYY-MM-DD").
+
+**When a second maintainer joins:** Replace this section with a two-reviewer
+policy and remove the 24h waiting period requirement.
+
 ## Amendments
 
 This document may be amended by pull request with approval from all active
