@@ -683,6 +683,22 @@ The `barrier.webhook_failed` event carries `webhook_id`, `original_event_type`,
 and `attempts` in its payload — giving auditors visibility into delivery
 failures without requiring external monitoring.
 
+## Reference architecture: multi-agent causal tracing
+
+The `cross_chain_ref` design described in ADR-008 represents a novel and
+publishable reference architecture for forensically sound multi-agent audit
+trails. The design combines three independently useful primitives: W3C Trace
+Context (`traceparent`) for distributed episode correlation across agent
+boundaries; per-agent Ed25519-signed sigchains for tamper-evident individual
+audit trails; and `cross_chain_ref` payload fields carrying the
+`SHA3-256(signing_fields)` hash of the referenced event, enabling a verifier
+to cryptographically confirm cross-chain causal links without trusting the
+reference string. This approach is A2A-compatible, backward-compatible with
+single-agent deployments, and requires no shared signing key or shared ledger
+between agents. The combination is suitable for publication as a conference
+paper or practitioner reference at a systems security venue. See ADR-008 for
+the full design and KNOWN_UNKNOWNS.md (E-07-PUB) for the publication flag.
+
 ## What Aevum does not do
 
 Being precise about scope is a trust signal, not a weakness. Aevum is

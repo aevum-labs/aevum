@@ -11,6 +11,48 @@ new deferral decisions are made. Resolved entries move to CHANGELOG.md.
 
 ---
 
+## G-25: Cedar vs. OPA Policy Role Separation (RESOLVED — Phase E)
+
+**Item:** G-25 — resolved in Phase E, spec/09-policy.md
+
+**Question:** Are Cedar and OPA competing policy engines, or do they serve
+different purposes in Aevum's policy architecture?
+
+**Resolution:** Cedar and OPA are complementary and non-competing.
+Cedar handles entity-based access control decisions in-process (can this
+principal perform this action on this resource?). OPA handles content-based
+policy via HTTP sidecar (does this payload satisfy HIPAA minimum-necessary,
+GDPR purpose limitation, or custom operator rules?). Cedar's formal
+authorization semantics are not suitable for arbitrary payload inspection;
+OPA's Rego cannot natively model principal-resource entity graphs. A
+Cedar-only deployment is fully supported and covers all five unconditional
+barriers and all ABAC decisions. OPA is optional and additive.
+
+**Documented in:** `docs/spec/09-policy.md` — Cedar + OPA decision architecture.
+
+---
+
+## E-07-PUB: ADR-008 cross_chain_ref Reference Architecture Publication (Deferred)
+
+**Item:** E-07-PUB — flagged in Phase E for future publication
+
+**Question:** Should the `cross_chain_ref` design from ADR-008 (W3C Trace
+Context + cryptographic cross-chain causal linking) be published as a
+reference architecture at a conference or in a blog post?
+
+**Why deferred:** The design is architecturally mature and novel, but no
+external publication has been drafted. Publishing requires editorial review,
+coordination with the Aevum Labs communications plan, and a determination of
+the target venue (USENIX Security, IEEE S&P, SOSP, or practitioner blog).
+
+**Condition for revisitation:** When v0.7.0 ships and includes multi-agent
+A2A integration (Phase 6), the design will have production validation.
+At that point, a draft should be written for a practitioner venue.
+
+**Related:** ADR-008, docs/learn/architecture.md (reference architecture note)
+
+---
+
 ## D-17: Six-Barrier Resource Ceiling (Deferred)
 
 **Item:** D-17 — Deferred to KNOWN_UNKNOWNS.md only (no build task)

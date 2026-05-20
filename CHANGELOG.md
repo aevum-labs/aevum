@@ -8,6 +8,81 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added (v0.6.0 Phase E — Spec Progression and Conformance)
+
+#### Phase E-1: Conformance suite extension (E-01 through E-03)
+
+- **Layer 3 — AEVUM_DEV=1 conformance** (`test_dev_mode_conformance.py`) —
+  18 new conformance tests verify the `is_dev_mode()` contract (True iff
+  `AEVUM_DEV="1"` exactly), `DevModeConsentLedger` unconditional permissiveness,
+  and `build_dev_provenance()` secret-exclusion contract.
+
+- **Layer 4 — AevumOTelBridge conformance** (`test_otel_bridge_conformance.py`) —
+  14 new conformance tests verify the complication manifest contract, privacy
+  default (only `audit_id` emitted without opt-in), opt-in content capture
+  (`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`), and
+  `latency_p99_ms()` contract. Skipped gracefully if opentelemetry-sdk is
+  not installed.
+
+- **Layer 5 — VaultTransitSigner conformance** (`test_vault_transit_conformance.py`) —
+  10 new conformance tests verify `key_scheme = "ed25519+vault-transit"`,
+  `provenance = "vault-transit"`, and `key_id` format stability. No live
+  Vault instance required.
+
+- **Conformance suite total:** 74 tests (up from 32). All passing.
+
+#### Phase E-2: OPA vs. Cedar resolution (E-04)
+
+- **`docs/spec/09-policy.md`** — New policy architecture specification resolves
+  G-25 finding: Cedar handles entity-based ABAC in-process; OPA handles
+  content-based policy via HTTP sidecar. Explains interaction order (barriers
+  → Cedar → OPA), the `PolicyEngine` protocol, and why neither engine replaces
+  the other.
+
+- **KNOWN_UNKNOWNS.md** — G-25 marked resolved with pointer to `docs/spec/09-policy.md`.
+
+#### Phase E-3: Streaming API formal decision (E-05)
+
+- **NON-GOALS.md** — Added one sentence to the streaming message broker entry
+  making the streaming API non-goal explicit and normative: "Aevum will not
+  add a streaming API — this boundary is normative and enforced by the RFC process."
+
+#### Phase E-4: GDPR tombstoning formalization (E-06)
+
+- **`docs/compliance/gdpr-article-17.md`** — New "Formal Tombstoning Procedure"
+  section formalizes the tombstone concept: sigchain entries are retained
+  (chain integrity maintained), PII payload is deleted off-chain, DEK is
+  crypto-shredded. Includes normative procedure steps, a `GDPR.erasure.complete`
+  commit pattern, `ConsentLedger.shred()` integration, and a warning that
+  sigchain entries must not be deleted.
+
+#### Phase E-5: OWASP Agentic Top 10 update (E-07)
+
+- **`docs/owasp_crosswalk.md`** — Updated to reference the OWASP GenAI Security
+  Project Agentic AI Top 10 (published 2025-12-09). Added v0.6.0 capability notes:
+  - ASI05: AevumOTelBridge emits OTel spans for real-time cascading failure detection
+  - ASI08: `key_scheme` field in wire format makes signing algorithm auditable
+  - ASI10: AevumOTelBridge makes agent spawn events visible via OTel spans
+
+#### Phase E-6: EU AI Act Article 12 clause-by-clause mapping (E-10)
+
+- **`docs/compliance/article12.md`** — Replaced stub with full clause-by-clause
+  mapping of Article 12(1), 12(2)(a)–(d), and 12(3) to Aevum primitives.
+  Includes honest limitations: `InProcessSigner` satisfies tamper-detection
+  but NOT tamper-prevention; external signer (VaultTransitSigner, KMS) required
+  for regulated deployments. `AEVUM_REKOR_URL` required for third-party
+  timestamped tamper evidence. Minimum production deployment checklist included.
+
+#### Phase E-7: ADR-008 reference architecture note (E-08)
+
+- **`docs/learn/architecture.md`** — Added reference architecture paragraph
+  describing the `cross_chain_ref` design (ADR-008) as a publishable
+  systems security reference architecture combining W3C Trace Context,
+  per-agent sigchains, and cryptographic cross-chain causal links.
+
+- **KNOWN_UNKNOWNS.md** — E-07-PUB entry added: flags `cross_chain_ref`
+  design for publication consideration when v0.7.0 A2A integration ships.
+
 ### Added (v0.6.0 Phase B — Developer Experience)
 
 #### Phase B-1: Zero-config developer mode (B-01 through B-07)
