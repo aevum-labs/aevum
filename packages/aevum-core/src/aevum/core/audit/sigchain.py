@@ -141,7 +141,7 @@ class Sigchain:
             "episode_id": ep_id,
             "sequence": self._sequence,
             "event_type": event_type,
-            "schema_version": "1.0",
+            "schema_version": "1.1",
             "valid_from": vf,
             "valid_to": valid_to,
             "system_time": ts,
@@ -153,6 +153,7 @@ class Sigchain:
             "payload_hash": payload_hash,
             "prior_hash": prior,
             "signer_key_id": self._signer.key_id,
+            "key_scheme": "ed25519",
         }
         canonical = json.dumps(signing_fields, sort_keys=True, separators=(",", ":")).encode()
         signature = base64.urlsafe_b64encode(
@@ -193,7 +194,7 @@ class Sigchain:
             episode_id=ep_id,
             sequence=self._sequence,
             event_type=event_type,
-            schema_version="1.0",
+            schema_version="1.1",
             valid_from=vf,
             valid_to=valid_to,
             system_time=ts,
@@ -213,6 +214,7 @@ class Sigchain:
             mldsa65_pub=mldsa65_pub_hex,
             tsa_url=tsa_url,
             tsa_token=tsa_token_hex,
+            key_scheme="ed25519",
         )
         self._prior_hash = AuditEvent.hash_event_for_chain(event)
         return event
@@ -247,6 +249,10 @@ class Sigchain:
                 "prior_hash": event.prior_hash,
                 "signer_key_id": event.signer_key_id,
             }
+            # schema_version "1.1" includes key_scheme in the signed fields.
+            # Pre-1.1 entries were signed without it — omit to preserve backwards compat.
+            if event.schema_version != "1.0":
+                signing_fields["key_scheme"] = event.key_scheme
             canonical = json.dumps(
                 signing_fields, sort_keys=True, separators=(",", ":")
             ).encode()

@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS aevum_ledger (
     signature       TEXT NOT NULL,
     signer_key_id   TEXT NOT NULL,
     schema_version  TEXT NOT NULL DEFAULT '1.0',
+    key_scheme      TEXT NOT NULL DEFAULT 'ed25519',
     valid_from      TEXT NOT NULL,
     valid_to        TEXT,
     trace_id        TEXT,
@@ -68,6 +69,7 @@ def _event_to_row(event: AuditEvent) -> dict[str, Any]:
         "signature": event.signature,
         "signer_key_id": event.signer_key_id,
         "schema_version": event.schema_version,
+        "key_scheme": event.key_scheme,
         "valid_from": event.valid_from,
         "valid_to": event.valid_to,
         "trace_id": event.trace_id,
@@ -99,6 +101,7 @@ def _row_to_event(row: dict[str, Any]) -> AuditEvent:
         prior_hash=row["prior_hash"],
         signature=row["signature"],
         signer_key_id=row["signer_key_id"],
+        key_scheme=row.get("key_scheme", "ed25519"),
     )
 
 
@@ -142,7 +145,7 @@ class PostgresLedger:
                            event_type, actor, system_time,
                            episode_id, causation_id, correlation_id,
                            prior_hash, payload_hash, signature,
-                           signer_key_id, schema_version,
+                           signer_key_id, schema_version, key_scheme,
                            valid_from, valid_to,
                            trace_id, span_id, payload
                     FROM aevum_ledger
@@ -205,15 +208,15 @@ class PostgresLedger:
                             event_id, audit_id, event_type, actor, system_time,
                             episode_id, causation_id, correlation_id,
                             prior_hash, payload_hash, signature, signer_key_id,
-                            schema_version, valid_from, valid_to,
+                            schema_version, key_scheme, valid_from, valid_to,
                             trace_id, span_id, payload
                         ) VALUES (
                             %(event_id)s, %(audit_id)s, %(event_type)s, %(actor)s,
                             %(system_time)s, %(episode_id)s, %(causation_id)s,
                             %(correlation_id)s, %(prior_hash)s, %(payload_hash)s,
                             %(signature)s, %(signer_key_id)s, %(schema_version)s,
-                            %(valid_from)s, %(valid_to)s, %(trace_id)s,
-                            %(span_id)s, %(payload)s::jsonb
+                            %(key_scheme)s, %(valid_from)s, %(valid_to)s,
+                            %(trace_id)s, %(span_id)s, %(payload)s::jsonb
                         )
                         """,
                         row,

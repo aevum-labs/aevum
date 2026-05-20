@@ -8,6 +8,73 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added (v0.6.0 Phase C — Cryptographic Evolution)
+
+#### Phase C-1: Signature-Scheme Identifier Field (C-01)
+
+- **`key_scheme` field on all new sigchain envelopes** — Every `AuditEvent`
+  produced by `Sigchain.new_event()` now carries a `key_scheme` field
+  (schema_version "1.1"). Current value: `"ed25519"`. Future value:
+  `"ed25519+ml-dsa-65"` (hybrid post-quantum, when enabled). The field is
+  included in both the signed fields and the chain hash, binding the declared
+  algorithm to the chain entry.
+
+- **`AuditEvent.key_scheme` dataclass field** — Added to
+  `aevum.core.audit.event.AuditEvent` with default `"ed25519"`. Absent on
+  pre-Phase-C entries; treated as `"ed25519"` for backwards compatibility.
+
+- **`schema_version` bumped to "1.1"** — New events produced by
+  `Sigchain.new_event()` carry `schema_version="1.1"`. Pre-existing chains
+  with `schema_version="1.0"` entries continue to verify correctly —
+  `verify_chain()` omits `key_scheme` from the signing-field reconstruction
+  for 1.0 entries, preserving the original signed digest.
+
+- **`hash_event_for_chain()` version-aware** — For schema_version "1.1"
+  entries, `key_scheme` is included in the chain hash, binding the algorithm
+  identifier to `prior_hash` chaining. Tampering `key_scheme` on a 1.1 entry
+  breaks the chain. Pre-1.1 entries use the original 16-field hash for full
+  backwards compatibility.
+
+- **Backwards compatibility verified** — `verify_chain()` accepts mixed chains
+  (1.0 entries followed by 1.1 entries). Existing chain entries remain valid
+  without re-signing.
+
+- **`PostgresLedger` updated** — `key_scheme` column added to DDL
+  (`TEXT NOT NULL DEFAULT 'ed25519'`), persisted on write, and read with
+  graceful default on legacy rows. (`aevum.store.postgres`)
+
+- **Layer 1 Wire Format conformance tests** — New test module
+  `packages/aevum-conformance/tests/test_layer1_wire_format.py` asserts:
+  - `key_scheme` present on all new envelopes.
+  - `key_scheme` value is a declared identifier.
+  - Tampering `key_scheme` breaks the chain hash (1.1 entries).
+  - Pre-Phase-C (1.0) envelopes verify correctly.
+  - Mixed-version chains verify end-to-end.
+
+#### Phase C-2: Key Rotation Documentation (C-07)
+
+- **`docs/deployment/key-rotation.md`** — Published planned and emergency key
+  rotation procedures for external signers (VaultTransitSigner / KMS):
+  - Planned rotation: chain-tail capture (continuity proof), Vault key version
+    rotation, Sigchain resume, `key.rotated` audit event, cross-boundary
+    `verify_chain()`, old-key archival.
+  - Emergency rotation: compromise boundary identification, immediate key
+    disable in Vault, `security.incident` commit, chain resume from last
+    trusted event, Rekor anchoring after rotation.
+  - InProcessSigner limitations documented (historical verification requires
+    external key storage).
+
+#### Phase C-3: VaultTransitSigner Status (C-09)
+
+- **VaultTransitSigner status documented** — Status section added to
+  `docs/deployment/key-rotation.md`. Finding: `VaultTransitSigner` is specified
+  in `docs/spec/aevum-signing-v1.md` (prehashed=true, SHA3-256 digest) and
+  `adr-004-signer-interface.md` but has **no Python implementation** in
+  aevum-core. A reference implementation is planned for aevum-sdk. Vault version
+  last tested against: **N/A — not yet implemented**. Rotation procedures are
+  correct by construction from the Vault Transit v1.17 API and the Aevum signing
+  spec, but have not been exercised against a live Vault server.
+
 ### Added (v0.6.0 Phase D — Trust Infrastructure)
 
 #### Phase D-1: Rekor v2 Migration (D-08 through D-13)

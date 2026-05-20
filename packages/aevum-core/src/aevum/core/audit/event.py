@@ -43,6 +43,11 @@ class AuditEvent:
     # Crypto-agility: informational scheme label; verify_sigchain() treats all as Ed25519 until
     # hybrid signing is enabled. Future value: "Ed25519+ML-DSA".
     signature_scheme: str = "Ed25519"
+    # Wire-format algorithm identifier. Verifier reads this to select the verification path.
+    # "ed25519" — current default (Ed25519 only).
+    # "ed25519+ml-dsa-65" — future hybrid (requires both Ed25519 AND ML-DSA-65 dual-sig).
+    # Absent on pre-Phase-C envelopes; treated as "ed25519" for backwards compatibility.
+    key_scheme: str = "ed25519"
 
     def __post_init__(self) -> None:
         if not self.actor:
@@ -81,6 +86,11 @@ class AuditEvent:
             "prior_hash": event.prior_hash,
             "signer_key_id": event.signer_key_id,
         }
+        # schema_version "1.1" adds key_scheme to the chain hash, binding
+        # the algorithm identifier to the entry. Pre-1.1 entries omit it for
+        # backwards compatibility (existing chains remain valid).
+        if event.schema_version != "1.0":
+            fields["key_scheme"] = event.key_scheme
         canonical = json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha3_256(canonical).hexdigest()
 
