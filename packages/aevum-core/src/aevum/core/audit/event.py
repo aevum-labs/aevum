@@ -43,6 +43,10 @@ class AuditEvent:
     # Crypto-agility: informational scheme label; verify_sigchain() treats all as Ed25519 until
     # hybrid signing is enabled. Future value: "Ed25519+ML-DSA".
     signature_scheme: str = "Ed25519"
+    # Phase C-1: algorithm selector read by verify_chain to dispatch to the correct verifier.
+    # Valid values: "ed25519" (current default) | "ed25519+ml-dsa-65" (future hybrid).
+    # Envelopes without this field (written before Phase C) are treated as "ed25519".
+    key_scheme: str = "ed25519"
 
     def __post_init__(self) -> None:
         if not self.actor:
