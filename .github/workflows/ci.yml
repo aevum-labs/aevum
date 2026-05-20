@@ -24,6 +24,17 @@ jobs:
         run: uv sync --frozen
       - name: Run ruff
         run: uv run ruff check .
+      - name: No hardcoded Rekor URLs (D-08)
+        # Fail if any Python source file contains a hardcoded rekor.sigstore.dev URL.
+        # All Rekor URLs must come from AEVUM_REKOR_URL env var or explicit config.
+        # Self-hosted Rekor setup: docs/deployment/rekor-self-hosted.md
+        run: |
+          if grep -r "rekor\.sigstore\.dev" packages/ --include="*.py" -l; then
+            echo "ERROR: Hardcoded rekor.sigstore.dev URL found in Python source."
+            echo "Remove it and use AEVUM_REKOR_URL env var instead."
+            exit 1
+          fi
+          echo "OK: No hardcoded Rekor URLs in Python source."
 
   typecheck:
     name: Type check (mypy)

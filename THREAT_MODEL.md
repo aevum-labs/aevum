@@ -312,3 +312,287 @@ of what the agent would have done if run again today.
 - Run `engine.verify_sigchain()` on a scheduled basis, not only on-demand
 - Alert on sigchain verification failures
 - Restrict direct database write access to the ledger tables
+
+---
+
+## InProcessSigner Tamper-Detection Window (D-01)
+
+The default `InProcessSigner` holds the Ed25519 private key in the agent
+process's heap memory.
+
+**What it does:** Signs each AuditEvent as it is appended to the ledger,
+producing a hash-chained, signed sequence that is tamper-evident via
+`engine.verify_sigchain()`.
+
+**What it does not do:**
+
+- It does not prevent an attacker who has achieved code execution inside
+  the process from reading the private key directly from memory and forging
+  backdated entries.
+- It does not detect tampering that occurs *and is concealed* before
+  `verify_sigchain()` is next called.
+
+**Exact tamper-detection window:** The window between two successive calls
+to `engine.verify_sigchain()`. Any modification that is applied and repaired
+(including chain reconstruction with a stolen key) within this window will
+not be detected. The window is operator-controlled — you set the schedule
+for `verify_sigchain()` calls.
+
+**Exact mitigation:**
+
+- Move the signing key out of process memory. Use `VaultTransitSigner`
+  (HashiCorp Vault Transit) or `PKCS11Signer` (HSM/hardware key). With an
+  external signer, the private key is never resident in the agent process,
+  so process compromise cannot yield the key.
+- Anchor the chain root to an external transparency log (via `aevum-publish`)
+  at a frequency shorter than your acceptable tamper window. A Rekor checkpoint
+  creates an external, publicly-verifiable record that the chain root existed
+  at a specific time. An attacker who modifies history must also forge the
+  external record, which is computationally infeasible.
+- Recommended Rekor checkpoint frequency: every 100 events or 5 minutes,
+  whichever comes first (`every_n_events=100, every_seconds=300` — the
+  `aevum-publish` default). For regulated deployments with strict audit
+  requirements, reduce to every 10 events or 60 seconds.
+
+**Summary:** `InProcessSigner` is tamper-**evident**, not tamper-**proof**.
+For regulated workloads, use an external signer and external anchoring.
+
+---
+
+## Crisis Barrier Evasion Techniques (D-02)
+
+Barrier 1 (Crisis) uses keyword pattern matching against a fixed vocabulary.
+This design is intentional — deterministic, auditable, zero false-negatives for
+exact matches — but leaves documented evasion surfaces.
+
+**Chunking:** An attacker can split crisis phrases across multiple `ingest()`
+calls. `"i want to"` followed by `"kill myself"` in a second call will trigger
+on the second call, but not on the first. The first call is not re-evaluated
+when the second arrives.
+
+*Mitigation:* Applications serving users where crisis detection is safety-critical
+should maintain session context and evaluate concatenated content across recent
+calls, not individual calls in isolation.
+
+**Elliptical phrasing:** The crisis keyword set covers explicit, literal phrases
+("want to die", "harm myself"). Elliptical or clinically coded language ("I
+don't think I'll be around much longer", "I've made my arrangements") is not
+covered. False-negative rates against natural-language crisis expression are not
+benchmarked.
+
+*Mitigation:* Do not rely on Barrier 1 as the sole safety gate for
+mental-health, crisis, or vulnerable-population applications. Complement with
+clinical-grade tooling that uses semantic understanding rather than keyword
+matching. See "Crisis Detection Limitations" (above).
+
+**Cultural and linguistic variation:** The current crisis vocabulary is
+English-only and reflects US-centric crisis expression. Other languages, dialects,
+and cultural idioms for distress are not covered.
+
+*Mitigation:* For non-English deployments or multilingual user populations,
+implement application-layer crisis screening with a multilingual model before
+calling `ingest()`.
+
+**What is not a mitigation:** Expanding the keyword set. Adding more keywords
+increases false-positive rates without closing the evasion surface for
+paraphrase. Pattern matching is a first-line screen; it is not a semantic
+safety system.
+
+---
+
+## record_capture_gap() Ordering Limitation (D-03)
+
+`engine.record_capture_gap()` writes a `capture.gap` AuditEvent to the sigchain
+declaring that an out-of-band call (LLM, tool, MCP) was made outside the
+complication framework.
+
+**Ordering limitation:** The gap event is written *after* the out-of-band call
+completes, not before. This means the sigchain records the gap retroactively
+rather than as a predictive declaration.
+
+**Practical consequence:** If the process crashes, is killed, or is interrupted
+between the out-of-band call and the `record_capture_gap()` invocation, no gap
+event is written. An auditor reviewing the sigchain would see no record of the
+call. This is a forensic gap, not a security boundary violation — the barriers
+are not affected.
+
+**What the auditor sees in the retroactive case:** A gap event with a timestamp
+after the call, with the interval between the prior sigchain event and the gap
+event representing the unobserved window. The timestamp is the signing time of
+the gap event, not the actual call time.
+
+**What the auditor cannot determine:** The exact content of the LLM request or
+response, the model called, or the latency of the call — unless `extra=` is
+populated by the caller.
+
+*Mitigation:* Write the gap event *before* making the out-of-band call where
+possible (declare intent, then execute). Pass `model_hint`, `reason`, and
+`extra` to provide maximum forensic context. For higher-assurance forensics,
+use the appropriate complication (e.g., `AevumAnthropicAdapter`) rather than
+`record_capture_gap()`.
+
+See also: `docs/reference/five-functions.md` — record_capture_gap ordering note.
+
+---
+
+## OR-Set Consent Race Conditions (D-04)
+
+*(Extends "Consent Revocation Semantic" above.)*
+
+The consent ledger uses an OR-Set CRDT. The full race condition taxonomy:
+
+**Case 1 — Concurrent add/revoke on separate nodes.** If a grant-add and a
+grant-revoke for the same `grant_id` are applied simultaneously on two separate
+Engine instances, the add wins on merge. This is the correct behavior for
+eventually-consistent systems designed around availability, but is incorrect for
+access-control systems where revoke must win.
+
+**Case 2 — Revoke followed by re-add within the replication window.** If a
+grant is revoked on node A, and a new grant with the same `grant_id` is created
+on node B before the revoke has propagated, the new grant survives on merge.
+From the auditor's perspective, it appears the grant was never revoked.
+
+**Case 3 — Clock skew.** If two nodes have system clocks more than a few
+seconds apart, the ordering of concurrent add/revoke pairs may differ between
+nodes, leading to inconsistent merge outcomes.
+
+**Consequence of Case 1 and Case 2:** An actor whose access was intended to be
+revoked may retain access on nodes that have not yet received the revoke.
+
+**Mitigation for distributed deployments:**
+
+- Designate a single authoritative consent node. Route all consent mutations
+  (add and revoke) through this node. Read replicas serve grant checks but never
+  accept mutations.
+- Use monotonically increasing `grant_id` values so that re-adds always have a
+  higher ID than prior revokes, making the intent unambiguous in the merge
+  history.
+- Implement a quorum-read on consent checks in high-stakes paths: require a
+  majority of nodes to confirm the grant before permitting the operation.
+- A revoke-wins merge strategy is on the roadmap.
+
+**Single-node deployments:** No race condition exists. Revocation is immediate
+and permanent.
+
+---
+
+## Direct Storage Access Bypassing Barriers (D-05)
+
+Aevum's unconditional barriers are enforced in the kernel code path (in
+`aevum.core.engine`). They are not OS-level sandboxing or database-level
+constraints.
+
+**Attack surface:** Any actor with direct read/write access to the storage
+backend (SQLite file, Oxigraph store, PostgreSQL database) can read, modify,
+or delete data without passing through the kernel. The barriers will not fire
+because the kernel is not involved.
+
+**Specific bypass vectors:**
+
+- A DBA with `psql` access can `DELETE` rows from the ledger table. This breaks
+  the hash chain (detectable by `verify_sigchain()`), but only if verification
+  is performed after the deletion.
+- A process with file-system access to an Oxigraph store can open and modify
+  the underlying files directly.
+- An attacker who obtains the SQLite file (in-memory mode writes to a temp path;
+  Oxigraph writes to disk) can manipulate it offline.
+- A compromised signing key combined with direct storage access enables
+  undetectable history rewriting (see Assumption 1, Assumption 2 above).
+
+**What the sigchain provides against this threat:** Tamper *evidence*, not
+tamper *prevention*. Any storage modification that is not followed by chain
+reconstruction breaks `verify_sigchain()`. Modification followed by chain
+reconstruction using the signing key is undetectable by the sigchain alone.
+
+**Mitigations:**
+
+- Restrict PostgreSQL write access to ledger tables using row-level security
+  (RLS). Grant the Aevum application role INSERT-only on ledger tables; no
+  UPDATE or DELETE.
+- Anchor the chain to an external transparency log (`aevum-publish`). External
+  anchoring creates a checkpoint that an attacker must also forge to conceal a
+  storage modification.
+- Enable PostgreSQL WAL archiving and point-in-time recovery. This provides an
+  independent record of the storage state that cannot be modified retroactively.
+- For Oxigraph deployments, store the data directory on a write-once filesystem
+  or use filesystem-level integrity monitoring (e.g., AIDE, Tripwire).
+- Run `engine.verify_sigchain()` on a scheduled basis (not only on-demand) and
+  alert on failure.
+
+---
+
+## aevum-maintainer Self-Governance Attack Surface (D-06)
+
+`aevum-maintainer` provides the self-governance layer: it allows Aevum's own
+principles and policies to be reviewed, approved, and committed back to the
+sigchain. This creates a recursive trust surface.
+
+**Specific risks:**
+
+**Principles tampering:** The signed principles file (`signed_principles.yaml`)
+is verified at boot against the Ed25519 public key in `principles.yaml`. An
+attacker who can modify both the principles file and the verification key (or
+who compromises the signing key) can introduce malicious principles that appear
+legitimate. The verification is only as strong as the key custody.
+
+**Approval key concentration:** The break-glass escalation path in
+`aevum-maintainer` allows a single authoritative reviewer to approve any action.
+If that reviewer's credentials are compromised, an attacker can approve
+arbitrary policy changes. There is no multi-party approval requirement.
+
+**Self-referential policy bypass:** Because `aevum-maintainer` calls the same
+`aevum-core` engine it governs, a sufficiently privileged attacker who can
+modify the Cedar policies stored in the engine's knowledge graph can weaken the
+policies that govern `aevum-maintainer` itself.
+
+**OIDC token reuse:** `aevum-maintainer` uses OIDC tokens for ingest
+authentication. If a token is intercepted (e.g., via a MitM on the OIDC
+callback), it can be replayed within the token's validity window to authorize
+unauthorized ingestion.
+
+**Mitigations:**
+
+- Store the principles verification key in an HSM or KMS, not on disk.
+- Require multi-party approval for break-glass actions: two separate
+  `aevum-maintainer` reviewer accounts must both approve before the action
+  is committed.
+- Treat the Cedar policy store as a security-critical artifact: back it up
+  separately, monitor it for changes, and alert on unauthorized modifications.
+- Use short-lived OIDC tokens (< 5 minute validity) and require token binding
+  to mitigate replay.
+- Audit all `aevum-maintainer` actions via `replay()` on a regular schedule.
+
+---
+
+## Gate G-11 through G-16 Adversarial Probe Results (D-07)
+
+The following documents the results of adversarial probes run against
+aevum-core v0.5.0 in the Phase G gate investigation (baseline:
+`benchmarks/baseline-v0.6.0.json`, captured 2026-05-20).
+
+| Gate | Probe | Result | Notes |
+|------|-------|--------|-------|
+| G-11 | Crisis barrier (Barrier 1) | PASS | Keyword `i want to kill myself` in ingested data triggers crisis envelope before graph write |
+| G-12 | Consent barrier (Barrier 3) | PASS | No consent grant → ingest blocked immediately with `consent_required` |
+| G-13 | Classification ceiling (Barrier 2) | PASS | Classification ceiling applied at query via `apply_classification_ceiling()`; ingest with classification=3 proceeds but is filtered on query when ceiling=1 |
+| G-14 | Audit seal (Barrier 4) | PASS | `InMemoryLedger.__delitem__` raises `BarrierViolationError`; sigchain remains intact after 50 commits |
+| G-15 | Provenance veto (Barrier 5) | PASS | Empty `source_id` in provenance dict → `provenance_required` error before graph write |
+| G-16 | Lethal trifecta prevention | PASS | Cedar `forbid` fires on `action='tool_call'` when all three taints present; two-taint composition permitted |
+
+**G-13 finding — classification ceiling is query-time only:**
+The ceiling is enforced when reading (via `apply_classification_ceiling()` in
+`query()`), not when writing. Data at any classification level can be ingested
+regardless of the actor's clearance. This is documented in the "Classification
+Ceiling Limitation" section above. For ingest-time classification control, apply
+policy in your application layer or an OPA sidecar before calling `ingest()`.
+
+**G-16 finding — trifecta action scope:**
+The Cedar `forbid` rule for the lethal trifecta is scoped to
+`action == 'tool_call'`. Integrators using the trifecta policy must use
+`action='tool_call'` in their Cedar evaluation context. Using a different action
+string (e.g., `'relate_graph_write'`) will not trigger the forbid. This is a
+policy scoping clarification, not a defect; the probe initially used the wrong
+action and was corrected.
+
+**All six G-11 through G-16 probes pass.** No barriers were bypassed. No
+regressions from v0.4.0 baselines.

@@ -71,18 +71,23 @@ def check_crisis(data: dict[str, Any], audit_id: str) -> OutputEnvelope | None:
     graph operation. If crisis content is detected, the operation is halted
     and a crisis envelope is returned.
 
-    IMPORTANT LIMITATIONS:
-    - This is a content-screening mechanism, not a clinical safety system.
+    IMPORTANT CLINICAL LIMITATIONS (see THREAT_MODEL.md — Crisis Detection
+    Limitations and Crisis Barrier Evasion Techniques):
+
+    - This is a keyword-matching content screen, not a clinical safety system.
     - It is not validated to any clinical standard (FDA, EU MDR, or similar).
     - It is not a medical device.
-    - False negatives (missed crisis content) are possible.
+    - False negatives (missed crisis content) are possible and expected for:
+        * Chunked inputs (phrases split across multiple ingest() calls)
+        * Elliptical or clinically coded language
+        * Non-English or culturally specific crisis expression
     - False positives (incorrectly flagged content) are possible.
     - It does not replace human clinical judgment.
     - It must not be used as the sole safety control for applications
       serving users in mental-health, crisis, or vulnerable-population
       contexts. Complement with human review and clinical-grade tooling.
 
-    See THREAT_MODEL.md — Crisis Detection Limitations.
+    See THREAT_MODEL.md — Crisis Detection Limitations and D-02 (Evasion).
     """
     if any(kw in _text_from_data(data) for kw in _CRISIS_KEYWORDS):
         return OutputEnvelope.crisis(

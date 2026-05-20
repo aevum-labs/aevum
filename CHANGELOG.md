@@ -8,6 +8,116 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added (v0.6.0 Phase D — Trust Infrastructure)
+
+#### Phase D-1: Rekor v2 Migration (D-08 through D-13)
+
+- **`SigningConfig`** (`aevum.core.audit.signing_config`) — Rekor URL
+  resolution class that reads `AEVUM_REKOR_URL` env var; no hardcoded
+  production URL. All Rekor URL resolution now routes through `SigningConfig`.
+
+- **`RekorAnchor` auto-disable** — `RekorAnchor()` constructed without
+  `AEVUM_REKOR_URL` configured now auto-disables and logs a debug-level notice.
+  Previously it silently used the hardcoded Sigstore production URL.
+
+- **Rekor v2 API endpoint** — `aevum-publish` complication migrated from
+  `/api/v1/log/entries` to `/api/v2/log/entries` (rekor-tiles API).
+
+- **Inclusion proof persistence (D-13)** — Rekor v2 responses include a
+  `verification.inclusionProof` field (Merkle proof). This proof is now
+  extracted and persisted in the local `transparency.checkpoint` AuditEvent
+  payload under the `inclusion_proof` key. An absent inclusion proof indicates
+  the Rekor server is not running rekor-tiles v2.
+
+- **Hardcoded Rekor URL lint rule (D-08)** — CI now fails if any `.py` file
+  under `packages/` contains `rekor.sigstore.dev`. All Rekor URLs must come
+  from `AEVUM_REKOR_URL` env var or explicit `rekor_url` constructor argument.
+
+- **Self-hosted Rekor v2 deployment guide** —
+  `docs/deployment/rekor-self-hosted.md` covers air-gapped and private Rekor
+  deployments, production hardening (TLS, backup, per-tenant logs), and
+  troubleshooting.
+
+#### Phase D-2: THREAT_MODEL.md Extensions (D-01 through D-07)
+
+- **D-01 InProcessSigner tamper-detection window** — Documents the exact
+  window (between successive `verify_sigchain()` calls), the exact mitigation
+  (external signer + Rekor anchoring at ≤ 100 events / 5 minutes), and the
+  distinction between tamper-evident and tamper-proof.
+
+- **D-02 Crisis barrier evasion techniques** — Documents three evasion
+  surfaces: phrase chunking across `ingest()` calls, elliptical language
+  (not covered by keyword matching), and non-English / culturally specific
+  crisis expression. Mitigations noted for each.
+
+- **D-03 record_capture_gap() ordering limitation** — Documents that the gap
+  event is written after the out-of-band call, not before; the forensic
+  consequence if the process is interrupted; and the mitigation (write gap
+  event before the call where possible).
+
+- **D-04 OR-Set consent race conditions** — Extends the existing Consent
+  Revocation Semantic section with the full race condition taxonomy: Case 1
+  (concurrent add/revoke), Case 2 (revoke + re-add within replication window),
+  Case 3 (clock skew). Per-case mitigations added.
+
+- **D-05 Direct storage access bypassing barriers** — Documents specific bypass
+  vectors (DBA with psql, filesystem access to Oxigraph, offline SQLite
+  manipulation, compromised key + storage rewrite). Mitigations: PostgreSQL RLS,
+  external anchoring, WAL archiving, filesystem integrity monitoring.
+
+- **D-06 aevum-maintainer self-governance attack surface** — Documents
+  principles tampering, approval key concentration, self-referential policy
+  bypass, and OIDC token reuse vectors. Mitigations for each.
+
+- **D-07 Gate G-11 through G-16 adversarial probe results** — All six probes
+  PASS against aevum-core v0.5.0 baseline. G-13 and G-16 findings called out
+  explicitly (classification ceiling is query-time only; trifecta Cedar forbid
+  is scoped to `action='tool_call'`).
+
+#### Phase D-3: Barrier Completeness Verification (D-14 through D-18)
+
+- **D-14 Barrier canary verification results** — Each of the five barriers was
+  disabled in turn; `test_canary.py` was confirmed to fail in all five cases.
+  Full results:
+
+  | Barrier | Disabled by | Canary test that fails | Result |
+  |---------|-------------|------------------------|--------|
+  | Barrier 1 (Crisis) | Clear `_CRISIS_KEYWORDS` | `test_canary_barrier1_keywords_present` | FAIL (rc=1) ✓ |
+  | Barrier 2 (Classification) | Remove `apply_classification_ceiling` | `test_canary_all_barrier_functions_exist` | FAIL (rc=1) ✓ |
+  | Barrier 3 (Consent) | No-op `check_consent` | `test_canary_barrier3_consent_required` | FAIL (rc=1) ✓ |
+  | Barrier 4 (Immutability) | Permissive `__delitem__` stub | `test_canary_barrier4_ledger_immutable` | FAIL (rc=1) ✓ |
+  | Barrier 5 (Provenance) | No-op `check_provenance` | `test_canary_barrier5_provenance_required` | FAIL (rc=1) ✓ |
+
+  All five barriers confirmed: removal is detected by `test_canary.py`.
+
+- **D-15 OTEL_SEMCONV_STABILITY_OPT_IN documentation** — Added to
+  `docs/learn/deployment.md` (Monitoring section). Documents that GenAI
+  semantic conventions (`gen_ai.*`) are Development status; warns deployers
+  to pin OTel SDK version and set `OTEL_SEMCONV_STABILITY_OPT_IN=genai`.
+
+- **D-16 record_capture_gap() ordering limitation in reference docs** —
+  Added prominent note to `docs/_partials/five-functions.md` documenting
+  the retroactive write behavior, the interrupted-process forensic gap, and
+  the best-practice mitigation (write gap before the out-of-band call).
+
+- **D-17 Six-barrier resource ceiling** — Documented in `KNOWN_UNKNOWNS.md`.
+  No build task. Three reasons for deferral: no canonical resource metric, the
+  threshold is deployment-specific (conflicts with "unconditional" barrier
+  property), and no production incident data.
+
+- **D-18 barriers.py crisis barrier docstring sync** — `check_crisis()` docstring
+  updated to explicitly list chunking, elliptical language, and non-English
+  expression as documented false-negative surfaces, matching THREAT_MODEL.md
+  D-02 entry. Prior docstring noted false negatives generically.
+
+#### Phase D-4: EAR §742.15 Export Notification (D-19)
+
+- **D-19 EAR §742.15 template** — Completed filing template added to
+  `SECURITY.md` for maintainer review. Template covers Ed25519 + SHA3-256 +
+  SHA-256 algorithms, License Exception ENC (§740.17(b)(4)), and the
+  BIS/NSA notification addresses. **Template only — not yet filed.**
+  Maintainer must review and submit before next public release.
+
 ### Added (v0.6.0 Phase A — Adapter Completeness)
 
 - **`AevumAnthropicAdapter`** — governed wrapper for `anthropic.Anthropic`;

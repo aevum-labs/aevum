@@ -41,17 +41,35 @@ def _rekor_body_b64(digest_hex: str) -> str:
 
 def _make_mock_rekor_post(log_index: int = 42, uuid: str = "abc123def456") -> object:
     """
-    Returns an httpx.post side_effect that generates a structurally-valid Rekor
-    response mirroring the submitted digest (CVE-2026-22703 verification passes).
+    Returns an httpx.post side_effect for a Rekor v2 response that mirrors the
+    submitted digest (CVE-2026-22703 verification passes) and includes a
+    minimal inclusionProof for D-13 persistence verification.
     """
     def _post(url: str, json: dict | None = None, **kwargs: object) -> unittest.mock.MagicMock:
         submitted_hex = (
             (json or {}).get("spec", {}).get("data", {}).get("hash", {}).get("value", "0" * 64)
         )
+        # Verify v2 endpoint is used (D-08)
+        assert "/api/v2/log/entries" in url, (
+            f"Expected Rekor v2 endpoint (/api/v2/log/entries), got: {url}"
+        )
         resp = unittest.mock.MagicMock()
         resp.raise_for_status = unittest.mock.MagicMock(return_value=None)
         resp.json.return_value = {
-            uuid: {"logIndex": log_index, "body": _rekor_body_b64(submitted_hex)}
+            uuid: {
+                "logIndex": log_index,
+                "body": _rekor_body_b64(submitted_hex),
+                "verification": {
+                    "inclusionProof": {
+                        "logIndex": log_index,
+                        "rootHash": "root" + submitted_hex[:60],
+                        "treeSize": log_index + 100,
+                        "hashes": ["hash1", "hash2"],
+                        "checkpoint": "rekor-checkpoint-v1\n",
+                    },
+                    "signedEntryTimestamp": "c2V0X3BsYWNlaG9sZGVy",
+                },
+            }
         }
         return resp
     return _post
@@ -230,6 +248,23 @@ class TestPublishComplicationCheckpoint:
         comp = PublishComplication(rekor_url="https://rekor.example.com/")
         assert not comp._rekor_url.endswith("/")
 
+    def test_no_url_warns_and_skips(self) -> None:
+        """D-08: No hardcoded URL — unconfigured complication warns once and skips."""
+        import os
+        import unittest.mock
+
+        from aevum.publish import PublishComplication
+
+        # Ensure env var is not set
+        env = {k: v for k, v in os.environ.items() if k != "AEVUM_REKOR_URL"}
+        with unittest.mock.patch.dict(os.environ, env, clear=True):
+            comp = PublishComplication()  # no rekor_url arg, no env var
+        assert comp._rekor_url is None
+        mock_engine = _make_mock_engine()
+        comp.on_approved(mock_engine)
+        # No checkpoint written — no URL configured
+        mock_engine._ledger.append.assert_not_called()
+
 
 class TestPublishComplicationIntegration:
 
@@ -270,3 +305,11 @@ class TestPublishComplicationIntegration:
         assert cp["payload"]["rekor_log_index"] == 99
         assert cp["payload"]["rekor_server"] == "https://mock.rekor.test"
         assert cp["actor"] == "aevum-publish"
+        # D-13: Inclusion proof must be persisted alongside the checkpoint (Rekor v2)
+        assert "inclusion_proof" in cp["payload"], (
+            "D-13: Rekor v2 inclusion proof must be persisted in transparency.checkpoint payload"
+        )
+        proof = cp["payload"]["inclusion_proof"]
+        assert "logIndex" in proof
+        assert "rootHash" in proof
+        assert "hashes" in proof

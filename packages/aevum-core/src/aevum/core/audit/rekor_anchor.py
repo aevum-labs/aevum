@@ -11,41 +11,41 @@ a second external timestamp and makes the chain root publicly verifiable.
 
 The circuit breaker ensures Rekor failures never block sigchain operations.
 
-Rekor v2 API (Sigstore production):
-  POST https://rekor.sigstore.dev/api/v2/log/entries
+Rekor v2 API (rekor-tiles):
+  POST <AEVUM_REKOR_URL>/api/v2/log/entries
   Content-Type: application/json
-  Body: DSSE envelope with hashedrekord or dsse type
+  Body: hashedrekord or dsse entry
 
-Note: Rekor v2 uses DSSE (Dead Simple Signing Envelope) format.
-This implementation uses the dsse entry type with Ed25519 signature.
-
-URL override: set AEVUM_REKOR_URL env var to point at a private Rekor instance.
+The Rekor endpoint is configured via the AEVUM_REKOR_URL environment variable.
+No default URL is hardcoded. Set AEVUM_REKOR_URL for production deployments.
+For self-hosted Rekor, see docs/deployment/rekor-self-hosted.md.
 
 Usage:
-  anchor = RekorAnchor()
+  anchor = RekorAnchor()   # URL from AEVUM_REKOR_URL; disabled if unset
   entry = anchor.anchor_chain_root(
       chain_root_hash="abc123...",
       ed25519_sig=dual_sig.ed25519_sig,
       ed25519_pub=dual_sig.ed25519_pub,
   )
-  # entry is None if Rekor is unavailable (circuit breaker)
+  # entry is None if Rekor is unavailable or not configured (circuit breaker)
 """
 from __future__ import annotations
 
 import base64
 import json
 import logging
-import os
 from typing import Any
 
 import httpx
 
+from aevum.core.audit.signing_config import SigningConfig
 from aevum.core.exceptions import RekorVerificationError
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_REKOR_URL = "https://rekor.sigstore.dev/api/v2/log/entries"
-REKOR_URL = os.environ.get("AEVUM_REKOR_URL", _DEFAULT_REKOR_URL)
+# REKOR_URL is resolved from SigningConfig (reads AEVUM_REKOR_URL env var).
+# None means Rekor anchoring is disabled for this process.
+REKOR_URL: str | None = SigningConfig.from_env().rekor_url
 REKOR_TIMEOUT = 15.0
 
 
@@ -94,19 +94,27 @@ def _verify_rekor_entry(entry: dict[str, Any], expected_sha256: str) -> None:
 
 class RekorAnchor:
     """
-    Anchors the Aevum sigchain Merkle root in the Sigstore Rekor log.
+    Anchors the Aevum sigchain Merkle root in a Rekor v2 transparency log.
     Circuit breaker: always returns None on failure, never raises.
+    Disabled automatically when AEVUM_REKOR_URL is not configured.
     """
 
     def __init__(
         self,
-        rekor_url: str = REKOR_URL,
+        rekor_url: str | None = None,
         timeout: float = REKOR_TIMEOUT,
         enabled: bool = True,
     ) -> None:
-        self._url = rekor_url
+        cfg = SigningConfig(rekor_url=rekor_url) if rekor_url else SigningConfig.from_env()
+        self._url = cfg.rekor_url or ""
         self._timeout = timeout
-        self._enabled = enabled
+        # Auto-disable when no URL is configured
+        self._enabled = enabled and cfg.is_configured()
+        if enabled and not cfg.is_configured():
+            logger.debug(
+                "RekorAnchor: AEVUM_REKOR_URL not set — Rekor anchoring disabled. "
+                "Set AEVUM_REKOR_URL to enable transparency log submission."
+            )
 
     def anchor_chain_root(
         self,
@@ -121,7 +129,7 @@ class RekorAnchor:
         ed25519_sig: Ed25519 signature over the hash bytes
         ed25519_pub: Ed25519 public key (32 bytes raw)
 
-        Returns: Rekor response dict on success, None on failure.
+        Returns: Rekor response dict on success, None on failure or if disabled.
         The circuit breaker ensures this never raises.
         """
         if not self._enabled:
@@ -144,7 +152,7 @@ class RekorAnchor:
         ed25519_pub: bytes,
     ) -> dict[str, Any] | None:
         """
-        POST a hashedrekord entry to Rekor and verify the returned entry.
+        POST a hashedrekord entry to Rekor v2 and verify the returned entry.
 
         The hashedrekord type records a hash + signature without the full artifact.
         After a successful POST, _verify_rekor_entry() checks that the returned

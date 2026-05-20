@@ -73,3 +73,87 @@ The five barriers cannot be disabled by any policy, configuration, or complicati
 | Payload hash | SHA3-256 | FIPS 202 |
 | Canonicalization | RFC 8785 JCS | RFC 8785 |
 | Principles signing | Ed25519 | RFC 8032 |
+
+## EAR §742.15 Export Notification (D-19)
+
+**Status: TEMPLATE PRODUCED — AWAITING MAINTAINER REVIEW AND FILING**
+
+Aevum-core uses Ed25519 digital signatures and SHA3-256 hashing. These are
+encryption items subject to EAR (Export Administration Regulations) §742.15.
+Open-source cryptographic software qualifies for the License Exception ENC
+(15 C.F.R. §740.17(b)(4)) provided a one-time notification is submitted to
+BIS (Bureau of Industry and Security) and NSA.
+
+> **Maintainer action required:** Review the template below. If the notification
+> has already been filed (e.g., from a prior release), record the date and BIS
+> reference number in this section and delete the template. If not yet filed,
+> complete and submit the template before the next public release that includes
+> cryptographic functionality.
+>
+> **Do not file without maintainer review.** The template below is for review
+> only; it has not been submitted.
+
+### Filing requirements
+
+Per 15 C.F.R. §742.15(b) and §740.17(b)(4):
+
+1. Submit the notification by email to: crypt@bis.doc.gov and enc@nsa.gov
+2. The subject line must read: "NOTIFICATION OF INTERNET DOWNLOAD SITE FOR
+   ENCRYPTION SOURCE CODE OR OBJECT CODE"
+3. Submit once, before or at the time of public release.
+4. Retain a copy of the submission confirmation.
+
+### Completed template (for maintainer review)
+
+```
+To: crypt@bis.doc.gov, enc@nsa.gov
+Subject: NOTIFICATION OF INTERNET DOWNLOAD SITE FOR ENCRYPTION SOURCE CODE
+         OR OBJECT CODE
+
+In accordance with 15 C.F.R. §742.15(b) and §740.17(b)(4), Aevum Labs
+hereby notifies BIS and NSA of the availability of open-source encryption
+software at the following URL:
+
+  https://github.com/aevum-labs/aevum
+
+Product name: aevum-core
+Version: 0.6.0 (and all subsequent versions)
+Maintainer: Aevum Labs
+Contact email: security@aevum.build
+
+Description of encryption functionality:
+  aevum-core uses the following cryptographic algorithms for audit chain
+  integrity and digital signing:
+  - Ed25519 digital signatures (RFC 8032) for AuditEvent signing
+  - SHA3-256 (FIPS 202) for hash chaining and payload integrity
+  - SHA-256 (FIPS 180-4) for Rekor transparency log submission
+
+  These algorithms are used exclusively for:
+  - Authentication of audit records (signing, not encryption of payload)
+  - Data integrity verification (hash chains)
+  - External transparency log anchoring
+
+  aevum-core does NOT implement its own cryptographic algorithms. It uses
+  the following open-source libraries:
+  - cryptography (pyca/cryptography) — Apache-2.0, uses OpenSSL under the hood
+  - hashlib (Python standard library) — uses system OpenSSL or libtomcrypt
+
+License: Apache-2.0
+Source code URL: https://github.com/aevum-labs/aevum
+PyPI: https://pypi.org/project/aevum-core/
+
+This software is publicly available at no charge. It is not subject to
+EAR99 because it performs encryption; however, it qualifies for License
+Exception ENC under 15 C.F.R. §740.17(b)(4) as publicly available
+encryption source code.
+
+Submitted by: [MAINTAINER NAME]
+Date: [DATE OF SUBMISSION]
+```
+
+### After filing
+
+Once submitted:
+1. Replace the template above with the filing date and BIS reference number.
+2. Update the "Supported Versions" table if applicable.
+3. Add a note to CHANGELOG.md under the relevant release.

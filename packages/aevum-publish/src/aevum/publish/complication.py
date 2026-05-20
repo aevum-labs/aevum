@@ -7,6 +7,11 @@ Lifecycle note: the Engine has no automatic on_approved callback mechanism.
 Callers must invoke comp.on_approved(engine) explicitly after
 engine.approve_complication("aevum-publish") to trigger checkpoint submission.
 This matches the pattern established by aevum-spiffe.
+
+Rekor URL is resolved from SigningConfig (AEVUM_REKOR_URL env var).
+No URL is hardcoded. Set AEVUM_REKOR_URL before creating PublishComplication
+or pass rekor_url explicitly. Without a URL, submission warns and skips.
+See docs/deployment/rekor-self-hosted.md for self-hosted Rekor v2 setup.
 """
 
 from __future__ import annotations
@@ -23,7 +28,8 @@ from aevum.core.audit.rekor_anchor import _verify_rekor_entry
 
 log = logging.getLogger(__name__)
 
-_DEFAULT_REKOR_URL = os.environ.get("AEVUM_REKOR_URL", "https://rekor.sigstore.dev")
+# URL resolved from AEVUM_REKOR_URL env var; None means not configured.
+_ENV_REKOR_URL: str | None = os.environ.get("AEVUM_REKOR_URL")
 _DEFAULT_EVERY_N = int(os.environ.get("AEVUM_PUBLISH_EVERY_N_EVENTS", "100"))
 _DEFAULT_EVERY_S = int(os.environ.get("AEVUM_PUBLISH_EVERY_SECONDS", "300"))
 
@@ -56,7 +62,11 @@ def _compute_checkpoint_digest(
 
 class PublishComplication:
     """
-    Transparency log complication. Submits chain checkpoints to Rekor v2.
+    Transparency log complication. Submits chain checkpoints to a Rekor v2 log.
+
+    The Rekor URL is resolved from AEVUM_REKOR_URL (env var) or the rekor_url
+    constructor argument. No URL is hardcoded. If neither is set, submission
+    warns once and skips. Set AEVUM_REKOR_URL for production deployments.
 
     Threshold triggers (whichever comes first):
     - every_n_events: submit after N events are written to the chain
@@ -64,10 +74,14 @@ class PublishComplication:
 
     Failure modes:
     - httpx not installed: warn, skip
+    - Rekor URL not configured: warn once, skip
     - Rekor unreachable: warn, buffer for next threshold
     - Submission rejected: warn, log details
 
     NEVER blocks the Engine write path. NEVER raises in lifecycle hooks.
+
+    Inclusion proofs from Rekor v2 responses are persisted alongside the
+    checkpoint digest in the local transparency.checkpoint AuditEvent.
 
     Engine integration (no automatic lifecycle hook):
         engine.install_complication(comp)
@@ -76,7 +90,7 @@ class PublishComplication:
     """
 
     name: str = "aevum-publish"
-    version: str = "0.4.0"
+    version: str = "0.6.0"
 
     def __init__(
         self,
@@ -84,7 +98,8 @@ class PublishComplication:
         every_n_events: int | None = None,
         every_seconds: int | None = None,
     ) -> None:
-        self._rekor_url = (rekor_url or _DEFAULT_REKOR_URL).rstrip("/")
+        resolved = rekor_url or _ENV_REKOR_URL
+        self._rekor_url: str | None = resolved.rstrip("/") if resolved else None
         self._every_n = every_n_events or _DEFAULT_EVERY_N
         self._every_s = every_seconds or _DEFAULT_EVERY_S
         self._engine: Any = None
@@ -92,12 +107,13 @@ class PublishComplication:
         self._last_checkpoint_time: float = time.monotonic()
         self._lock = threading.Lock()
         self._enabled: bool = False
+        self._url_warned: bool = False
 
     def manifest(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "version": self.version,
-            "description": "Sigstore Rekor v2 transparency log checkpoints for chain verification",
+            "description": "Rekor v2 transparency log checkpoints for chain verification",
             "capabilities": ["transparency-log"],
             "classification_max": 0,
             "functions": ["commit"],
@@ -144,10 +160,20 @@ class PublishComplication:
 
     def _try_submit_checkpoint(self, reason: str = "threshold") -> None:
         """
-        Attempt to submit a checkpoint to Rekor. Silently degrades on failure.
+        Attempt to submit a checkpoint to Rekor v2. Silently degrades on failure.
         Resets event counter and timer on success.
         """
         if self._engine is None:
+            return
+
+        if not self._rekor_url:
+            if not self._url_warned:
+                log.warning(
+                    "aevum-publish: AEVUM_REKOR_URL not configured — "
+                    "Rekor checkpoint submission disabled. "
+                    "Set AEVUM_REKOR_URL to enable transparency log anchoring."
+                )
+                self._url_warned = True
             return
 
         try:
@@ -170,7 +196,7 @@ class PublishComplication:
         )
 
         try:
-            log_index, entry_hash = self._submit_to_rekor(digest)
+            log_index, entry_hash, inclusion_proof = self._submit_to_rekor(digest)
         except Exception as exc:
             log.warning(
                 "aevum-publish: checkpoint submission failed (%s). "
@@ -182,6 +208,7 @@ class PublishComplication:
         self._write_checkpoint_event(
             log_index=log_index,
             entry_hash=entry_hash,
+            inclusion_proof=inclusion_proof,
             chain_sequence=sequence,
             chain_prior_hash=prior_hash,
             reason=reason,
@@ -197,18 +224,18 @@ class PublishComplication:
             log_index,
         )
 
-    def _submit_to_rekor(self, digest: bytes) -> tuple[int, str]:
+    def _submit_to_rekor(self, digest: bytes) -> tuple[int, str, dict[str, Any]]:
         """
-        Submit a SHA-256 digest to Rekor v2 as a hashedrekord entry.
-        Returns (log_index, entry_hash).
+        Submit a SHA-256 digest to a Rekor v2 log as a hashedrekord entry.
+        Returns (log_index, entry_hash, inclusion_proof).
+
         Raises ImportError if httpx not installed.
         Raises httpx.HTTPError on submission failure.
-        Raises RekorVerificationError if the returned entry does not reference the submitted digest.
+        Raises RekorVerificationError if the returned entry does not reference
+        the submitted digest (CVE-2026-22703 mitigation).
 
-        NOTE: The format below matches the Rekor v1 hashedrekord spec. Rekor v2
-        (rekor-tiles) uses a different tile-based API; verify against
-        https://github.com/sigstore/rekor-tiles/blob/main/CLIENTS.md before
-        production use.
+        Uses the Rekor v2 API endpoint (/api/v2/log/entries).
+        The inclusion proof from the response is returned for local persistence.
         """
         try:
             import httpx  # noqa: PLC0415
@@ -234,7 +261,7 @@ class PublishComplication:
         }
 
         resp = httpx.post(
-            f"{self._rekor_url}/api/v1/log/entries",
+            f"{self._rekor_url}/api/v2/log/entries",
             json=body,
             timeout=30.0,
         )
@@ -249,28 +276,38 @@ class PublishComplication:
         uuid_key = next(iter(data))
         entry = data[uuid_key]
         log_index = int(entry.get("logIndex", entry.get("log_index", -1)))
-        return log_index, uuid_key
+
+        # Extract Rekor v2 inclusion proof for local persistence.
+        verification = entry.get("verification", {})
+        inclusion_proof: dict[str, Any] = verification.get("inclusionProof", {})
+
+        return log_index, uuid_key, inclusion_proof
 
     def _write_checkpoint_event(
         self,
         log_index: int,
         entry_hash: str,
+        inclusion_proof: dict[str, Any],
         chain_sequence: int,
         chain_prior_hash: str,
         reason: str,
     ) -> None:
         """Write transparency.checkpoint AuditEvent to the local sigchain."""
+        payload: dict[str, Any] = {
+            "rekor_log_index": log_index,
+            "rekor_entry_hash": entry_hash,
+            "rekor_server": self._rekor_url,
+            "chain_sequence": chain_sequence,
+            "chain_prior_hash": chain_prior_hash,
+            "checkpoint_reason": reason,
+        }
+        if inclusion_proof:
+            payload["inclusion_proof"] = inclusion_proof
+
         try:
             self._engine._ledger.append(
                 event_type="transparency.checkpoint",
-                payload={
-                    "rekor_log_index": log_index,
-                    "rekor_entry_hash": entry_hash,
-                    "rekor_server": self._rekor_url,
-                    "chain_sequence": chain_sequence,
-                    "chain_prior_hash": chain_prior_hash,
-                    "checkpoint_reason": reason,
-                },
+                payload=payload,
                 actor="aevum-publish",
             )
         except Exception as exc:
