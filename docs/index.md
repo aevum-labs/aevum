@@ -50,6 +50,24 @@ Apache-2.0. No telemetry. Runs fully offline.
 Self-hosted — your data never leaves your infrastructure.
 No vendor API. No licensing server. No SaaS dependency.
 
+## Who It Is For {#who-it-is-for}
+
+Aevum is useful when your AI agent needs to answer any of these questions:
+
+- *"What did the agent know when it made this decision?"* — `replay()`
+- *"Did the agent have permission to access this data?"* — consent ledger
+- *"Has this audit trail been tampered with?"* — `verify_sigchain()`
+- *"Was a human in the loop for this action?"* — `review()`
+
+**Good fit:** Regulated industries (healthcare, finance, legal), agentic
+workflows that touch PII or sensitive data, compliance-driven environments
+(EU AI Act, HIPAA, SOC 2), and teams that need to demonstrate audit
+accountability to customers or regulators.
+
+**Not a fit yet:** If you need a streaming data platform, an AI orchestration
+framework, a database, or an agent execution runtime — Aevum is not those
+things. See [What Aevum Is Not](/product/what-is-aevum/) for the normative list.
+
 ---
 
 ## See It in Action
