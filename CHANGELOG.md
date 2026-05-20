@@ -8,6 +8,51 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added (v0.6.0 Phase C — Cryptographic Evolution)
+
+#### Phase C-1: Signature-scheme identifier field (C-01)
+
+- **`key_scheme` field on `AuditEvent`** — Every new sigchain envelope now
+  carries `key_scheme: str = "ed25519"`. The verifier reads this field to
+  select the correct algorithm for signature verification. Current valid
+  values: `"ed25519"` (default, active) and `"ed25519+ml-dsa-65"` (reserved
+  for future hybrid implementation). The field defaults to `"ed25519"` on the
+  dataclass so pre-Phase-C envelopes loaded from storage continue to verify
+  without modification — backwards compatibility is maintained.
+
+- **`verify_chain()` algorithm dispatch** — `Sigchain.verify_chain()` now
+  reads `event.key_scheme` on each entry and logs a warning for unrecognised
+  scheme values (fallback: `"ed25519"`). This establishes the dispatch point
+  for future hybrid verification without changing current runtime behaviour.
+
+- **Layer 1 Wire Format conformance tests** —
+  `packages/aevum-conformance/tests/test_wire_format.py` adds 11 tests
+  asserting `key_scheme` is present and valid on all new envelopes,
+  confirming the default is `"ed25519"`, and verifying backwards-compatible
+  chain verification across pre-C and post-C entries.
+
+#### Phase C-2: Key rotation documentation (C-07)
+
+- **`docs/deployment/key-rotation.md`** — Published key rotation playbook
+  covering:
+  - Planned rotation procedure with sigchain continuity proof (`prior_hash`
+    chaining survives key rotation via explicit `key.rotation.planned` and
+    `key.rotation.complete` events).
+  - Emergency rotation procedure including tamper-window identification and
+    regulatory notification guidance.
+  - Multi-node deployment notes.
+  - VaultTransitSigner operational status (see Phase C-3).
+
+#### Phase C-3: VaultTransitSigner status (C-09)
+
+- **VaultTransitSigner documented as not yet implemented** — The Vault Transit
+  signing protocol is fully specified in `docs/spec/aevum-signing-v1.md`
+  (prehashed Ed25519 via `POST /v1/transit/sign/{key_name}`). The Python class
+  `aevum.core.audit.signer.VaultTransitSigner` has not been implemented; the
+  last-tested-against Vault version is therefore *untested*. Implementation is
+  scheduled for Phase B. `docs/deployment/key-rotation.md` documents the
+  specification and a dev-instance test procedure for when the class ships.
+
 ### Added (v0.6.0 Phase D — Trust Infrastructure)
 
 #### Phase D-1: Rekor v2 Migration (D-08 through D-13)

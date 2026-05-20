@@ -213,6 +213,7 @@ class Sigchain:
             mldsa65_pub=mldsa65_pub_hex,
             tsa_url=tsa_url,
             tsa_token=tsa_token_hex,
+            key_scheme="ed25519",
         )
         self._prior_hash = AuditEvent.hash_event_for_chain(event)
         return event
@@ -252,6 +253,12 @@ class Sigchain:
             ).encode()
             # Verify against SHA3-256 digest of canonical bytes
             digest = hashlib.sha3_256(canonical).digest()
+            # Phase C-1: key_scheme selects the verifier. "ed25519" is the only
+            # active scheme; "ed25519+ml-dsa-65" is reserved for the future hybrid
+            # implementation. Envelopes without the field default to "ed25519".
+            scheme = getattr(event, "key_scheme", "ed25519")
+            if scheme not in ("ed25519", "ed25519+ml-dsa-65"):
+                logger.warning("Unknown key_scheme %r — falling back to ed25519", scheme)
             try:
                 sig_bytes = base64.urlsafe_b64decode(event.signature + "==")
                 public_key.verify(sig_bytes, digest)

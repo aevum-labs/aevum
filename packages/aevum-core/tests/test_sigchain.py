@@ -111,3 +111,18 @@ def test_checkpoint_restore_with_signer() -> None:
     e = sc.new_event(event_type="after.restore", payload={}, actor="a")
     assert e.sequence == 1
     assert sc.verify_chain([e]) is True
+
+
+def test_new_event_carries_key_scheme() -> None:
+    """Every new event must carry key_scheme='ed25519' (Phase C-1)."""
+    sc = Sigchain()
+    e = sc.new_event(event_type="test.ks", payload={}, actor="a")
+    assert e.key_scheme == "ed25519"
+
+
+def test_verify_chain_with_key_scheme() -> None:
+    """verify_chain must succeed on events that carry key_scheme."""
+    sc = Sigchain()
+    events = [sc.new_event(event_type=f"t.{i}", payload={}, actor="a") for i in range(3)]
+    assert all(e.key_scheme == "ed25519" for e in events)
+    assert sc.verify_chain(events) is True
