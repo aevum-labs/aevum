@@ -143,6 +143,9 @@ all = [
     { name = "aevum-store-postgres" },
     { name = "cedarpy" },
 ]
+anthropic = [
+    { name = "anthropic" },
+]
 benchmark = [
     { name = "pytest-benchmark" },
 ]
@@ -164,6 +167,9 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "ruff" },
     { name = "types-pyyaml" },
+]
+langchain = [
+    { name = "langchain-core" },
 ]
 langgraph = [
     { name = "langgraph-checkpoint" },
@@ -198,6 +204,7 @@ requires-dist = [
     { name = "aevum-store-oxigraph", marker = "extra == 'default'", editable = "packages/aevum-store-oxigraph" },
     { name = "aevum-store-oxigraph", marker = "extra == 'oxigraph'", editable = "packages/aevum-store-oxigraph" },
     { name = "aevum-store-postgres", marker = "extra == 'postgres'", editable = "packages/aevum-store-postgres" },
+    { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.50.0" },
     { name = "base58", specifier = ">=2.1" },
     { name = "cedarpy", marker = "extra == 'cedar'", specifier = ">=4.8.1" },
     { name = "crewai", marker = "extra == 'crewai'", specifier = ">=0.80.0" },
@@ -206,6 +213,7 @@ requires-dist = [
     { name = "dirty-equals", marker = "extra == 'dev'", specifier = ">=0.7" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "inline-snapshot", marker = "extra == 'dev'", specifier = ">=0.13" },
+    { name = "langchain-core", marker = "extra == 'langchain'", specifier = ">=0.2.0" },
     { name = "langgraph-checkpoint", marker = "extra == 'langgraph'", specifier = ">=4.1.0" },
     { name = "liboqs-python", specifier = ">=0.10.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.9" },
@@ -223,7 +231,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
 ]
-provides-extras = ["cedar", "default", "server", "mcp", "a2a", "oxigraph", "postgres", "langgraph", "crewai", "openai-agents", "benchmark", "all", "dev"]
+provides-extras = ["cedar", "default", "server", "mcp", "a2a", "oxigraph", "postgres", "langgraph", "crewai", "openai-agents", "anthropic", "langchain", "benchmark", "all", "dev"]
 
 [[package]]
 name = "aevum-llm"
@@ -546,6 +554,25 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ee/67/531ea369ba64dcff5ec9c3402f9f51bf748cec26dde048a2f973a4eea7f5/annotated_types-0.7.0.tar.gz", hash = "sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89", size = 16081, upload-time = "2024-05-20T21:33:25.928Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/78/b6/6307fbef88d9b5ee7421e68d78a9f162e0da4900bc5f5793f6d3d0e34fb8/annotated_types-0.7.0-py3-none-any.whl", hash = "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53", size = 13643, upload-time = "2024-05-20T21:33:24.1Z" },
+]
+
+[[package]]
+name = "anthropic"
+version = "0.103.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "docstring-parser" },
+    { name = "httpx" },
+    { name = "jiter" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fb/57/0b758b08cf4606c94d63a997d67a0063f7438efbaf81cfedd0d7c0c69d67/anthropic-0.103.1.tar.gz", hash = "sha256:21c12f4fc0fdd87a2e80d58479cd0af640062b3cfb82bbfa01c7977acd4defeb", size = 848877, upload-time = "2026-05-19T15:43:27.698Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ad/ec/cf357cf571377a39552c1530390a9b79bbdb6ea463f48fbe4e3624141e3b/anthropic-0.103.1-py3-none-any.whl", hash = "sha256:b9a523fac34e64caf6ee55fdbda213950e6a744b906fce100d34909aad2cd8f4", size = 832551, upload-time = "2026-05-19T15:43:29.663Z" },
 ]
 
 [[package]]
