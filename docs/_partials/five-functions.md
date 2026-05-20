@@ -266,4 +266,4 @@ For higher-assurance audit coverage, use the appropriate adapter complication
 the call site and do not have this ordering gap.
 
 For the full threat model entry, see
-[THREAT_MODEL.md — record_capture_gap() Ordering Limitation](../../THREAT_MODEL.md).
+[THREAT_MODEL.md — record_capture_gap() Ordering Limitation](https://github.com/aevum-labs/aevum/blob/main/THREAT_MODEL.md).
