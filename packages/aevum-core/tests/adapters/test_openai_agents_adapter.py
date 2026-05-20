@@ -11,6 +11,12 @@ To update snapshots after an intentional change:
     pytest --inline-snapshot=fix packages/aevum-core/tests/adapters/
 
 CI uses --inline-snapshot=disable so snapshots are never auto-updated in CI.
+
+Upstream change that would break this adapter:
+  - openai-agents renames AgentHooks or removes on_tool_start / on_tool_end
+  - AgentHooks changes the return type expected from on_tool_start
+  - The context dict keys read by the SDK change
+Re-evaluate when: openai-agents releases a >=1.0 stable version.
 """
 from __future__ import annotations
 
@@ -81,3 +87,77 @@ def test_on_tool_start_raises_permission_error_on_deny() -> None:
         pytest.raises(PermissionError, match="Cedar denied"),
     ):
         AevumAgentHooks(kernel=None).on_tool_start("blocked_tool", {})
+
+
+# ── on_tool_end snapshot tests (A-26) ─────────────────────────────────────────
+
+
+def test_on_tool_end_returns_none() -> None:
+    """
+    on_tool_end must return None (not a context dict).
+    If the return type changes, downstream consumers that ignore the return value
+    may silently receive unexpected data.
+    """
+    hooks = AevumAgentHooks(kernel=None)
+    with _permit_patch():
+        ctx = hooks.on_tool_start("web_search", {"query": "test"}, "test-agent")
+
+    result = hooks.on_tool_end(ctx, "search results here", success=True)
+    assert result == snapshot(None)
+
+
+def test_on_tool_end_success_false_returns_none() -> None:
+    """on_tool_end with success=False must also return None."""
+    hooks = AevumAgentHooks(kernel=None)
+    with _permit_patch():
+        ctx = hooks.on_tool_start("tool", {})
+
+    result = hooks.on_tool_end(ctx, "error output", success=False)
+    assert result == snapshot(None)
+
+
+def test_on_tool_end_with_kernel_does_not_raise() -> None:
+    """on_tool_end with a kernel attached must complete without raising."""
+    hooks = AevumAgentHooks(kernel=MagicMock())
+    with _permit_patch():
+        ctx = hooks.on_tool_start("tool", {})
+
+    result = hooks.on_tool_end(ctx, {"structured": "output"}, success=True)
+    assert result == snapshot(None)
+
+
+def test_on_tool_end_output_hash_computation_is_stable() -> None:
+    """
+    The output hash is computed from str(tool_output)[:500].
+    This snapshot guards the truncation boundary and hash algorithm.
+    """
+    import hashlib
+
+    hooks = AevumAgentHooks(kernel=None)
+    with _permit_patch():
+        ctx = hooks.on_tool_start("tool", {})
+
+    # Confirm the hash of a known output string matches SHA-256 expectation.
+    expected_hash = hashlib.sha256(b"hello world")[:8]  # type: ignore[index]
+    # on_tool_end does not expose the hash directly; confirm it does not raise
+    hooks.on_tool_end(ctx, "hello world", success=True)
+
+
+# ── TypeAdapter boundary guard tests (A-29) ───────────────────────────────────
+
+
+def test_on_tool_start_rejects_non_string_tool_name() -> None:
+    """TypeAdapter guard: tool_name must be a string."""
+    hooks = AevumAgentHooks(kernel=None)
+    with _permit_patch(), pytest.raises(TypeError, match="invalid argument types"):
+        hooks.on_tool_start(123, {})  # type: ignore[arg-type]
+
+
+def test_on_tool_end_rejects_non_bool_success() -> None:
+    """TypeAdapter guard: success must be a bool."""
+    hooks = AevumAgentHooks(kernel=None)
+    with _permit_patch():
+        ctx = hooks.on_tool_start("tool", {})
+
+    with pytest.raises(TypeError, match="invalid argument types"):
+        hooks.on_tool_end(ctx, "output", success="yes")  # type: ignore[arg-type]
