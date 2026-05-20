@@ -3,10 +3,8 @@
 
 from __future__ import annotations
 
-import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -175,7 +173,6 @@ class TestEngineIntegration:
         """Install bridge in Engine, verify spans are emitted."""
         monkeypatch.setenv("AEVUM_DEV", "1")
         from aevum.core.engine import Engine
-        from aevum.core.consent.models import ConsentGrant
 
         exporter = InMemorySpanExporter()
         provider = TracerProvider()

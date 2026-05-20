@@ -4,9 +4,6 @@
 from __future__ import annotations
 
 import logging
-import os
-
-import pytest
 
 from aevum.core.dev_mode import (
     DevModeConsentLedger,
@@ -14,7 +11,6 @@ from aevum.core.dev_mode import (
     is_dev_mode,
     warn_dev_startup,
 )
-
 
 # ── is_dev_mode() ─────────────────────────────────────────────────────────────
 

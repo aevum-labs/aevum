@@ -158,7 +158,6 @@ class TestVaultTransitSignerPublicKey:
 class TestVaultTransitSignerWithSigchain:
     def test_sigchain_uses_vault_signer(self, monkeypatch):
         """VaultTransitSigner integrates with Sigchain (mocked HTTP)."""
-        import hashlib
         from aevum.core.audit.sigchain import Sigchain
 
         raw_sig = b"\xcd" * 64
