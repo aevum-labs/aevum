@@ -84,6 +84,11 @@ class CheckpointResult:
     """
     The outcome of a GOVERN checkpoint.
     Always recorded in the sigchain — even if vetoed.
+
+    EU AI Act Article 14 requires human oversight to be recorded, not just present.
+    The review_started_at / review_completed_at / checklist_acknowledged / reviewer_id
+    fields satisfy that requirement and are included in the sigchain record via to_dict().
+    These fields are additive — existing sigchain fields are never renamed or removed.
     """
     proposed_action: ProposedAction
     outcome: GovernOutcome
@@ -93,6 +98,11 @@ class CheckpointResult:
     checkpoint_id: str
     timeout_seconds: float
     elapsed_seconds: float
+    # EU AI Act Article 14 — human oversight recording (p3-11)
+    review_started_at: datetime | None = None    # when review was presented to human
+    review_completed_at: datetime | None = None  # when human responded
+    checklist_acknowledged: bool = False         # human explicitly acknowledged checklist
+    reviewer_id: str | None = None              # identity of human reviewer (humans only)
 
     @property
     def approved(self) -> bool:
@@ -114,6 +124,11 @@ class CheckpointResult:
             "session_id": self.session_id,
             "checkpoint_id": self.checkpoint_id,
             "elapsed_seconds": self.elapsed_seconds,
+            # Article 14 oversight fields (p3-11)
+            "review_started_at": self.review_started_at.isoformat() if self.review_started_at else None,
+            "review_completed_at": self.review_completed_at.isoformat() if self.review_completed_at else None,
+            "checklist_acknowledged": self.checklist_acknowledged,
+            "reviewer_id": self.reviewer_id,
         }
 
 
@@ -167,7 +182,7 @@ class GovernCheckpoint:
         requires_review = self._requires_human_review(action, agent_id)
 
         if not requires_review:
-            # Cedar permits this without human review
+            # Cedar permits this without human review — no human dwell time to record
             elapsed = (datetime.now(UTC) - start).total_seconds()
             return CheckpointResult(
                 proposed_action=action,
@@ -178,11 +193,17 @@ class GovernCheckpoint:
                 checkpoint_id=checkpoint_id,
                 timeout_seconds=self._timeout,
                 elapsed_seconds=elapsed,
+                review_started_at=None,
+                review_completed_at=None,
+                checklist_acknowledged=False,
+                reviewer_id=None,
             )
 
-        # Human review required — invoke callback or apply veto-as-default
-        human_approved, reviewer_id = self._request_human_review(action)
-        elapsed = (datetime.now(UTC) - start).total_seconds()
+        # Human review required — record dwell time per EU AI Act Article 14
+        review_started_at = datetime.now(UTC)
+        human_approved, human_reviewer_id = self._request_human_review(action)
+        review_completed_at = datetime.now(UTC)
+        elapsed = (review_completed_at - start).total_seconds()
 
         outcome = GovernOutcome.APPROVED if human_approved else GovernOutcome.VETOED
 
@@ -194,12 +215,16 @@ class GovernCheckpoint:
         return CheckpointResult(
             proposed_action=action,
             outcome=outcome,
-            decided_at=datetime.now(UTC),
-            decided_by=reviewer_id,
+            decided_at=review_completed_at,
+            decided_by=human_reviewer_id,
             session_id=self._session_id,
             checkpoint_id=checkpoint_id,
             timeout_seconds=self._timeout,
             elapsed_seconds=elapsed,
+            review_started_at=review_started_at,
+            review_completed_at=review_completed_at if human_reviewer_id else None,
+            checklist_acknowledged=human_approved,
+            reviewer_id=human_reviewer_id if human_approved else None,
         )
 
     def _requires_human_review(self, action: ProposedAction, agent_id: str) -> bool:

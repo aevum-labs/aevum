@@ -8,6 +8,57 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added (v0.6.0 Phase M — Maintenance Infrastructure)
+
+#### Phase M-1: Structured HITL with automation bias interruption (p3-09 through p3-12)
+
+- **`.github/PULL_REQUEST_TEMPLATE.md`** (p3-09 + p3-10) — Structured PR briefing
+  template that every maintainer must complete before merging. Covers the five
+  required sections: intent, lineage, permissions, blast radius, and rollback.
+  Includes an explicit checklist acknowledgment block — six checkboxes that must
+  be individually checked (clicking Merge without checking them does not constitute
+  acknowledgment). Includes an automation bias reminder citing the ICLR 2025
+  finding (84.30% mixed-attack success; humans correct ~50% under automation bias).
+
+- **`CheckpointResult` Article 14 oversight fields** (p3-11) — Four new fields
+  added to `aevum.core.govern.CheckpointResult` to satisfy EU AI Act Article 14
+  (human oversight recording, not just presence):
+  - `review_started_at: datetime | None` — when review was presented to human
+  - `review_completed_at: datetime | None` — when human responded
+  - `checklist_acknowledged: bool` — whether human explicitly acknowledged checklist
+  - `reviewer_id: str | None` — identity of human reviewer (humans only; None for
+    auto-approved or veto-as-default)
+  All fields are additive (no existing fields changed). All four appear in
+  `CheckpointResult.to_dict()` and therefore in every sigchain record. Fields
+  default to `None` / `False` for backward compatibility. `GovernCheckpoint.checkpoint()`
+  captures `review_started_at` immediately before invoking the callback and
+  `review_completed_at` immediately after, giving an accurate dwell-time record.
+
+- **`GOVERNANCE.md` self-review policy** (p3-12) — New "Reviewer Rotation Policy"
+  section documents the solo-project self-review policy: L-scope changes
+  (barriers.py, sigchain format, new packages, public API surface) require a
+  minimum 24-hour waiting period between commit and merge. Policy is documented,
+  not code-enforced. Includes definition of L-scope, compliance recording
+  instructions, and a note on transitioning when a second maintainer joins.
+
+#### Phase M-2: CLAUDE.md standing rules update
+
+- **`CLAUDE.md` S-11 through S-15** — Five new standing rules added to the
+  reference document, formalizing invariants established during v0.6.0 development:
+  - S-11: Dev mode isolation (`AEVUM_DEV=1` never in production; never leaks between tests)
+  - S-12: Sigchain fields additive only (no rename or removal after tagging)
+  - S-13: No hardcoded Rekor URLs (enforced by CI lint job)
+  - S-14: OTel bridge privacy default (audit_id only; content capture requires opt-in)
+  - S-15: Automation bias warning at every substantive GOVERN checkpoint, never suppressible
+
+- **`AUTOMATION_BIAS_WARNING` confirmed** — Verified present in `aevum.core.govern`
+  (lines 46–51) and logged at every consequential or irreversible GOVERN checkpoint
+  (line 178–179 in `GovernCheckpoint.checkpoint()`). No change required.
+
+- **Pre-flight: `aevum-otel` in workspace manifest** — Confirmed: the root
+  `pyproject.toml` uses `members = ["packages/*"]` which includes `packages/aevum-otel`.
+  No change required.
+
 ### Added (v0.6.0 Phase E — Spec Progression and Conformance)
 
 #### Phase E-1: Conformance suite extension (E-01 through E-03)
