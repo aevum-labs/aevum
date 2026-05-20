@@ -26,7 +26,6 @@ import pytest
 
 pytest.importorskip("anthropic", reason="anthropic not installed")
 
-import os  # noqa: E402
 from types import SimpleNamespace  # noqa: E402
 from unittest.mock import MagicMock, patch  # noqa: E402
 
@@ -65,8 +64,10 @@ def _mock_raw_client() -> MagicMock:
     return raw
 
 
-def _tool_use_response(tool_name: str = "calculator", tool_input: dict = {"op": "add"}) -> MagicMock:
+def _tool_use_response(tool_name: str = "calculator", tool_input: dict | None = None) -> MagicMock:
     """Build a fake messages.create() response containing one tool_use block."""
+    if tool_input is None:
+        tool_input = {"op": "add"}
     block = SimpleNamespace(type="tool_use", name=tool_name, input=tool_input)
     response = MagicMock()
     response.content = [block]
@@ -250,8 +251,8 @@ def test_record_capture_gap_silent_inside_adapter() -> None:
 
     token = _inside_adapter.set(True)
     try:
-        import logging
         import io
+        import logging
         handler = logging.StreamHandler(io.StringIO())
         logger = logging.getLogger("aevum.core.adapters.anthropic_adapter")
         logger.addHandler(handler)

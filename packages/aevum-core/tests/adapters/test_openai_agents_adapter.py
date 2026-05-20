@@ -131,14 +131,10 @@ def test_on_tool_end_output_hash_computation_is_stable() -> None:
     The output hash is computed from str(tool_output)[:500].
     This snapshot guards the truncation boundary and hash algorithm.
     """
-    import hashlib
-
     hooks = AevumAgentHooks(kernel=None)
     with _permit_patch():
         ctx = hooks.on_tool_start("tool", {})
 
-    # Confirm the hash of a known output string matches SHA-256 expectation.
-    expected_hash = hashlib.sha256(b"hello world")[:8]  # type: ignore[index]
     # on_tool_end does not expose the hash directly; confirm it does not raise
     hooks.on_tool_end(ctx, "hello world", success=True)
 

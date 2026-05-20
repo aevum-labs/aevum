@@ -26,8 +26,8 @@ import pytest
 
 pytest.importorskip("langchain_core", reason="langchain-core not installed")
 
-from uuid import UUID  # noqa: E402
 from unittest.mock import MagicMock, patch  # noqa: E402
+from uuid import UUID  # noqa: E402
 
 from inline_snapshot import snapshot  # noqa: E402
 
@@ -208,7 +208,6 @@ def test_callback_compatible_with_langchain_base() -> None:
     AevumLangChainCallback must be accepted by LangChain's callback system.
     Verify it has all required hook method names.
     """
-    from langchain_core.callbacks import BaseCallbackHandler
 
     cb = AevumLangChainCallback(kernel=None)
     for method in ("on_tool_start", "on_tool_end", "on_llm_start", "on_llm_end", "on_chain_error"):

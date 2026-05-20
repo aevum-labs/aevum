@@ -37,7 +37,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from datetime import UTC, datetime
-from typing import Any, Union
+from typing import Any
 from uuid import UUID
 
 from pydantic import TypeAdapter, ValidationError
@@ -196,7 +196,7 @@ class AevumLangChainCallback:
 
     def on_chain_error(
         self,
-        error: Union[Exception, KeyboardInterrupt],
+        error: Exception | KeyboardInterrupt,
         *,
         run_id: UUID | None = None,
         parent_run_id: UUID | None = None,

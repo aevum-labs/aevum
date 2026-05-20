@@ -13,7 +13,6 @@ Verifies that:
 from __future__ import annotations
 
 import asyncio
-import os
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -26,7 +25,6 @@ from aevum.mcp.traceparent import (
     should_inject,
     traceparent_to_trace_id,
 )
-
 
 # ── make_traceparent tests ─────────────────────────────────────────────────────
 
