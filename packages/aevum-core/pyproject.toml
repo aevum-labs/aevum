@@ -57,6 +57,12 @@ crewai = [
 openai-agents = [
     "openai-agents>=0.0.12",
 ]
+anthropic = [
+    "anthropic>=0.50.0",
+]
+langchain = [
+    "langchain-core>=0.2.0",
+]
 benchmark = [
     "pytest-benchmark>=4.0.0",
 ]

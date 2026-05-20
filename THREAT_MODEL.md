@@ -167,6 +167,41 @@ persistent workload.
 
 ---
 
+## Classification Ceiling Limitation
+
+Barrier 2 enforces the classification ceiling at **query time**, not at
+ingest time (`apply_classification_ceiling()` in `barriers.py`).
+
+**What it does:** When an actor queries the knowledge graph, Barrier 2
+redacts any entity whose recorded classification level exceeds the
+actor's declared clearance. Redacted entities are removed from the
+result set; the operation is not halted.
+
+**What it does not do:**
+
+- It does not prevent above-clearance data from being **ingested**.
+  `ingest()` accepts data at any classification level regardless of the
+  calling actor's clearance. The barrier fires only on read, not on write.
+- It does not prevent an actor with direct database access from reading
+  above-clearance data outside Aevum's query path.
+- It does not enforce multi-level security (MLS) at the OS or filesystem
+  level. Classification is a runtime label checked by the kernel — not an
+  OS-enforced access boundary.
+- It does not apply to data returned through the `replay()` function.
+  `replay()` returns a verbatim AuditEvent from the provenance graph;
+  classification ceiling is not re-applied to replayed payloads.
+
+**Practical implication:** If you ingest sensitive data with a high
+classification label and a low-clearance actor later calls `query()`,
+Barrier 2 will redact that data from the result. However, the data is
+present in the storage backend and visible to anyone with direct
+backend access (see Assumption 2). For workloads requiring strict
+ingest-time classification control, apply access controls at the ingest
+boundary (e.g., policy in your application layer or in an OPA sidecar)
+before calling `ingest()`.
+
+---
+
 ## Crisis Detection Limitations
 
 Barrier 1 (Crisis) flags content matching crisis patterns before any

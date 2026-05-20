@@ -1,0 +1,101 @@
+name: OpenAI Agents SDK — Nightly Canary
+
+# Runs nightly against the pre-release openai-agents build to detect
+# upstream API changes before they reach a stable release.
+# Opens a GitHub issue automatically if the adapter snapshot tests fail.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write    # needed to open a failure issue
+
+jobs:
+  canary:
+    name: "openai-agents pre-release / py${{ matrix.python }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081  # v5
+        with:
+          version: "latest"
+
+      - name: Set up Python ${{ matrix.python }}
+        run: uv python install ${{ matrix.python }}
+
+      - name: Build liboqs C library
+        run: |
+          pip install cmake ninja
+          curl -fsSL https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.14.0.tar.gz | tar xz
+          cmake -GNinja \
+            -DCMAKE_INSTALL_PREFIX="$HOME/_oqs" \
+            -DBUILD_SHARED_LIBS=ON \
+            -DOQS_USE_OPENSSL=OFF \
+            -S liboqs-0.14.0 -B liboqs-build
+          ninja -C liboqs-build -j$(nproc) install
+          rm -rf liboqs-0.14.0 liboqs-build
+
+      - name: Install workspace + pre-release openai-agents
+        run: |
+          uv sync --frozen --python ${{ matrix.python }}
+          uv pip install --python ${{ matrix.python }} \
+            --pre "openai-agents>=0.0.12"
+
+      - name: Show installed openai-agents version
+        run: uv run --python ${{ matrix.python }} python -c "import agents; print(agents.__version__)"
+
+      - name: Run adapter snapshot tests
+        id: tests
+        run: |
+          uv run --python ${{ matrix.python }} pytest \
+            packages/aevum-core/tests/adapters/test_openai_agents_adapter.py \
+            -v --inline-snapshot=disable \
+            --tb=short \
+            2>&1 | tee /tmp/pytest-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Open issue on failure
+        if: failure()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.existsSync('/tmp/pytest-output.txt')
+              ? fs.readFileSync('/tmp/pytest-output.txt', 'utf8').slice(-4000)
+              : '(no output captured)';
+            const title = `[canary] openai-agents pre-release broke adapter on py${{ matrix.python }} — ${new Date().toISOString().slice(0,10)}`;
+            const body = [
+              '## OpenAI Agents SDK Canary Failure',
+              '',
+              `**Python:** ${{ matrix.python }}`,
+              `**Workflow run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              'The nightly canary detected that the current openai-agents pre-release',
+              'breaks the `AevumAgentHooks` snapshot tests.  Review the diff below',
+              'and update the adapter or snapshot before the change reaches stable.',
+              '',
+              '### Test output (last 4000 chars)',
+              '```',
+              output,
+              '```',
+              '',
+              'Labels: `adapter-drift`, `needs-triage`',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['adapter-drift', 'needs-triage'],
+            });

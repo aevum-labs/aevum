@@ -23,9 +23,18 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import TypeAdapter, ValidationError
+
 from aevum.core.cedar_engine import CedarPolicyEngine
 
 logger = logging.getLogger(__name__)
+
+# Pydantic TypeAdapters for input validation at the adapter boundary.
+# These validate that callers pass the expected types before any Cedar
+# evaluation or sigchain write occurs.
+_StrAdapter: TypeAdapter[str] = TypeAdapter(str)
+_DictOrNoneAdapter: TypeAdapter[dict[str, Any] | None] = TypeAdapter(dict[str, Any] | None)
+_BoolAdapter: TypeAdapter[bool] = TypeAdapter(bool)
 
 
 class AevumAgentHooks:
@@ -54,7 +63,15 @@ class AevumAgentHooks:
         Called before a tool is invoked.
         Evaluates Cedar policy. Raises PermissionError if denied.
         Returns a context dict for on_tool_end.
+        Raises ValidationError if inputs do not match expected types.
         """
+        try:
+            tool_name = _StrAdapter.validate_python(tool_name, strict=True)
+            tool_input = _DictOrNoneAdapter.validate_python(tool_input, strict=True)
+            agent_name = _StrAdapter.validate_python(agent_name, strict=True)
+        except ValidationError as exc:
+            raise TypeError(f"AevumAgentHooks.on_tool_start: invalid argument types: {exc}") from exc
+
         engine = CedarPolicyEngine.default()
 
         permitted = engine.is_permitted(
@@ -101,7 +118,13 @@ class AevumAgentHooks:
         """
         Called after a tool invocation completes.
         Records the outcome in the sigchain.
+        Raises ValidationError if success is not a bool.
         """
+        try:
+            success = _BoolAdapter.validate_python(success, strict=True)
+        except ValidationError as exc:
+            raise TypeError(f"AevumAgentHooks.on_tool_end: invalid argument types: {exc}") from exc
+
         output_str = str(tool_output)[:500]
         output_hash = hashlib.sha256(output_str.encode()).hexdigest()
 
