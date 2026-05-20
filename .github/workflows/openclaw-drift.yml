@@ -1,0 +1,136 @@
+name: OpenClaw Hook Interface Drift Detector
+
+# Weekly diff of the openclaw plugin hook interface against the pinned SHA
+# recorded in packages/aevum-core/adapters/openclaw-pin.txt.
+# Opens a GitHub issue automatically if the hook API has changed.
+#
+# This implements Phase A-6 (A-23): drift detection only.
+# OpenClaw Stage 1 plugin implementation is cut from v0.6.0 scope.
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"   # 04:00 UTC every Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write   # needed to open a drift issue
+
+jobs:
+  openclaw-drift:
+    name: OpenClaw hook interface drift check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - name: Read pinned interface SHA and upstream commit
+        id: pin
+        run: |
+          pin_file="packages/aevum-core/adapters/openclaw-pin.txt"
+          pinned_sha=$(grep '^interface_sha256:' "$pin_file" | awk '{print $2}')
+          upstream_commit=$(grep '^upstream_commit:' "$pin_file" | awk '{print $2}')
+          echo "pinned_sha=$pinned_sha" >> "$GITHUB_OUTPUT"
+          echo "upstream_commit=$upstream_commit" >> "$GITHUB_OUTPUT"
+          echo "Pinned SHA: $pinned_sha"
+          echo "Upstream commit: $upstream_commit"
+
+      - name: Fetch openclaw hook interface at pinned commit
+        id: fetch
+        run: |
+          upstream_commit="${{ steps.pin.outputs.upstream_commit }}"
+          if [ "$upstream_commit" = "0000000000000000000000000000000000000000" ]; then
+            echo "Pin is placeholder — skipping drift check. Update openclaw-pin.txt with a real commit."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+
+          # Fetch the specific file at the pinned commit from PyPI sdist or GitHub archive.
+          # Adjust HOOK_PATH to the actual path in the openclaw repository.
+          HOOK_PATH="openclaw/hooks/plugin_hooks.py"
+          REPO_ARCHIVE="https://github.com/open-claw/openclaw/archive/${upstream_commit}.tar.gz"
+
+          curl -fsSL "$REPO_ARCHIVE" | \
+            tar xz --wildcards "*/openclaw/hooks/plugin_hooks.py" --strip-components=2 \
+            -O > /tmp/pinned_hook.py 2>/dev/null || {
+              echo "Could not fetch pinned hook file — network error or path changed."
+              exit 1
+            }
+          echo "Fetched $(wc -l < /tmp/pinned_hook.py) lines"
+
+      - name: Fetch current openclaw hook interface (HEAD)
+        if: steps.fetch.outputs.skipped != 'true'
+        id: current
+        run: |
+          REPO_ARCHIVE="https://github.com/open-claw/openclaw/archive/HEAD.tar.gz"
+          curl -fsSL "$REPO_ARCHIVE" | \
+            tar xz --wildcards "*/openclaw/hooks/plugin_hooks.py" --strip-components=2 \
+            -O > /tmp/current_hook.py 2>/dev/null || {
+              echo "Could not fetch current hook file."
+              exit 1
+            }
+          current_sha=$(sha256sum /tmp/current_hook.py | awk '{print $1}')
+          echo "current_sha=$current_sha" >> "$GITHUB_OUTPUT"
+          echo "Current hook SHA: $current_sha"
+
+      - name: Compare interface SHAs
+        if: steps.fetch.outputs.skipped != 'true'
+        id: compare
+        run: |
+          pinned="${{ steps.pin.outputs.pinned_sha }}"
+          current="${{ steps.current.outputs.current_sha }}"
+          if [ "$pinned" = "$current" ]; then
+            echo "drifted=false" >> "$GITHUB_OUTPUT"
+            echo "Hook interface unchanged — no drift detected."
+          else
+            echo "drifted=true" >> "$GITHUB_OUTPUT"
+            diff_output=$(diff /tmp/pinned_hook.py /tmp/current_hook.py || true)
+            echo "DIFF<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$diff_output" | head -150 >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "Drift detected! Pinned: $pinned  Current: $current"
+          fi
+
+      - name: Open issue on drift
+        if: steps.compare.outputs.drifted == 'true'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7
+        with:
+          script: |
+            const diff = `${{ steps.compare.outputs.DIFF }}`;
+            const title = `[openclaw-drift] Hook API changed — re-evaluate adapter — ${new Date().toISOString().slice(0,10)}`;
+            const body = [
+              '## OpenClaw Plugin Hook Interface Drift',
+              '',
+              'The weekly drift detector found that the `openclaw.hooks.plugin_hooks`',
+              'interface has changed since the pinned commit recorded in',
+              '`packages/aevum-core/adapters/openclaw-pin.txt`.',
+              '',
+              `**Pinned SHA:** \`${{ steps.pin.outputs.pinned_sha }}\``,
+              `**Current SHA:** \`${{ steps.current.outputs.current_sha }}\``,
+              `**Pinned commit:** \`${{ steps.pin.outputs.upstream_commit }}\``,
+              '',
+              '### Action required',
+              '1. Review the diff below and assess whether Aevum\'s OpenClaw Stage 1',
+              '   plugin (when implemented in a future phase) needs updating.',
+              '2. If the change is acceptable, update `openclaw-pin.txt` with the new',
+              '   SHA and upstream commit.',
+              '3. If the change breaks the planned plugin interface, file a separate',
+              '   tracking issue before implementing Stage 1.',
+              '',
+              '### Interface diff (first 150 lines)',
+              '```diff',
+              diff,
+              '```',
+              '',
+              `**Workflow run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['adapter-drift', 'needs-triage'],
+            });

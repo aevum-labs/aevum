@@ -1,0 +1,25 @@
+# OpenClaw plugin hook interface pin
+# Format: <sha256-of-hook-interface-module>  <git-commit-sha>  <date-recorded>
+#
+# The drift detector (.github/workflows/openclaw-drift.yml) diffs the current
+# hook interface at HOOK_MODULE against this recorded SHA. If they differ, a
+# GitHub issue is opened automatically.
+#
+# To update: run the drift detector workflow manually after verifying that the
+# upstream change is intentional, then edit this file with the new values.
+#
+# Why this file: OpenClaw has a history of rapid hook API changes. This pin
+# records the last known-good interface so regressions are caught before they
+# reach a release rather than discovered in production.
+#
+# HOOK_MODULE: openclaw.hooks.plugin_hooks
+# Upstream repo: https://github.com/open-claw/openclaw (pinned via SHA below)
+# Last verified: 2026-05-20
+
+interface_sha256: 0000000000000000000000000000000000000000000000000000000000000000
+upstream_commit: 0000000000000000000000000000000000000000
+recorded_at: 2026-05-20
+note: |
+  Placeholder SHA — replace with the real sha256 of openclaw/hooks/plugin_hooks.py
+  from the commit above after running: sha256sum openclaw/hooks/plugin_hooks.py
+  The drift detector will open an issue when the interface changes from this value.
