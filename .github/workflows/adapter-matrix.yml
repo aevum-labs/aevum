@@ -40,7 +40,7 @@ jobs:
 
       - name: Build liboqs C library (required by liboqs-python)
         run: |
-          sudo apt-get install -y --no-install-recommends cmake ninja-build
+          pip install cmake ninja
           curl -fsSL https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.14.0.tar.gz | tar xz
           cmake -GNinja \
             -DCMAKE_INSTALL_PREFIX="$HOME/_oqs" \
