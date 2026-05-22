@@ -137,7 +137,10 @@ nav:
     - Security: learn/security.md
     - Deployment: learn/deployment.md
     - Deployment Patterns: learn/deployment-patterns.md
+    - Key Rotation: deployment/key-rotation.md
+    - Rekor Self-Hosted: deployment/rekor-self-hosted.md
     - Dev to Production: learn/dev-to-production.md
+    - OTel Bridge: learn/otel-bridge.md
     - Standards Alignment: learn/standards-alignment.md
     - Compliance Mapping: learn/compliance-mapping.md
     - Replay vs. Observability: concepts/replay-vs-observability.md
@@ -147,12 +150,16 @@ nav:
     - Tamper-Evident Logging: concepts/tamper-evident-logs.md
     - Research Foundations: concepts/research-foundations.md
     - Self-Governance: learn/self-governance.md
+    - Maintenance Playbook: learn/playbook.md
   - Build:
     - Quickstart: getting-started/quickstart.md
     - MCP Setup: getting-started/mcp-setup.md
     - Guides:
       - Pure Python: learn/guides/pure-python.md
       - LangChain: learn/guides/langchain.md
+      - Anthropic: learn/guides/anthropic.md
+      - MCP Traceparent: learn/guides/mcp.md
+      - Migrate from aevum-llm: learn/guides/migrate-from-aevum-llm.md
       - Guide by User Type: guides/non-enterprise.md
       - Integration Layer: guides/integration-layer.md
       - Billing Walkthrough: use-cases/billing-inquiry.md
@@ -169,6 +176,7 @@ nav:
     - HIPAA: compliance/hipaa.md
     - EU AI Act: compliance/eu-ai-act.md
     - EU AI Act Article 12: compliance/article12.md
+    - OWASP Crosswalk: owasp_crosswalk.md
     - SOC 2: compliance/soc2.md
     - GDPR Article 17: compliance/gdpr-article-17.md
   - ADRs:

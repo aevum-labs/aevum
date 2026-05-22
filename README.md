@@ -40,19 +40,17 @@ three things the standard stack does not provide:
 
 Aevum makes all three structural rather than procedural.
 
-## Quick demo
+## Quick start (zero config)
+
+```bash
+pip install aevum-core
+export AEVUM_DEV=1
+```
 
 ```python
 from aevum.core import Engine
-from aevum.core.consent.models import ConsentGrant
 
-engine = Engine()
-engine.add_consent_grant(ConsentGrant(
-    grant_id="g1", subject_id="user-42", grantee_id="my-agent",
-    operations=["ingest", "query"], purpose="customer-support",
-    classification_max=1,
-    granted_at="2026-01-01T00:00:00Z", expires_at="2027-01-01T00:00:00Z",
-))
+engine = Engine()  # AEVUM_DEV=1 grants consent automatically
 result = engine.ingest(
     data={"message": "User asked about billing"},
     provenance={"source_id": "support-chat", "chain_of_custody": ["support-chat"],
@@ -63,19 +61,37 @@ print(result.audit_id)   # urn:aevum:audit:<uuid7>  — signed, chained, replaya
 print(result.status)     # ok
 ```
 
-No consent grant? `result.status == "error"` with `error_code == "consent_required"`.
+`AEVUM_DEV=1` is for local development only — see the
+[Dev to Production checklist](https://github.com/aevum-labs/aevum/blob/main/docs/learn/dev-to-production.md)
+before deploying. For explicit consent grants, see the
+[Pure Python guide](https://github.com/aevum-labs/aevum/blob/main/docs/learn/guides/pure-python.md).
+
 Crisis keyword in data? Blocked before the graph write. No exceptions.
 
-## LangGraph drop-in
+> **For coding agents:** [`llms.txt`](https://aevum.build/llms.txt) and
+> [`llms-full.txt`](https://aevum.build/llms-full.txt) provide machine-readable
+> API summaries for use with Claude, Copilot, and similar tools.
+
+## Adapter matrix
+
+Six adapters ship with CI coverage across Python 3.11–3.13:
+
+| Adapter | Install | Import path |
+|---|---|---|
+| LangGraph checkpointer | `aevum-core[langgraph]` | `aevum.core.adapters.langgraph.AevumCheckpointer` |
+| Anthropic SDK | `aevum-core[anthropic]` | `aevum.core.adapters.anthropic_adapter.AevumAnthropicAdapter` |
+| LangChain | `aevum-core[langchain]` | `aevum.core.adapters.langchain_callback.AevumLangChainCallback` |
+| OpenAI Agents | `aevum-core[openai-agents]` | `aevum.core.adapters.openai_agents.AevumAgentHooks` |
+| CrewAI | `aevum-core[crewai]` | `aevum.core.adapters.crewai.AevumCrewHooks` |
+| MCP | `aevum-core[mcp]` | `aevum.mcp.traceparent` |
 
 ```python
+# LangGraph drop-in — every superstep dual-signed and chained
 from aevum.core.adapters.langgraph import AevumCheckpointer
 checkpointer = AevumCheckpointer.local()
 graph = builder.compile(checkpointer=checkpointer)
+# delete_thread(thread_id) → GDPR Art. 17 crypto-erasure
 ```
-
-Every superstep is dual-signed (Ed25519 + ML-DSA-65) and chained.
-`delete_thread(thread_id)` triggers GDPR Art. 17 crypto-erasure.
 
 ## Install
 
@@ -83,9 +99,13 @@ Every superstep is dual-signed (Ed25519 + ML-DSA-65) and chained.
 pip install aevum-core                     # kernel only
 pip install "aevum-core[server]"           # + HTTP API
 pip install "aevum-core[langgraph]"        # + LangGraph checkpointer
+pip install "aevum-core[anthropic]"        # + Anthropic SDK adapter
+pip install "aevum-core[langchain]"        # + LangChain callback
+pip install "aevum-core[openai-agents]"    # + OpenAI Agents SDK
+pip install "aevum-core[crewai]"           # + CrewAI hooks
 pip install "aevum-core[oxigraph]"         # + embedded RDF graph
 pip install "aevum-core[postgres]"         # + PostgreSQL backend
-pip install "aevum-core[mcp]"             # + MCP integration
+pip install "aevum-core[mcp]"              # + MCP integration
 pip install "aevum-core[all]"              # everything
 ```
 
@@ -140,7 +160,9 @@ python -c "from aevum.conformance.suite import ConformanceSuite; \
 ```
 
 See [`docs/conformance_report.txt`](docs/conformance_report.txt) for the
-reference run (9 invariants, generated from this codebase).
+reference run. The v0.6.0 suite covers 74 invariants across sigchain format,
+dev mode contracts, OTel bridge privacy defaults, and VaultTransitSigner key
+schemes.
 
 ## Packages
 

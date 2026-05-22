@@ -70,12 +70,56 @@ end-to-end data flow.
 
 ---
 
+---
+
+## v0.6.0 capabilities
+
+**Zero-config developer mode.** Set `AEVUM_DEV=1` to get a fully working
+Aevum engine with no consent configuration, no database, and no signer setup.
+The quickstart is five minutes. The [Dev to Production checklist](../learn/dev-to-production.md)
+shows what to replace before you deploy.
+
+**Six adapters in CI.** Aevum ships production-ready governance adapters for:
+
+| Adapter | Package extra | CI status |
+|---|---|---|
+| Anthropic Claude | `aevum-core[anthropic]` | ✓ Py 3.11–3.13 |
+| LangChain | `aevum-core[langchain]` | ✓ Py 3.11–3.13 |
+| LangGraph | `aevum-core[langgraph]` | ✓ Py 3.11–3.13 |
+| OpenAI Agents | `aevum-core[openai-agents]` | ✓ Py 3.11–3.13 |
+| CrewAI | `aevum-core[crewai]` | ✓ Py 3.11–3.13 |
+| MCP | `aevum-core[mcp]` | ✓ 24 round-trip tests |
+
+**AevumOTelBridge.** Routes sigchain events to any OTel backend as GenAI
+spans. Privacy-preserving by default: only `audit_id` is emitted unless
+content capture is explicitly opted in. Adds less than 0.5 ms p99 overhead.
+
+**74/74 conformance.** The machine-verifiable conformance suite covers
+74 invariants across sigchain format, dev mode contracts, OTel bridge
+privacy defaults, and VaultTransitSigner key schemes. Run it against any
+Aevum deployment:
+
+```bash
+pip install aevum-conformance
+python -c "from aevum.conformance.suite import ConformanceSuite; \
+    r = ConformanceSuite().run_all(); print(r.passed_count, '/', r.total_count)"
+```
+
+**Maintenance methodology.** The [Maintenance Playbook](../learn/playbook.md)
+documents the four principles that govern how Aevum is developed: investigation
+gate, inside-out ordering, known unknowns as first-class output, and mandatory
+automation bias awareness at every consequential checkpoint.
+
+---
+
 ## Get started
 
 ```bash
 pip install aevum-core
+export AEVUM_DEV=1  # zero-config developer mode
 ```
 
-- [Quickstart](../getting-started/quickstart.md) — working code in ten minutes
+- [Quickstart](../getting-started/quickstart.md) — working code in five minutes
+- [Dev to Production checklist](../learn/dev-to-production.md) — replace dev defaults before deploying
 - [Installation](../learn/deployment.md) — all platforms including Docker
 - [GitHub](https://github.com/aevum-labs/aevum) — Apache-2.0, source available

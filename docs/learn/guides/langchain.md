@@ -195,12 +195,76 @@ engine.ingest(data=search_result, ...)
 
 ---
 
+---
+
+## AevumLangChainCallback — governance via callbacks
+
+For applications that use the LangChain callback system directly,
+`AevumLangChainCallback` is a drop-in `BaseCallbackHandler` that applies
+Aevum governance to every tool call and LLM invocation without wrapping the
+chain manually.
+
+```bash
+pip install "aevum-core[langchain]"
+```
+
+```python
+from langchain_openai import ChatOpenAI
+from aevum.core.adapters.langchain_callback import AevumLangChainCallback
+
+cb = AevumLangChainCallback(kernel=engine)
+llm = ChatOpenAI(model="gpt-4o-mini", callbacks=[cb])
+```
+
+### What the callback governs
+
+| Hook | What it does |
+|---|---|
+| `on_tool_start` | Cedar ABAC evaluation — raises `PermissionError` if denied |
+| `on_tool_end` | Sigchain commit: output hash recorded |
+| `on_llm_start` | Sigchain commit: prompt hash recorded |
+| `on_llm_end` | Sigchain commit: completion hash recorded |
+| `on_chain_error` | Capture gap recorded with `reason='langchain_chain_error'` |
+
+### LangGraph StateGraph
+
+LangGraph propagates callbacks through StateGraph nodes when the callback
+is passed via `RunnableConfig`. Pass it in the config dict:
+
+```python
+from aevum.core.adapters.langchain_callback import AevumLangChainCallback
+
+cb = AevumLangChainCallback(kernel=engine)
+config = {"callbacks": [cb]}
+result = graph.invoke(inputs, config)
+```
+
+### Strict isinstance() compatibility
+
+If your framework checks `isinstance(cb, BaseCallbackHandler)`, use the
+mixin pattern:
+
+```python
+from langchain_core.callbacks import BaseCallbackHandler
+from aevum.core.adapters.langchain_callback import AevumLangChainCallback
+
+class MyCallback(AevumLangChainCallback, BaseCallbackHandler):
+    pass
+
+cb = MyCallback(kernel=engine)
+```
+
+`AevumLangChainCallback` intentionally does not subclass `BaseCallbackHandler`
+directly, so `aevum-core` can be imported without `langchain-core` installed.
+
+---
+
 ## Next steps
 
-- [Dev to Production checklist](https://github.com/aevum-labs/aevum/blob/main/docs/learn/dev-to-production.md)
+- [Dev to Production checklist](/learn/dev-to-production/)
 - [Architecture](/learn/architecture/)
 - [Pure Python guide](/learn/guides/pure-python/)
+- [Anthropic adapter guide](/learn/guides/anthropic/)
 
-!!! note "OpenAI Agents and MCP guides"
-    Integration guides for OpenAI Agents SDK and MCP are planned for v0.7.0.
-    See [docs/learn/guides/openai-agents.md](https://github.com/aevum-labs/aevum/blob/main/docs/learn/guides/openai-agents.md) (deferred).
+!!! note "OpenAI Agents guide"
+    An integration guide for OpenAI Agents SDK is planned for v0.7.0.
