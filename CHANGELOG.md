@@ -8,6 +8,68 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added (v0.6.0 Phase DOC — Documentation)
+
+#### Phase DOC-1: Nav additions for v0.6.0 deliverables
+
+- **`mkdocs.yml` nav** — Added 9 missing nav entries for pages created in
+  Phases A–E: Key Rotation, Rekor Self-Hosted, OTel Bridge, Maintenance
+  Playbook (all under Learn); Anthropic, MCP Traceparent, Migrate from
+  aevum-llm (all under Build → Guides); OWASP Crosswalk (under Compliance).
+
+#### Phase DOC-2: Adapter reference pages
+
+- **`docs/learn/guides/anthropic.md`** — New guide for `AevumAnthropicAdapter`:
+  install, wrap client, traceparent note, Stainless migration risk note,
+  `AEVUM_SKIP_ANTHROPIC_TRACE=1` opt-out, and capture gap detection.
+
+- **`docs/learn/guides/mcp.md`** — New guide for MCP `_meta.traceparent`
+  auto-injection: `inject_into_meta()` / `extract_from_meta()`, opt-out,
+  and compat matrix results from G-17/G-18 (24 round-trip tests confirmed).
+
+- **`docs/learn/guides/langchain.md`** — Updated to add `AevumLangChainCallback`
+  section: hook table, LangGraph StateGraph usage, and the mixin pattern for
+  strict `isinstance(BaseCallbackHandler)` compatibility.
+
+#### Phase DOC-3: aevum-llm deprecation migration guide
+
+- **`docs/learn/guides/migrate-from-aevum-llm.md`** — New migration guide:
+  deprecation context, migration table for all five adapters, before/after
+  import comparisons, and CHANGELOG reference.
+
+#### Phase DOC-4: AevumOTelBridge documentation
+
+- **`docs/learn/otel-bridge.md`** — New page: what it does, privacy default
+  (audit_id only), `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` opt-in,
+  `OTEL_SEMCONV_STABILITY_OPT_IN` reference, < 0.5 ms p99 latency, and
+  setup notes for Grafana Tempo and Langfuse (both noted as untested against
+  live instances).
+
+#### Phase DOC-5: PLAYBOOK.md public summary
+
+- **`PLAYBOOK.md`** (repo root) — Public summary of the maintenance
+  methodology: investigation gate, inside-out ordering, known unknowns as
+  first-class output, automation bias awareness, principle tier rationale,
+  maintenance cycle structure, and contribution constraints. Does not include
+  investigation protocols, adversarial test designs, or template internals.
+
+- **`docs/learn/playbook.md`** — Docs site version of the public playbook
+  summary, identical content with internal doc links.
+
+#### Phase DOC-6: product/what-is-aevum.md update
+
+- **`docs/product/what-is-aevum.md`** — Updated for v0.6.0: added section
+  covering `AEVUM_DEV=1` zero-config mode, six-adapter CI matrix,
+  `AevumOTelBridge`, 74/74 conformance suite count, and PLAYBOOK.md reference.
+  Positioning and core description unchanged.
+
+#### Phase DOC-7: README update
+
+- **`README.md`** — Updated for v0.6.0: zero-config quickstart with
+  `AEVUM_DEV=1` as primary install path, six-adapter matrix table,
+  `llms.txt` / `llms-full.txt` link for coding agents, conformance count
+  updated to 74 invariants, install block expanded with all adapter extras.
+
 ### Added (v0.6.0 Phase M — Maintenance Infrastructure)
 
 #### Phase M-1: Structured HITL with automation bias interruption (p3-09 through p3-12)
