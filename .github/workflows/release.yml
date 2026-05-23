@@ -69,6 +69,33 @@ jobs:
       - name: Remove private packages from dist
         run: rm -f dist/aevum_maintainer-*.whl dist/aevum_maintainer-*.tar.gz
 
+      - name: Verify PyPI registration
+        run: |
+          echo "Checking PyPI registration for all packages..."
+          failed=0
+          for pyproject in packages/aevum-*/pyproject.toml; do
+            name=$(grep '^name' "$pyproject" | cut -d'"' -f2)
+            if [[ "$name" == "aevum-maintainer" ]]; then
+              echo "  Skipping private package: $name"
+              continue
+            fi
+            status=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/$name/json")
+            if [[ "$status" == "404" ]]; then
+              echo "ERROR: NEW PACKAGE: $name is not registered on PyPI." \
+                   "Register it manually before releasing." \
+                   "See docs/deployment/new-package.md"
+              failed=1
+            elif [[ "$status" == "200" ]]; then
+              echo "  OK: $name exists on PyPI"
+            else
+              echo "  WARNING: Unexpected HTTP $status for $name — treating as non-fatal"
+            fi
+          done
+          if [[ "$failed" -eq 1 ]]; then
+            exit 1
+          fi
+          echo "All public packages are registered on PyPI."
+
       - name: Publish to PyPI (Trusted Publishing — no API key)
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # release/v1
         with:
