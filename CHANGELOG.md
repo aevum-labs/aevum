@@ -8,6 +8,59 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added (v0.6.0 Phase UX — UI/UX and Web Presence)
+
+#### UX-1: Demo site deployment
+
+- **`demo/fly.toml`** — Fly.io deployment config for `aevum-demo` app.
+  Region: iad, internal_port: 7860, memory: 512 MB.
+- **`demo/main.py`** — Added `X-Robots-Tag: noindex, nofollow` to
+  `SecurityHeadersMiddleware` so all demo API responses are excluded from
+  search engine indexing.
+- **`.github/workflows/deploy-demo.yml`** — CI/CD workflow: triggers on
+  push to `main` when `demo/**` changes; runs axe-core accessibility audit
+  against the running demo server, then deploys with `flyctl deploy --remote-only`.
+- **`docs/deployment/demo-site.md`** — Deployment guide: local run steps,
+  env vars, Fly.io first-time setup, health check, security notes, and
+  manual maintainer steps.
+- **CORS verified** — No `CORSMiddleware` is configured in `demo/main.py`.
+  Cross-origin requests are denied by the browser by default. No
+  `allow_credentials=True` with wildcard origin issue.
+
+#### UX-2: Web presence
+
+- **`docs/robots.txt`** — Added explicit allowlist for AI crawlers:
+  `GPTBot`, `ClaudeBot`, `OAI-SearchBot`, `PerplexityBot`, `Google-Extended`.
+  The `User-agent: * Allow: /` catch-all is preserved.
+- **`docs/overrides/main.html`** — Added `Organization` JSON-LD block
+  alongside the existing `SoftwareApplication` block on the home page.
+  Fields: name, url, logo, sameAs (GitHub + PyPI).
+- **`docs/index.md`** — Added three persona callout blocks after the intro:
+  Developer (AEVUM_DEV=1 quickstart), Compliance (Article 12 guide),
+  Security (THREAT_MODEL.md link).
+
+#### UX-3: Accessibility
+
+- **`docs/overrides/main.html`** — Added skip-nav link (`<a class="skip-nav">`)
+  as the first focusable element in the body via Material's `announce` block.
+- **`docs/stylesheets/extra.css`** — Added `.skip-nav` CSS: visually hidden
+  by default, visible when focused (WCAG 2.4.1).
+- **`docs/learn/accessibility.md`** — New page: WCAG 2.1 AA target, what is
+  checked in CI (skip-nav, axe-core on demo), known gaps, how to report issues.
+  jsx-a11y: N/A — demo is a pure Python FastAPI app with no React frontend.
+- **`docs/deployment/performance-baseline.md`** — Documents Lighthouse mobile
+  targets (LCP ≤ 2.5s, INP ≤ 200ms, CLS ≤ 0.1, overall ≥ 90). Baseline
+  measurement deferred until first deploy; includes `how to run` instructions.
+
+#### UX-4: Sustainability and trademark
+
+- **`.github/FUNDING.yml`** — Created with `github: [aevum-labs]` and
+  Open Collective placeholder URL. **Manual step:** create the Open Collective
+  page at `opencollective.com/aevum`.
+- **`SECURITY.md`** — Added trademark status section: TESS (USPTO) Class 9
+  and 42 + EUIPO search required before first public PyPI release.
+  Status: pending maintainer action.
+
 ### Added (v0.6.0 Phase DOC — Documentation)
 
 #### Phase DOC-1: Nav additions for v0.6.0 deliverables

@@ -1,3 +1,19 @@
+/* ── Skip navigation ─────────────────────────────────────────────────────── */
+.skip-nav {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.skip-nav:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+}
+
 /* ── Logo ───────────────────────────────────────────────────────────────── */
 /* Baked-in PNG transparency handles the circle; border-radius is a fallback
    in case Material renders a background behind the img at any theme variant. */

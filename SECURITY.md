@@ -74,6 +74,14 @@ The five barriers cannot be disabled by any policy, configuration, or complicati
 | Canonicalization | RFC 8785 JCS | RFC 8785 |
 | Principles signing | Ed25519 | RFC 8032 |
 
+## Trademark Status
+
+Trademark search for "Aevum": TESS (USPTO) Class 9 and 42, and EUIPO
+equivalent, is required before the first public PyPI release under the
+`aevum-core` name. **Status: pending maintainer action.** No filing has
+been made. This is a manual step — the maintainer must initiate the search
+and record the outcome here before the 1.0.0 release.
+
 ## EAR §742.15 Export Notification (D-19)
 
 **Status: TEMPLATE PRODUCED — AWAITING MAINTAINER REVIEW AND FILING**

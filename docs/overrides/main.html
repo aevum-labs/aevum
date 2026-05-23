@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% block announce %}
+<a class="skip-nav" href="#main-content">Skip to main content</a>
+{% endblock %}
 {% block extrahead %}
   {{ super() }}
   {% if page %}
@@ -44,6 +47,19 @@
     "license": "https://opensource.org/licenses/Apache-2.0",
     "codeRepository": "https://github.com/aevum-labs/aevum",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Aevum Labs",
+    "url": "https://aevum.build",
+    "logo": "https://aevum.build/assets/og-image.png",
+    "sameAs": [
+      "https://github.com/aevum-labs/aevum",
+      "https://pypi.org/project/aevum-core/"
+    ]
   }
   </script>
   {% else %}

@@ -12,6 +12,15 @@ consent-checked data access, and verifiable decision records —
 three problems that tend to surface together in production. The quickstart
 gets you to working code in ten minutes.
 
+!!! tip "Developer"
+    New here? Start with `AEVUM_DEV=1` — [Quickstart →](/getting-started/quickstart/)
+
+!!! note "Compliance"
+    Evaluating for EU AI Act Article 12? — [Article 12 guide →](/compliance/article12/)
+
+!!! abstract "Security"
+    Reviewing the threat model? — [THREAT_MODEL.md →](https://github.com/aevum-labs/aevum/blob/main/THREAT_MODEL.md)
+
 ## Where to start
 
 <div class="grid cards" markdown>
