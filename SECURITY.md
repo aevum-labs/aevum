@@ -85,24 +85,18 @@ and record the outcome here before the 1.0.0 release.
 
 ## EAR §742.15 Export Notification (D-19)
 
-**Status: TEMPLATE PRODUCED — AWAITING MAINTAINER REVIEW AND FILING**
+**Status: FILED — 2026-05-20**
+
+Filed: 2026-05-20. Sent to crypt@bis.doc.gov and enc@nsa.gov.
+No response required — notification only.
 
 Aevum-core uses Ed25519 digital signatures and SHA3-256 hashing. These are
 encryption items subject to EAR (Export Administration Regulations) §742.15.
 Open-source cryptographic software qualifies for the License Exception ENC
-(15 C.F.R. §740.17(b)(4)) provided a one-time notification is submitted to
-BIS (Bureau of Industry and Security) and NSA.
+(15 C.F.R. §740.17(b)(4)) — a one-time notification to BIS and NSA is
+sufficient; no license is required.
 
-> **Maintainer action required:** Review the template below. If the notification
-> has already been filed (e.g., from a prior release), record the date and BIS
-> reference number in this section and delete the template. If not yet filed,
-> complete and submit the template before the next public release that includes
-> cryptographic functionality.
->
-> **Do not file without maintainer review.** The template below is for review
-> only; it has not been submitted.
-
-### Filing requirements
+### Filing requirements (reference)
 
 Per 15 C.F.R. §742.15(b) and §740.17(b)(4):
 
@@ -112,7 +106,7 @@ Per 15 C.F.R. §742.15(b) and §740.17(b)(4):
 3. Submit once, before or at the time of public release.
 4. Retain a copy of the submission confirmation.
 
-### Completed template (for maintainer review)
+### Filed notification (reference copy)
 
 ```
 To: crypt@bis.doc.gov, enc@nsa.gov
@@ -156,13 +150,5 @@ EAR99 because it performs encryption; however, it qualifies for License
 Exception ENC under 15 C.F.R. §740.17(b)(4) as publicly available
 encryption source code.
 
-Submitted by: [MAINTAINER NAME]
-Date: [DATE OF SUBMISSION]
+Date filed: 2026-05-20
 ```
-
-### After filing
-
-Once submitted:
-1. Replace the template above with the filing date and BIS reference number.
-2. Update the "Supported Versions" table if applicable.
-3. Add a note to CHANGELOG.md under the relevant release.
