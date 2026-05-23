@@ -201,3 +201,13 @@ It must never be suppressed, made optional, or moved behind a feature flag.
 The ICLR 2025 finding (84.30% mixed-attack success; humans correct ~50% under
 automation bias) is the justification — this warning is the friction that makes
 independent review happen.
+
+**S-16 — Read the regression baseline before touching v0.7.0 code**
+At the start of any v0.7.0 session, read
+`regression-baseline-v0.6.0/README.md` before touching any code. If a
+benchmark, conformance test, or compat entry regresses from the baseline,
+treat it as a blocking issue requiring an explicit ADR before proceeding.
+
+---
+
+> Maintenance templates live in aevum-labs/aevum-ops
