@@ -8,6 +8,29 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [0.6.0] — 2026-05-23
 
+### Fixed (v0.6.0 Pre-Release Polish — follow-up)
+
+- **`SECURITY.md`** — EAR §742.15 status updated to FILED (2026-05-20).
+  Sent to crypt@bis.doc.gov and enc@nsa.gov; reference copy retained.
+- **`regression-baseline-v0.6.0/`** — Created baseline directory required by
+  S-16. Contains README.md (baseline numbers + regression rule),
+  compat-matrix-v0.6.0.md (copied from adapters/), adversarial-probes.md
+  (G-11–G-16 results), and test-counts.json.
+- **`pyproject.toml`** — Added `[[tool.mypy.overrides]]` for `anthropic.*`
+  to suppress `import-not-found` for the optional Anthropic SDK extra.
+  `uv run mypy -p aevum.core` now returns zero errors.
+
+### Fixed (v0.6.0 Pre-Release Polish)
+
+- **`aevum-llm/__init__.py`** — `__version__` corrected from `"0.4.0"` to
+  `"0.6.0"` to match `pyproject.toml`.
+- **`aevum-llm/DEPRECATED.md`** — Added link to the full migration guide at
+  `docs/learn/guides/migrate-from-aevum-llm.md`.
+- **`aevum-maintainer/pyproject.toml`** — Added missing `[project.urls]`
+  section (`Homepage`, `Repository`).
+- **`SECURITY.md`** — Updated supported versions table: `0.6.x` is now the
+  supported release; `0.5.x` and `0.4.x` are end-of-life.
+
 Six adapters in CI, zero-config dev mode (AEVUM_DEV=1), AevumOTelBridge,
 Rekor v2 migration, 74/74 conformance tests, Article 12 mapping, OWASP
 crosswalk, demo.aevum.build deployment config, Article 14 HITL fields.
