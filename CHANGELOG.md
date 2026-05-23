@@ -6,6 +6,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Aevum follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
+## [Unreleased]
+
+### Fixed
+
+- **`release.yml`** — Added "Verify PyPI registration" step before the PyPI
+  publish step. The step checks every public package in `packages/*/pyproject.toml`
+  against the PyPI JSON API and fails fast with a clear error if any package
+  returns 404 (not yet registered). Prevents the recurring failure where a new
+  package causes Trusted Publishing to abort mid-release. Affected: v0.4.0,
+  v0.5.0, v0.6.0.
+- **`docs/deployment/new-package.md`** — New guide explaining how to register
+  a new PyPI package before releasing: create a pending publisher on pypi.org,
+  then run the release workflow to let the first publish convert it to a
+  confirmed publisher.
+- **`maintenance/templates/EXECUTION.md`** — Created execution session template
+  with a Phase 0 pre-flight checklist. The checklist includes the manual PyPI
+  registration check (`curl` loop) so the maintainer can catch unregistered
+  packages before tagging, matching the automated check in `release.yml`.
+
 ## [0.6.0] — 2026-05-23
 
 ### Fixed (v0.6.0 Pre-Release Polish — follow-up)
