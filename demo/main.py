@@ -689,6 +689,7 @@ _LANDING_HTML = """<!DOCTYPE html>
   </style>
 </head>
 <body>
+<main id="main-content">
 
 <h1>AEVUM</h1>
 <p class="tagline">The governed context kernel — live playground</p>
@@ -883,6 +884,7 @@ _LANDING_HTML = """<!DOCTYPE html>
   <strong>POST /demo/reset</strong> — Clear your session and return to the seeded state.
 </p>
 
+</main>
 <footer>
   <p>
     <a href="https://github.com/aevum-labs/aevum">GitHub</a> ·
