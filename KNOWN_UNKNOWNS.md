@@ -146,3 +146,221 @@ measured reproducibly in CI without a dedicated job.
 **Condition for revisitation:** When the getting-started guide rewrite (B-15)
 is prioritized, this measurement should be taken as part of validating the
 "under 5 minutes" claim.
+
+---
+
+## G-DX: DX Onboarding Timing (RESOLVED — Phase G)
+
+**Item:** G-DX — resolved in Phase G investigation gate
+
+**Question:** Is the DX onboarding time (pip install to first governed ingest
+call) within the 15-minute gate required for the getting-started guide to be
+viable?
+
+**Resolution:** Confirmed acceptable. Phase G gate measured 9.9 seconds for
+a guided onboarding flow in a prepared environment. Well under the 15-minute
+gate. The getting-started guide is viable as written; no friction-reduction
+sprint is required before v0.7.0 DX work.
+
+Note: G-23 (clean-install measurement from PyPI CDN) remains open as a
+separate item.
+
+**Documented in:** Phase G gate report (2026-05-23).
+
+---
+
+## G-BACKLOG: enhancements.md Staleness (RESOLVED — Phase G)
+
+**Item:** G-BACKLOG — found and resolved in Phase G investigation gate
+
+**Question:** Is enhancements.md an accurate representation of the current
+backlog, or has completed work been left in Backlog status?
+
+**Resolution:** Phase G found Phases 1–4 of aevum-maintainer listed as
+Backlog when they were complete. Items were corrected and a pre-flight
+backlog audit was added to EXECUTION.md. enhancements.md is now accurate.
+
+**What changed:** Pre-flight backlog audit added to EXECUTION.md Phase 0.
+Lesson captured in LESSONS_LEARNED.md (L-05).
+
+---
+
+## V07-STAINLESS: Stainless SDK Unification Risk (Open — v0.7.0)
+
+**Item:** V07-STAINLESS — flagged in Phase DOC anthropic.md guide
+
+**Question:** The Anthropic SDK surface may change significantly in H2 2026
+if the Stainless unification ships. How much of AevumAnthropicAdapter will
+need to change, and what is the migration cost?
+
+**Why deferred:** The Stainless unification has not shipped as of v0.6.0.
+AevumAnthropicAdapter wraps the current message-creation interface; if the
+SDK surface changes materially, the adapter wrapping point may move.
+
+**Condition for revisitation:** At v0.7.0 start, check Anthropic SDK
+changelog. If Stainless unification has shipped, run an investigation gate:
+what changed, what breaks, what is the migration scope?
+
+**Related:** docs/learn/guides/anthropic.md (Stainless migration risk note).
+
+---
+
+## V07-VAULT: VaultTransitSigner Live Vault Validation (Open — v0.7.0)
+
+**Item:** V07-VAULT — documented in Phase G gate report
+
+**Question:** Does VaultTransitSigner work correctly against a real Vault
+instance with transit secrets engine enabled? It has been tested only with
+mocks.
+
+**Why deferred:** Setting up a live Vault instance in CI requires an
+infrastructure decision (Vault dev mode in Docker vs. HashiCorp Cloud).
+Neither was provisioned during v0.6.0.
+
+**Condition for revisitation:** When a production deployment requires
+HSM-backed signing, this item becomes a P0 build task. For v0.7.0, run a
+live validation against Vault dev mode in Docker.
+
+---
+
+## V07-OTEL: Grafana Tempo + Langfuse AevumOTelBridge Live Testing (Open — v0.7.0)
+
+**Item:** V07-OTEL — documented in Phase DOC otel-bridge.md
+
+**Question:** Do the AevumOTelBridge setup instructions for Grafana Tempo and
+Langfuse work against live instances? Both backends are noted in the docs as
+"setup notes only — not tested against a live instance."
+
+**Why deferred:** Live backend testing requires running infrastructure that
+was not provisioned during Phase DOC.
+
+**Condition for revisitation:** Before the OTel bridge is promoted in any
+adopter-facing material as production-ready, validate both backends. Grafana
+Tempo via the official Docker Compose quickstart; Langfuse via their hosted
+tier.
+
+---
+
+## V07-OPENCLAW: OpenClaw Adapter (Open — deferred from v0.6.0)
+
+**Item:** V07-OPENCLAW — deferred from Phase B adapter matrix
+
+**Question:** Can an AevumOpenAIAgentsAdapter be built that works reliably
+with the OpenAI Agents SDK hook interface? Is the hook API stable following
+the OpenAI acquisition?
+
+**Why deferred:** OpenAI's post-acquisition SDK governance and the hook API
+stability are unknown. Building against a moving target risks a rebuild on
+the first SDK update.
+
+**Condition for revisitation:** At v0.7.0 start, check OpenAI Agents SDK
+changelog for the prior 90 days. If the hook API has been stable across
+three releases, begin Stage 1.
+
+---
+
+## V07-BARRIER-FNR: Crisis Barrier False Negative Rate (Open — v0.7.0)
+
+**Item:** V07-BARRIER-FNR — flagged in Phase G adversarial probe results
+
+**Question:** What is the false negative rate of the five unconditional
+barriers against novel adversarial inputs in production, beyond the probes
+run in Phase G?
+
+**Why deferred:** Phase G adversarial probes all passed (PASS on all five
+barrier types). However, the probe set is fixed and was designed against
+known attack patterns. Real-world attack variety is unknown.
+
+**Condition for revisitation:** If a crisis barrier bypass is observed in
+production — even in testing — this becomes a P0 investigation. Otherwise,
+review the probe set at v1.0 with fresh adversarial inputs.
+
+**Related:** THREAT_MODEL.md — adversarial prompt section.
+
+---
+
+## V07-OXIGRAPH: oxigraph Graph Store Necessity (Open — v0.7.0)
+
+**Item:** V07-OXIGRAPH — operational question, no production data
+
+**Question:** Is aevum-store-oxigraph a necessary production deployment option,
+or does aevum-store-postgres cover all real-world use cases?
+
+**Why deferred:** No production deployments have run long enough to determine
+whether the oxigraph store's in-process speed advantage matters at real
+workload. The decision to keep vs. deprecate the oxigraph store requires data.
+
+**Condition for revisitation:** After three months of demo.aevum.build traffic,
+examine whether any adopter has asked about the oxigraph store for production.
+If no production interest, consider deprecation in v1.0.
+
+---
+
+## V07-CONFORMANCE: Conformance Suite Completeness (Open — v0.7.0)
+
+**Item:** V07-CONFORMANCE — flagged after 74-test milestone
+
+**Question:** Are the 74 conformance tests sufficient to serve as a regression
+baseline for v0.7.0 development, or are there gap areas (replay fidelity,
+multi-hop consent chains, cross-package integration) not yet covered?
+
+**Why deferred:** The 74-test suite covers the five public functions and all
+five unconditional barriers. Coverage of multi-agent interaction patterns and
+edge-case replay scenarios is unknown.
+
+**Condition for revisitation:** At v0.7.0 start, run a coverage gap analysis
+against the spec. Identify any normative "MUST" or "MUST NOT" in the spec that
+has no corresponding conformance test.
+
+---
+
+## V07-COMMUNITY: External Contribution Pipeline (Open — v0.7.0)
+
+**Item:** V07-COMMUNITY — unknown until v0.6.0 is public
+
+**Question:** Will v0.6.0 generate external GitHub contributions? If so, does
+the project have a functional first-PR review process and response SLA?
+
+**Why deferred:** CONTRIBUTING.md exists, but no external PRs have arrived.
+The process cannot be validated without a real contribution.
+
+**Condition for revisitation:** Monitor GitHub Issues and PRs after v0.6.0
+PyPI release. If an external PR arrives within 30 days, run a community
+infrastructure working session.
+
+---
+
+## V07-TRADEMARK: Trademark Search Not Yet Conducted (Open — v0.7.0)
+
+**Item:** V07-TRADEMARK — flagged in Phase UX SECURITY.md update
+
+**Question:** Is "Aevum" available for trademark registration in Class 9 and
+Class 42 (USPTO) and the equivalent EUIPO classes?
+
+**Why deferred:** The TESS and EUIPO searches are manual tasks that require
+time to run and review. Neither has been initiated as of v0.6.0.
+
+**Condition for revisitation:** Must be resolved before v1.0. Initiate the
+search during v0.7.0 so results are available before v1.0 planning begins.
+Trademark searches typically take days to complete but require weeks to act on
+if a conflict is found.
+
+**Related:** SECURITY.md — trademark status section; TRADEMARK.md.
+
+---
+
+## V07-OG-IMAGE: OG Image Placeholder (Open — v0.7.0)
+
+**Item:** V07-OG-IMAGE — flagged in Phase UX web presence review
+
+**Question:** Is there a real Open Graph image asset for aevum.build, or is
+the current og:image reference pointing to a placeholder that has not been
+commissioned?
+
+**Why deferred:** Commissioning a real OG image requires design work outside
+the scope of the v0.6.0 documentation phases. The placeholder avoids a broken
+og:image tag but does not produce a recognizable preview when shared.
+
+**Condition for revisitation:** Before any public launch announcement or v1.0,
+commission and deploy a real OG image. The spec: 1200×630px, SVG or PNG,
+consistent with the aevum.build color scheme.

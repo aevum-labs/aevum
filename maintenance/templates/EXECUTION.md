@@ -50,6 +50,19 @@ git status --short   # uncommitted changes not from this session → stop and re
 [ -f CLAUDE.md ] && cat CLAUDE.md
 uv --version
 
+PRE-FLIGHT CHECKLIST — run all before any push, no exceptions:
+  pip-audit (or uv run pip-audit) — must exit 0
+  mkdocs build --strict — must exit 0
+  uv run pytest packages/ --tb=short -q | tail -3
+  for pkg in aevum.core aevum.server aevum.mcp aevum.agent \
+             aevum.store.oxigraph aevum.store.postgres aevum.cli; do
+    uv run mypy --package $pkg 2>&1 | tail -2; done
+  uv run ruff check packages/ 2>&1 | tail -3
+
+v0.6.0 example: 4 CI fix PRs were needed in Phase DOC because
+pip-audit and mkdocs --strict were not run locally before pushing.
+Run all checks. Do not skip.
+
 ========================
 PHASE 1 — CI HEALTH CHECK
 ========================
