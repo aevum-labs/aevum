@@ -1,12 +1,16 @@
 # How to Register a New PyPI Package Before Releasing
 
-When a new package is added to `packages/` it must be registered on PyPI
-**before** the release workflow runs. Trusted Publishing cannot create new
-projects — it can only publish to projects that already exist.
+When a new package is added to `packages/` it needs a PyPI registration before
+the release workflow can publish it. A **pending publisher** is sufficient —
+the pre-flight check will warn but not block, and the first upload creates the
+project automatically. You do not need a confirmed publisher or an existing
+project page before tagging the release.
 
-The release workflow's "Verify PyPI registration" step will fail fast with a
-clear error if any package is missing, so an unregistered package will never
-block a partially-completed publish.
+The release workflow's "Verify PyPI registration" step logs a WARNING for any
+404 package and continues. The publish step then attempts the upload; if no
+publisher (pending or confirmed) exists, that step will fail with a clear auth
+error. With `skip-existing: true` set, a partial publish is recoverable — only
+the missing package needs to be re-registered and re-released.
 
 ---
 
@@ -55,18 +59,23 @@ After the workflow completes, confirm the package appears at
 
 ## Manual pre-flight check (optional)
 
-Before tagging, you can verify locally that all packages exist:
+Before tagging, you can check which packages already exist on PyPI:
 
 ```bash
 for pkg in packages/aevum-*/pyproject.toml; do
   name=$(grep '^name' "$pkg" | cut -d'"' -f2)
-  curl -sf "https://pypi.org/pypi/$name/json" > /dev/null \
-    || echo "NOT ON PYPI: $name"
+  status=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/$name/json")
+  if [[ "$status" == "200" ]]; then
+    echo "OK: $name"
+  else
+    echo "WARNING (HTTP $status): $name — ensure a pending publisher is registered"
+  fi
 done
 ```
 
-Any `NOT ON PYPI` result must be resolved before tagging.
-See step 1 above to register the missing package.
+A WARNING result is fine as long as a pending publisher is registered on PyPI
+(see step 1 above). The first upload converts it to a confirmed publisher and
+creates the project page. Only worry if no publisher of any kind exists.
 
 ---
 
