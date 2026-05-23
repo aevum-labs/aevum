@@ -139,6 +139,8 @@ nav:
     - Deployment Patterns: learn/deployment-patterns.md
     - Key Rotation: deployment/key-rotation.md
     - Rekor Self-Hosted: deployment/rekor-self-hosted.md
+    - Demo Site: deployment/demo-site.md
+    - Performance Baseline: deployment/performance-baseline.md
     - Dev to Production: learn/dev-to-production.md
     - OTel Bridge: learn/otel-bridge.md
     - Standards Alignment: learn/standards-alignment.md
@@ -151,6 +153,7 @@ nav:
     - Research Foundations: concepts/research-foundations.md
     - Self-Governance: learn/self-governance.md
     - Maintenance Playbook: learn/playbook.md
+    - Accessibility: learn/accessibility.md
   - Build:
     - Quickstart: getting-started/quickstart.md
     - MCP Setup: getting-started/mcp-setup.md
