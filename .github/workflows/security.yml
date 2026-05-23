@@ -22,13 +22,13 @@ jobs:
           version: "latest"
       - name: Audit dependencies
         run: |
-          # Export pinned third-party deps and strip all local file:// references.
-          # --no-editable removes editable workspace members; the grep removes
-          # path dependencies (e.g. aevum-agent) that uv exports as file:// URLs.
-          # pip-audit cannot hash-verify file:// directory references.
+          # Export pinned third-party deps and strip all local workspace references.
+          # uv exports workspace members as relative ./packages/* paths (converted
+          # to file:// by pip at install time). Filter them before passing to
+          # pip-audit, which cannot hash-verify directory references.
           # PYSEC-2025-183 (pyjwt): disputed by supplier, no fix version available.
           uv export --no-editable --format requirements-txt \
-            | grep -v "file://" \
+            | grep -v "^\./packages/" \
             > /tmp/audit-requirements.txt
           uv run pip-audit --desc on --ignore-vuln PYSEC-2025-183 \
             -r /tmp/audit-requirements.txt
