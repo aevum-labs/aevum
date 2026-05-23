@@ -25,7 +25,10 @@ members = [
     "aevum-store-oxigraph",
     "aevum-store-postgres",
 ]
-constraints = [{ name = "python-multipart", specifier = ">=0.0.27" }]
+constraints = [
+    { name = "python-multipart", specifier = ">=0.0.27" },
+    { name = "starlette", specifier = ">=1.0.1" },
+]
 
 [manifest.dependency-groups]
 dev = [
@@ -40,7 +43,6 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=0.23" },
     { name = "rich", specifier = ">=13.0" },
     { name = "ruff", specifier = ">=0.9" },
-    { name = "starlette", specifier = "==1.0.1" },
     { name = "types-pyyaml", specifier = ">=6.0" },
 ]
 

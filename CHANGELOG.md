@@ -6,7 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Aevum follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
-## [Unreleased]
+## [0.6.0] — 2026-05-23
+
+Six adapters in CI, zero-config dev mode (AEVUM_DEV=1), AevumOTelBridge,
+Rekor v2 migration, 74/74 conformance tests, Article 12 mapping, OWASP
+crosswalk, demo.aevum.build deployment config, Article 14 HITL fields.
 
 ### Added (v0.6.0 Phase F Part 2 — v0.7.0 Handoff Preparation)
 
@@ -729,6 +733,7 @@ Initial private development release. Not published to PyPI.
 - Conformance test suite repository (`aevum-conformance`)
 - Domain packs repository (`aevum-domains`)
 
+[0.6.0]: https://github.com/aevum-labs/aevum/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/aevum-labs/aevum/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/aevum-labs/aevum/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/aevum-labs/aevum/releases/tag/v0.3.0
