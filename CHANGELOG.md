@@ -16,10 +16,20 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
   returns 404 (not yet registered). Prevents the recurring failure where a new
   package causes Trusted Publishing to abort mid-release. Affected: v0.4.0,
   v0.5.0, v0.6.0.
+- **`release.yml`** — Pre-flight "Verify PyPI registration" step changed from
+  hard-fail to warn-only on 404. Packages with a pending publisher registered
+  on PyPI will return 404 (no project page yet) but are valid — the first upload
+  creates the project. The step now logs WARNING for 404 packages, prints a
+  summary at the end, and only exits 1 on curl network errors (HTTP 000). The
+  publish step itself will fail with a clear auth error if no publisher exists.
 - **`docs/deployment/new-package.md`** — New guide explaining how to register
   a new PyPI package before releasing: create a pending publisher on pypi.org,
   then run the release workflow to let the first publish convert it to a
   confirmed publisher.
+- **`docs/deployment/new-package.md`** — Clarified that a pending publisher is
+  sufficient for release — the pre-flight step warns but does not block on 404,
+  and the first upload creates the project automatically. Updated the manual
+  pre-flight snippet to show WARNING output rather than treating 404 as fatal.
 - **`maintenance/templates/EXECUTION.md`** — Created execution session template
   with a Phase 0 pre-flight checklist. The checklist includes the manual PyPI
   registration check (`curl` loop) so the maintainer can catch unregistered

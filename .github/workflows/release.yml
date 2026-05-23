@@ -72,7 +72,7 @@ jobs:
       - name: Verify PyPI registration
         run: |
           echo "Checking PyPI registration for all packages..."
-          failed=0
+          warned=()
           for pyproject in packages/aevum-*/pyproject.toml; do
             name=$(grep '^name' "$pyproject" | cut -d'"' -f2)
             if [[ "$name" == "aevum-maintainer" ]]; then
@@ -81,20 +81,28 @@ jobs:
             fi
             status=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/$name/json")
             if [[ "$status" == "404" ]]; then
-              echo "ERROR: NEW PACKAGE: $name is not registered on PyPI." \
-                   "Register it manually before releasing." \
-                   "See docs/deployment/new-package.md"
-              failed=1
+              echo "  WARNING: $name not yet on PyPI — may have a pending publisher." \
+                   "The first upload will create the project. See docs/deployment/new-package.md"
+              warned+=("$name")
             elif [[ "$status" == "200" ]]; then
               echo "  OK: $name exists on PyPI"
+            elif [[ "$status" == "000" ]]; then
+              echo "  ERROR: Network failure reaching PyPI for $name (curl exit, HTTP 000)"
+              exit 1
             else
               echo "  WARNING: Unexpected HTTP $status for $name — treating as non-fatal"
+              warned+=("$name")
             fi
           done
-          if [[ "$failed" -eq 1 ]]; then
-            exit 1
+          if [[ "${#warned[@]}" -gt 0 ]]; then
+            echo ""
+            echo "Pre-flight summary — packages with WARNING (will attempt upload anyway):"
+            for pkg in "${warned[@]}"; do
+              echo "  - $pkg"
+            done
+          else
+            echo "All public packages are registered on PyPI."
           fi
-          echo "All public packages are registered on PyPI."
 
       - name: Publish to PyPI (Trusted Publishing — no API key)
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # release/v1
