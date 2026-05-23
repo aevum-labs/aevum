@@ -115,5 +115,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "$RELEASE_TAG" \
+            --clobber \
             --generate-notes \
             dist/*.whl dist/*.tar.gz "sbom-$RELEASE_TAG.json"
