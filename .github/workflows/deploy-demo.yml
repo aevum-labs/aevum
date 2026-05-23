@@ -35,6 +35,9 @@ jobs:
       - name: Install axe-cli
         run: npm install -g @axe-core/cli
 
+      - name: Sync Chrome and ChromeDriver versions
+        run: npx browser-driver-manager install chrome
+
       - name: Run axe against landing page
         run: axe http://localhost:7860/ --exit
 
