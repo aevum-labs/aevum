@@ -16,6 +16,16 @@ Version:  {{CURRENT_VERSION}}
 Deferred: {{DEFERRED}}
 Last run: {{LAST_RUN_DATE}}
 
+PHASE 0 — BACKLOG AUDIT
+Before reading the research phases, verify enhancements.md is accurate.
+Cross-reference every Backlog item against CHANGELOG.md. If an item
+appears in CHANGELOG.md as shipped, remove it from Backlog before
+proceeding. Do not trust the backlog status without checking.
+
+v0.6.0 example: enhancements.md had Phases 1-4 of aevum-maintainer
+listed as Backlog when they were complete. Always check CHANGELOG
+before trusting the backlog.
+
 =======================
 GITHUB ACTIONS SCAN RESULTS
 =======================

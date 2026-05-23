@@ -8,6 +8,49 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added (v0.6.0 Phase F Part 2 — v0.7.0 Handoff Preparation)
+
+#### F-Part2-1: LESSONS_LEARNED.md
+
+- **`LESSONS_LEARNED.md`** — New document capturing 6 lessons from the
+  v0.6.0 cycle (Phases G, A, B, C, D, E, M, DOC, UX, F). One entry per
+  lesson; each with what happened, why, what changed, and what to watch for
+  in v0.7.0. Lessons: pre-flight CI discipline (L-01), read before build
+  (L-02), maintenance template first-pass errors (L-03), workflow without
+  secrets prerequisite (L-04), stale enhancements.md (L-05), investigation
+  gate prevented wasted implementation (L-06).
+
+#### F-Part2-2: KNOWN_UNKNOWNS.md — v0.6.0 strategic additions
+
+- **`KNOWN_UNKNOWNS.md`** — Added two resolved entries (G-DX: DX timing
+  confirmed 9.9s, G-BACKLOG: enhancements.md staleness resolved) and ten
+  open items carried to v0.7.0: V07-STAINLESS (Stainless SDK unification
+  risk), V07-VAULT (VaultTransitSigner live validation), V07-OTEL (Grafana
+  Tempo + Langfuse live testing), V07-OPENCLAW (OpenClaw adapter deferral),
+  V07-BARRIER-FNR (crisis barrier false negative rate), V07-OXIGRAPH
+  (oxigraph store necessity), V07-CONFORMANCE (conformance suite
+  completeness), V07-COMMUNITY (external contribution pipeline),
+  V07-TRADEMARK (trademark search not initiated), V07-OG-IMAGE (OG image
+  placeholder).
+
+#### F-Part2-3: v0.7.0-scope.md
+
+- **`v0.7.0-scope.md`** — New scope recommendation document for v0.7.0.
+  6 high-priority items (Scalar API Explorer, OpenAI/MCP guides, Vault live
+  test, OTel live test, Stainless re-evaluation, trademark search), 4 medium
+  items (OpenClaw Stage 1, community contribution infrastructure, E-07-PUB
+  submission, ML-DSA hybrid signing), deferred list (Phase 5c/5d, OpenSSF
+  silver, FIPS guide), and a 7-item investigation gate checklist.
+
+#### F-Part2-4: Maintenance template v0.6.0 examples
+
+- **`maintenance/templates/RESEARCH.md`** — Added Phase 0 backlog audit
+  section with v0.6.0 example: enhancements.md staleness lesson.
+- **`maintenance/templates/EXECUTION.md`** — Added pre-flight checklist
+  block to Phase 0 with v0.6.0 example: 4 CI fix PRs from skipped checks.
+- **`maintenance/templates/ENHANCEMENT.md`** — Added READ BEFORE WRITING
+  section with v0.6.0 example: Phase UX created files that already existed.
+
 ### Added (v0.6.0 Phase UX — UI/UX and Web Presence)
 
 #### UX-1: Demo site deployment

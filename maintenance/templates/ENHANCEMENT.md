@@ -58,6 +58,23 @@ Example (M):
   Current session: Phase 1
 
 ==========================
+READ BEFORE WRITING
+==========================
+List the files you will read before creating or modifying anything.
+If you are about to create a file, verify it does not exist first.
+If it exists, read it cold — do not generate content from assumptions.
+
+Files to read for this session:
+  □ [list specific files relevant to this enhancement]
+  □ CHANGELOG.md — verify current state matches assumptions
+  □ KNOWN_UNKNOWNS.md — check for relevant deferred items
+  □ Any existing doc pages this enhancement will link to or extend
+
+v0.6.0 example: Phase UX session document included tasks to create
+robots.txt, JSON-LD, ADOPTERS.md — all of which already existed.
+List files to read first. Read them before writing a single line.
+
+==========================
 CONTEXT
 ==========================
 [3–5 lines: what Aevum currently does in this area, and what the gap is.
