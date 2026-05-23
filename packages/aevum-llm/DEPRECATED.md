@@ -14,6 +14,8 @@ pip install aevum-agent
 aevum-agent provides the A2A v1.0 protocol implementation
 which supersedes the LLM complication pattern.
 
+Full migration instructions: [docs/learn/guides/migrate-from-aevum-llm.md](../../docs/learn/guides/migrate-from-aevum-llm.md)
+
 ## Why
 
 Every major AI framework already provides LLM integration.
