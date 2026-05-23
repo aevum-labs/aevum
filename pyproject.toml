@@ -21,8 +21,10 @@ dev-dependencies = [
     "cyclonedx-bom>=4.0",
 ]
 # CVE GHSA-pp6c-gr5w-3c5g: python-multipart DoS fixed in 0.0.27 (transitive via mcp)
+# PYSEC-2026-161: starlette Host header path injection fixed in 1.0.1
 constraint-dependencies = [
     "python-multipart>=0.0.27",
+    "starlette>=1.0.1",
 ]
 
 [tool.pytest.ini_options]
