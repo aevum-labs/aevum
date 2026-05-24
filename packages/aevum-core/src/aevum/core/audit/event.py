@@ -47,6 +47,8 @@ class AuditEvent:
     # Valid values: "ed25519" (current default) | "ed25519+ml-dsa-65" (future hybrid).
     # Envelopes without this field (written before Phase C) are treated as "ed25519".
     key_scheme: str = "ed25519"
+    # Phase 1A: COSE_Sign1 receipt bytes (None when no encoder is configured).
+    receipt_cbor: bytes | None = None
 
     def __post_init__(self) -> None:
         if not self.actor:

@@ -23,6 +23,8 @@ from aevum.core.audit.hlc import now as hlc_now
 from aevum.core.audit.signer import InProcessSigner, Signer
 
 if TYPE_CHECKING:
+    from aevum.publish.encoder import ReceiptEncoder
+
     from aevum.core.signing import DualSigner
     from aevum.core.tsa import TSAClient
 
@@ -64,6 +66,8 @@ class Sigchain:
         # Phase 1 additions — optional
         dual_signer: DualSigner | None = None,
         tsa_client: TSAClient | None = None,
+        # Phase 1A: COSE_Sign1 receipt encoder — optional, non-blocking
+        receipt_encoder: ReceiptEncoder | None = None,
     ) -> None:
         if signer is not None:
             self._signer = signer
@@ -80,6 +84,7 @@ class Sigchain:
         self._prior_hash: str = initial_prior_hash
         self._dual_signer = dual_signer
         self._tsa_client = tsa_client
+        self._receipt_encoder = receipt_encoder
 
     @property
     def key_id(self) -> str:
@@ -216,6 +221,18 @@ class Sigchain:
             key_scheme="ed25519",
         )
         self._prior_hash = AuditEvent.hash_event_for_chain(event)
+
+        # Phase 1A: attach COSE_Sign1 receipt bytes if encoder is configured
+        if self._receipt_encoder is not None:
+            try:
+                from aevum.core.receipt import AevumReceipt
+                receipt = AevumReceipt.from_sigchain_event(event)
+                receipt_cbor = self._receipt_encoder.encode(receipt)
+                import dataclasses
+                event = dataclasses.replace(event, receipt_cbor=receipt_cbor)
+            except Exception as exc:
+                logger.warning("Receipt encoding failed (non-blocking): %s", exc)
+
         return event
 
     def verify_chain(self, events: list[AuditEvent]) -> bool:

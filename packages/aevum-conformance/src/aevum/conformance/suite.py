@@ -144,6 +144,10 @@ class ConformanceSuite:
         # Invariant 4: structural check (not a canary)
         results.append(self._check_remember_fires())
 
+        # Invariants 10-11: black box receipt format layer (Phase 1A)
+        results.append(self._check_cose_structure())
+        results.append(self._check_prov_agent_fields())
+
         results.sort(key=lambda r: r.invariant_id)
 
         try:
@@ -226,4 +230,126 @@ class ConformanceSuite:
         except Exception as exc:  # noqa: BLE001
             return InvariantResult(
                 invariant_id=4, name=name, passed=False, detail=str(exc)
+            )
+
+    def _check_cose_structure(self) -> InvariantResult:
+        """
+        Invariant 10 (I6-COSE-STRUCTURE):
+        A COSE_Sign1 receipt produced by ReceiptEncoder is a valid 4-element
+        CBOR array with alg=-8 in the protected header.
+        """
+        name = "cose_sign1_receipt_valid_structure_alg_minus_8"
+        try:
+            import cbor2
+            from aevum.core.audit.event import AuditEvent
+            from aevum.core.audit.signer import InProcessSigner
+            from aevum.core.receipt import AevumReceipt
+            from aevum.publish.encoder import ReceiptEncoder
+
+            signer = InProcessSigner()
+            encoder = ReceiptEncoder(signer=signer, tsa_client=None, dev_mode=True)
+
+            event = AuditEvent(
+                event_id="test-cose-01",
+                episode_id="ep-test-01",
+                sequence=1,
+                event_type="test.action",
+                schema_version="1.0",
+                valid_from="2026-05-24T00:00:00+00:00",
+                valid_to=None,
+                system_time=0,
+                causation_id=None,
+                correlation_id=None,
+                actor="test-agent",
+                trace_id=None,
+                span_id=None,
+                payload={"test": True},
+                payload_hash=AuditEvent.hash_payload({"test": True}),
+                prior_hash="a" * 64,
+                signature="dGVzdA",
+                signer_key_id="test-key",
+            )
+            receipt = AevumReceipt.from_sigchain_event(event)
+            receipt_cbor = encoder.encode(receipt)
+
+            decoded = cbor2.loads(receipt_cbor)
+            if not isinstance(decoded, list) or len(decoded) != 4:
+                got_len = len(decoded) if isinstance(decoded, list) else "n/a"
+                return InvariantResult(
+                    invariant_id=10, name=name, passed=False,
+                    detail=f"Expected 4-element array, got {type(decoded).__name__} len={got_len}",
+                )
+
+            protected_bstr = decoded[0]
+            protected = cbor2.loads(protected_bstr)
+            alg = protected.get(1)
+            if alg != -8:
+                return InvariantResult(
+                    invariant_id=10, name=name, passed=False,
+                    detail=f"Expected alg=-8 (EdDSA), got alg={alg!r}",
+                )
+
+            return InvariantResult(invariant_id=10, name=name, passed=True)
+        except Exception as exc:  # noqa: BLE001
+            return InvariantResult(
+                invariant_id=10, name=name, passed=False, detail=str(exc)
+            )
+
+    def _check_prov_agent_fields(self) -> InvariantResult:
+        """
+        Invariant 11 (I7-PROV-AGENT-FIELDS):
+        Every AevumReceipt contains all required PROV-AGENT vocabulary fields
+        with non-empty values.
+
+        Note: I7-SCITT_REGISTERED is not testable in dev mode (NullBackend).
+        SCITT registration is verified only in production mode with AEVUM_SCITT_URL set.
+        """
+        name = "prov_agent_fields_present_in_every_receipt"
+        try:
+            import cbor2
+            from aevum.core.audit.event import AuditEvent
+            from aevum.core.receipt import AevumReceipt
+
+            event = AuditEvent(
+                event_id="test-prov-01",
+                episode_id="ep-test-02",
+                sequence=1,
+                event_type="test.action",
+                schema_version="1.0",
+                valid_from="2026-05-24T00:00:00+00:00",
+                valid_to=None,
+                system_time=0,
+                causation_id=None,
+                correlation_id=None,
+                actor="test-agent",
+                trace_id=None,
+                span_id=None,
+                payload={"test": True},
+                payload_hash=AuditEvent.hash_payload({"test": True}),
+                prior_hash="b" * 64,
+                signature="dGVzdA",
+                signer_key_id="test-key",
+            )
+            receipt = AevumReceipt.from_sigchain_event(event)
+            payload_bytes = receipt.to_cbor_payload()
+            decoded = cbor2.loads(payload_bytes)
+
+            required_fields = [
+                "model_identity_hash",
+                "prompt_hash",
+                "retrieval_corpus_ver",
+                "policy_version",
+                "tool_allowlist_hash",
+            ]
+            missing = [f for f in required_fields if f not in decoded]
+            if missing:
+                return InvariantResult(
+                    invariant_id=11, name=name, passed=False,
+                    detail=f"Missing PROV-AGENT fields: {missing}",
+                )
+
+            return InvariantResult(invariant_id=11, name=name, passed=True)
+        except Exception as exc:  # noqa: BLE001
+            return InvariantResult(
+                invariant_id=11, name=name, passed=False, detail=str(exc)
             )

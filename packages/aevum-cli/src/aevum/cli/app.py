@@ -5,9 +5,10 @@ Top-level typer app — CLI v2. Sub-commands and direct commands registered here
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -197,6 +198,128 @@ def conform(
 
     if not result.all_passed:
         raise typer.Exit(code=1)
+
+
+@app.command(name="verify-receipt")
+def verify_receipt(
+    receipt_file: Annotated[Path, typer.Argument(help="Path to COSE_Sign1 receipt file")],
+) -> None:
+    """
+    Verify an Aevum COSE_Sign1 receipt file.
+
+    Decodes the receipt, verifies the Ed25519 signature over the canonical payload,
+    and prints a human-readable summary. Exit 0 on valid, exit 1 on invalid signature.
+    """
+    import cbor2
+    import nacl.exceptions
+    import nacl.signing
+    from aevum.core.receipt import AevumReceipt
+
+    if not receipt_file.exists():
+        typer.echo(f"File not found: {receipt_file}", err=True)
+        raise typer.Exit(code=1)
+
+    raw = receipt_file.read_bytes()
+
+    try:
+        cose = cbor2.loads(raw)
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"INVALID: not a valid CBOR file: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    if not isinstance(cose, list) or len(cose) != 4:
+        typer.echo("INVALID: not a 4-element COSE_Sign1 array", err=True)
+        raise typer.Exit(code=1)
+
+    protected_bstr, unprotected, payload_bstr, signature_bytes = cose
+
+    try:
+        protected = cbor2.loads(protected_bstr)
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"INVALID: cannot decode protected header: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    alg = protected.get(1)
+    if alg != -8:
+        typer.echo(f"UNSUPPORTED ALGORITHM: alg={alg!r} (expected -8 for EdDSA/Ed25519)", err=True)
+        raise typer.Exit(code=2) from None
+
+    try:
+        receipt_data = cbor2.loads(payload_bstr)
+        receipt = AevumReceipt.model_validate(receipt_data)
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"INVALID: cannot decode receipt payload: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    # Reconstruct Sig_Structure and verify signature
+    sig_structure = cbor2.dumps(["Signature1", protected_bstr, b"", payload_bstr])
+    digest = hashlib.sha3_256(sig_structure).digest()
+
+    # Try to find Ed25519 public key from state dir (kid field in protected header reserved for future)
+    pub_key_bytes: bytes | None = None
+    state_dir = Path.home() / ".aevum"
+    ed25519_pub_path = state_dir / "ed25519.pub"
+    if ed25519_pub_path.exists():
+        pub_key_bytes = ed25519_pub_path.read_bytes()
+
+    if pub_key_bytes is None:
+        typer.echo(
+            "WARNING: no public key found in ~/.aevum/ed25519.pub — skipping signature check.",
+            err=True,
+        )
+        typer.echo("WARNING: receipt content is displayed but authenticity is NOT verified.", err=True)
+        verified = False
+    else:
+        try:
+            verify_key = nacl.signing.VerifyKey(pub_key_bytes)
+            verify_key.verify(digest, bytes(signature_bytes))
+            verified = True
+        except nacl.exceptions.BadSignatureError:
+            typer.echo("SIGNATURE INVALID", err=True)
+            _print_receipt_summary(receipt, unprotected, verified=False)
+            raise typer.Exit(code=1) from None
+        except Exception as exc:  # noqa: BLE001
+            typer.echo(f"SIGNATURE INVALID: {exc}", err=True)
+            raise typer.Exit(code=1) from None
+
+    _print_receipt_summary(receipt, unprotected, verified=verified)
+
+
+def _print_receipt_summary(
+    receipt: Any,
+    unprotected: dict,  # type: ignore[type-arg]
+    verified: bool,
+) -> None:
+    """Print human-readable receipt summary."""
+
+    status_line = "✓ Aevum Receipt Verified" if verified else "! Aevum Receipt (unverified)"
+    typer.echo(status_line)
+    typer.echo("─" * 36)
+
+    tsa_info = "none"
+    if 9 in unprotected:
+        tsa_info = f"<RFC 3161 token, {len(unprotected[9])} bytes>"
+
+    barriers_summary = (
+        ", ".join(f"{k}:{v}" for k, v in receipt.barrier_evaluations.items())
+        if receipt.barrier_evaluations
+        else "none"
+    )
+
+    prior_display = receipt.prior_hash[:12] if len(receipt.prior_hash) >= 12 else receipt.prior_hash
+    model_display = receipt.model_identity_hash[:12] if len(receipt.model_identity_hash) >= 12 else receipt.model_identity_hash
+
+    typer.echo(f"Action:         {receipt.action}")
+    typer.echo(f"Agent:          {receipt.agent_id}")
+    typer.echo(f"Principal:      {receipt.principal}")
+    typer.echo(f"Occurred at:    {receipt.occurred_at}")
+    typer.echo(f"Sequence:       {receipt.sequence}")
+    typer.echo(f"Prior hash:     {prior_display}...")
+    typer.echo(f"Handoff type:   {receipt.handoff_type or 'none'}")
+    typer.echo(f"Model hash:     {model_display}...")
+    typer.echo(f"Policy version: {receipt.policy_version}")
+    typer.echo(f"TSA timestamp:  {tsa_info}")
+    typer.echo(f"Barriers:       {barriers_summary}")
 
 
 @app.command()
