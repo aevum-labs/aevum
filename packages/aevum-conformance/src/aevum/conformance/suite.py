@@ -274,9 +274,10 @@ class ConformanceSuite:
 
             decoded = cbor2.loads(receipt_cbor)
             if not isinstance(decoded, list) or len(decoded) != 4:
+                got_len = len(decoded) if isinstance(decoded, list) else "n/a"
                 return InvariantResult(
                     invariant_id=10, name=name, passed=False,
-                    detail=f"Expected 4-element array, got {type(decoded).__name__} len={len(decoded) if isinstance(decoded, list) else 'n/a'}",
+                    detail=f"Expected 4-element array, got {type(decoded).__name__} len={got_len}",
                 )
 
             protected_bstr = decoded[0]
