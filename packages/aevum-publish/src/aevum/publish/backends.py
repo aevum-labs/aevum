@@ -46,16 +46,22 @@ class RekorV2Backend:
     """
 
     def __init__(self, rekor_url: str | None = None) -> None:
-        self._url = rekor_url or os.environ.get(
-            "AEVUM_REKOR_URL", "https://rekor.sigstore.dev"
-        )
+        # S-13: no hardcoded Rekor URLs — resolved from arg or AEVUM_REKOR_URL only
+        self._url: str | None = rekor_url or os.environ.get("AEVUM_REKOR_URL")
 
     def submit(self, receipt_cbor: bytes) -> str:
         """
         Submit COSE_Sign1 receipt bytes to Rekor v2 as a hashedrekord.
         Uses SHA-256 digest of the receipt_cbor bytes.
         Returns the Rekor log entry UUID.
+        Raises RuntimeError if AEVUM_REKOR_URL is not configured.
         """
+        if not self._url:
+            raise RuntimeError(
+                "RekorV2Backend: AEVUM_REKOR_URL is not configured. "
+                "Set the environment variable or pass rekor_url to the constructor."
+            )
+
         try:
             import httpx
         except ImportError as exc:
