@@ -25,6 +25,7 @@ from aevum.core.audit.signer import InProcessSigner, Signer
 if TYPE_CHECKING:
     from aevum.publish.encoder import ReceiptEncoder
 
+    from aevum.core.ambient import AmbientContextEncoder, AmbientContextReceipt
     from aevum.core.signing import DualSigner
     from aevum.core.tsa import TSAClient
 
@@ -68,6 +69,8 @@ class Sigchain:
         tsa_client: TSAClient | None = None,
         # Phase 1A: COSE_Sign1 receipt encoder — optional, non-blocking
         receipt_encoder: ReceiptEncoder | None = None,
+        # Phase 1B: ambient context encoder — optional, caller-driven
+        ambient_encoder: AmbientContextEncoder | None = None,
     ) -> None:
         if signer is not None:
             self._signer = signer
@@ -85,6 +88,7 @@ class Sigchain:
         self._dual_signer = dual_signer
         self._tsa_client = tsa_client
         self._receipt_encoder = receipt_encoder
+        self._ambient_encoder = ambient_encoder
 
     @property
     def key_id(self) -> str:
@@ -301,3 +305,65 @@ class Sigchain:
 
             expected_prior = AuditEvent.hash_event_for_chain(event)
         return True
+
+    def capture_ambient_context(
+        self,
+        *,
+        trigger: str,
+        session_id: str,
+        **env_signals: object,
+    ) -> AmbientContextReceipt | None:
+        """
+        Capture an ambient context snapshot for this session.
+
+        Returns None if no ambient_encoder was provided (backward compat).
+
+        Callers are responsible for invocation timing:
+          SESSION_START  — call once when a new agent session begins
+          STATE_CHANGE   — call when model_identity_hash, policy_version,
+                           or tool_allowlist_hash changes
+          PERIODIC       — callers may poll at 1 Hz for high-fidelity FOQA analytics;
+                           the library does NOT poll automatically (no background threads)
+          INCIDENT_LOCK  — call when a trigger escalates to the crash-protected tier
+
+        env_signals kwargs accepted:
+          model_identity_hash, policy_version, tool_allowlist_hash,
+          memory_store_hash, input_token_rate_per_min, output_token_rate_per_min,
+          latency_p95_ms, error_rate_pct, cache_hit_rate_pct, prior_snapshot_id
+        """
+        if self._ambient_encoder is None:
+            return None
+
+        from aevum.core.ambient import (
+            AmbientContextReceipt,
+            _compute_system_state_hash,
+        )
+
+        model_identity_hash = str(env_signals.get("model_identity_hash", "UNKNOWN"))
+        policy_version = str(env_signals.get("policy_version", "UNKNOWN"))
+        tool_allowlist_hash = str(env_signals.get("tool_allowlist_hash", "UNKNOWN"))
+        memory_store_hash = str(env_signals.get("memory_store_hash", "NONE"))
+
+        system_state_hash = _compute_system_state_hash(
+            model_identity_hash, policy_version, tool_allowlist_hash
+        )
+
+        snapshot = AmbientContextReceipt(
+            snapshot_id=_uuid7(),
+            session_id=session_id,
+            captured_at=datetime.datetime.now(datetime.UTC).isoformat(),
+            system_state_hash=system_state_hash,
+            model_identity_hash=model_identity_hash,
+            policy_version=policy_version,
+            tool_allowlist_hash=tool_allowlist_hash,
+            memory_store_hash=memory_store_hash,
+            input_token_rate_per_min=env_signals.get("input_token_rate_per_min"),  # type: ignore[arg-type]
+            output_token_rate_per_min=env_signals.get("output_token_rate_per_min"),  # type: ignore[arg-type]
+            latency_p95_ms=env_signals.get("latency_p95_ms"),  # type: ignore[arg-type]
+            error_rate_pct=env_signals.get("error_rate_pct"),  # type: ignore[arg-type]
+            cache_hit_rate_pct=env_signals.get("cache_hit_rate_pct"),  # type: ignore[arg-type]
+            trigger=trigger,
+            prior_snapshot_id=env_signals.get("prior_snapshot_id"),  # type: ignore[arg-type]
+        )
+
+        return snapshot

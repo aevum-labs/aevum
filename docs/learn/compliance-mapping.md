@@ -159,7 +159,7 @@ compliance review before making regulatory assertions based on this content.*
 | RFC 3161 (TSA) | Trusted timestamping | TSA hook (Part 2) | 🔧 | Part 2 capability; required for eIDAS qualified timestamps |
 | W3C PROV-O | Provenance ontology | Provenance barrier | 🔧 | PROV-O serialiser is Part 2 capability |
 | W3C VC-DM 2.0 | Verifiable Credentials | OR-Set consent receipts | 🔧 | VC-DM 2.0 integration is Part 2 |
-| IETF AAT draft | Agent audit trail format | IETF AAT export (custom adapter via AuditEvent structure) | ✅ | Draft; not yet RFC |
+| IETF AAT draft | Agent audit trail format | IETF AAT export (custom adapter via AuditEvent structure) | ✅ | Draft; not yet RFC. Session 1A: COSE_Sign1 receipts with SCITT-profile headers implement the IETF AAT concept. See docs/standards/scitt-profile.md. |
 | OTel GenAI semconv | AI event telemetry | custom OTel integration | ⚠️ | Spec in Development (not stable); tracked at v1.27.0-experimental |
 | NERC CIP-007-6 R4 | Security event monitoring, 90-day online retention | AuditEvent stream | ⚠️ | 90-day retention config; 1-hour incident reporting external |
 | FERPA §99.32 | Disclosure log for educational records | Sigchain (ingest/query events) | ✅ | |
