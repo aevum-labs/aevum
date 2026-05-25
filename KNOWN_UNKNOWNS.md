@@ -11,6 +11,34 @@ new deferral decisions are made. Resolved entries move to CHANGELOG.md.
 
 ---
 
+## V07-ADAPTER-DRIFT: Adapter Drift Tests Use importorskip Guards (Open — v0.7.0)
+
+**Item:** V07-ADAPTER-DRIFT — confirmed in Session 1A gate
+
+**Question:** Are the adapter drift tests (10 tests) skipping in CI because
+the optional framework packages (Anthropic SDK, LangChain, etc.) are absent
+from the test environment? Is this a test failure or expected behavior?
+
+**Resolution (confirmed Session 1A):** The 10 adapter drift tests use
+`pytest.importorskip()` guards. All 10 skip when the optional framework
+packages are absent from the environment. This is intentional — the adapter
+packages are optional extras, not core dependencies. Skip is not a failure.
+
+The guards are:
+```python
+anthropic = pytest.importorskip("anthropic")
+langchain = pytest.importorskip("langchain")
+# etc.
+```
+
+**Action required:** None. Adapter drift tests are verified manually when
+adapter package updates are published. In a future CI configuration with
+optional-extras test environments, these tests will run against real adapters.
+
+**Last confirmed:** Session 1A gate (2026-05-25).
+
+---
+
 ## G-25: Cedar vs. OPA Policy Role Separation (RESOLVED — Phase E)
 
 **Item:** G-25 — resolved in Phase E, spec/09-policy.md

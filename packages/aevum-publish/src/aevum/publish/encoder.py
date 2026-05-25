@@ -7,7 +7,10 @@ RFC 9052 §4.2 COSE_Sign1 structure:
   [protected_bstr, unprotected_map, payload_bstr, signature_bstr]
 
   protected header (CBOR map, then bstr-wrapped):
-    {1: -8, 3: "application/aevum-receipt+cbor", 4: b"aevum-issuer-v1"}
+    {1: -8, 3: "application/aevum-receipt+cbor", 4: b"aevum-issuer-v1",
+     "iss": "did:web:<AEVUM_ISSUER_HOST>",
+     "sub": "urn:aevum:receipt:<sigchain_entry_hash[:16]>",
+     "iat": <int unix timestamp>}
     alg -8 = EdDSA (Ed25519). NOT -7 (ECDSA/ES256).
 
   unprotected header (plain CBOR map):
@@ -25,6 +28,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import time
 from typing import TYPE_CHECKING, Any
 
 import cbor2
@@ -44,16 +48,34 @@ _COSE_ALG_EDDSA = -8
 # Update when RFC publishes.
 _COSE_TST_HEADER_LABEL = 9
 
-_PROTECTED_HEADER: dict[int, Any] = {
-    1: _COSE_ALG_EDDSA,
-    3: "application/aevum-receipt+cbor",
-    4: b"aevum-issuer-v1",
-}
+
+def _build_protected_header(
+    issuer_uri: str,
+    subject_uri: str,
+    issued_at: int,
+) -> dict[Any, Any]:
+    """Build the COSE_Sign1 protected header map with SCITT-profile fields."""
+    return {
+        1: _COSE_ALG_EDDSA,
+        3: "application/aevum-receipt+cbor",
+        4: b"aevum-issuer-v1",
+        # SCITT-profile protected header fields
+        # draft-ietf-scitt-architecture-22 §4.1 — iss/sub labels TBD
+        # Using CBOR text key strings until integer labels are standardized.
+        # When draft publishes as RFC: update to assigned integer labels.
+        "iss": issuer_uri,
+        "sub": subject_uri,
+        "iat": issued_at,
+    }
 
 
-def _build_protected_bstr() -> bytes:
+def _build_protected_bstr(
+    issuer_uri: str,
+    subject_uri: str,
+    issued_at: int,
+) -> bytes:
     """Return the bstr-wrapped CBOR encoding of the protected header."""
-    return cbor2.dumps(_PROTECTED_HEADER)
+    return cbor2.dumps(_build_protected_header(issuer_uri, subject_uri, issued_at))
 
 
 def _build_sig_structure(protected_bstr: bytes, payload_bstr: bytes) -> bytes:
@@ -73,6 +95,8 @@ class ReceiptEncoder:
     stamps the receipt with an RFC 3161 TSA token in the unprotected header.
 
     In dev_mode (AEVUM_DEV=1): no TSA calls, no network I/O.
+    issuer_host: hostname for the SCITT iss field (did:web:<host>).
+      Default: "aevum.local". Production: set AEVUM_ISSUER_HOST env var.
     """
 
     def __init__(
@@ -80,10 +104,12 @@ class ReceiptEncoder:
         signer: Signer,
         tsa_client: TSAClient | None = None,
         dev_mode: bool = False,
+        issuer_host: str = "aevum.local",
     ) -> None:
         self._signer = signer
         self._tsa_client = tsa_client
         self._dev_mode = dev_mode
+        self._issuer_host = issuer_host
 
     def encode(self, receipt: AevumReceipt) -> bytes:
         """
@@ -92,7 +118,11 @@ class ReceiptEncoder:
         In dev_mode: no TSA call, no external network calls.
         Returns raw CBOR bytes of the 4-element COSE_Sign1 array.
         """
-        protected_bstr = _build_protected_bstr()
+        issuer_uri = "did:web:" + self._issuer_host
+        subject_uri = "urn:aevum:receipt:" + receipt.sigchain_entry_hash[:16]
+        issued_at = int(time.time())
+
+        protected_bstr = _build_protected_bstr(issuer_uri, subject_uri, issued_at)
         payload_bstr = receipt.to_cbor_payload()
 
         sig_structure = _build_sig_structure(protected_bstr, payload_bstr)
@@ -117,12 +147,19 @@ class ReceiptEncoder:
         """
         Construct from environment variables.
         AEVUM_DEV=1 → dev_mode=True, no TSA client.
+        AEVUM_ISSUER_HOST → issuer hostname for SCITT iss field (default: aevum.local).
         Otherwise: production InProcessSigner + TSAClient.
         """
         from aevum.core.audit.signer import InProcessSigner
         from aevum.core.tsa import TSAClient
 
         dev_mode = os.environ.get("AEVUM_DEV", "").strip() == "1"
+        issuer_host = os.environ.get("AEVUM_ISSUER_HOST", "aevum.local")
         signer: Signer = InProcessSigner()
         tsa_client: TSAClient | None = None if dev_mode else TSAClient()
-        return cls(signer=signer, tsa_client=tsa_client, dev_mode=dev_mode)
+        return cls(
+            signer=signer,
+            tsa_client=tsa_client,
+            dev_mode=dev_mode,
+            issuer_host=issuer_host,
+        )

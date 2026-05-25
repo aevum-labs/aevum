@@ -146,6 +146,56 @@ class TestReceiptEncoder:
         verify_key = nacl.signing.VerifyKey(pub_bytes)
         verify_key.verify(digest, bytes(sig_bytes))
 
+    def test_encode_protected_header_iss(self) -> None:
+        signer = InProcessSigner()
+        encoder = ReceiptEncoder(signer=signer, dev_mode=True)
+        receipt = AevumReceipt.from_sigchain_event(_make_event())
+        raw = encoder.encode(receipt)
+        decoded = cbor2.loads(raw)
+        protected = cbor2.loads(decoded[0])
+        assert "iss" in protected, f"iss missing from protected header: {protected}"
+        assert protected["iss"].startswith("did:web:"), f"iss wrong format: {protected['iss']}"
+
+    def test_encode_protected_header_sub(self) -> None:
+        signer = InProcessSigner()
+        encoder = ReceiptEncoder(signer=signer, dev_mode=True)
+        receipt = AevumReceipt.from_sigchain_event(_make_event())
+        raw = encoder.encode(receipt)
+        decoded = cbor2.loads(raw)
+        protected = cbor2.loads(decoded[0])
+        assert "sub" in protected, f"sub missing from protected header: {protected}"
+        sub = protected["sub"]
+        assert sub.startswith("urn:aevum:receipt:"), f"sub wrong format: {sub}"
+
+    def test_encode_protected_header_iat(self) -> None:
+        import time
+        signer = InProcessSigner()
+        encoder = ReceiptEncoder(signer=signer, dev_mode=True)
+        receipt = AevumReceipt.from_sigchain_event(_make_event())
+        before = int(time.time())
+        raw = encoder.encode(receipt)
+        after = int(time.time())
+        decoded = cbor2.loads(raw)
+        protected = cbor2.loads(decoded[0])
+        assert "iat" in protected, f"iat missing from protected header: {protected}"
+        assert isinstance(protected["iat"], int), f"iat must be int: {type(protected['iat'])}"
+        assert before <= protected["iat"] <= after + 1
+
+    def test_encode_issuer_host_from_constructor(self) -> None:
+        signer = InProcessSigner()
+        encoder = ReceiptEncoder(signer=signer, dev_mode=True, issuer_host="example.com")
+        receipt = AevumReceipt.from_sigchain_event(_make_event())
+        raw = encoder.encode(receipt)
+        decoded = cbor2.loads(raw)
+        protected = cbor2.loads(decoded[0])
+        assert protected["iss"] == "did:web:example.com"
+
+    def test_encode_issuer_host_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AEVUM_DEV", "1")
+        monkeypatch.setenv("AEVUM_ISSUER_HOST", "issuer.example.org")
+        encoder = ReceiptEncoder.from_env()
+        assert encoder._issuer_host == "issuer.example.org"
+
     def test_from_env_dev_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AEVUM_DEV", "1")
         encoder = ReceiptEncoder.from_env()
