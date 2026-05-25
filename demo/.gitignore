@@ -2,4 +2,7 @@ verify_demo.sh
 __pycache__/
 *.pyc
 .env
+.env.local
 .DS_Store
+node_modules/
+dist/
