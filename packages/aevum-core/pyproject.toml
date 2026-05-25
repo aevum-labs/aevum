@@ -58,6 +58,9 @@ crewai = [
 openai-agents = [
     "openai-agents>=0.0.12",
 ]
+adk = [
+    "google-adk>=1.0.0",
+]
 anthropic = [
     "anthropic>=0.50.0",
 ]
