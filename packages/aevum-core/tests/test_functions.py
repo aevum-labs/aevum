@@ -158,6 +158,9 @@ def test_ingest_model_context_stored_in_payload() -> None:
     assert result.status == "ok"
     last_event = e._ledger.all_events()[-1]
     assert last_event.payload.get("gen_ai.request.model") == "gpt-4.1"
+    # Dual-emit: gen_ai.provider.name is the primary (current) attribute.
+    assert last_event.payload.get("gen_ai.provider.name") == "openai"
+    # gen_ai.system is also emitted for backward compat (default mode, no opt-in).
     assert last_event.payload.get("gen_ai.system") == "openai"
     assert last_event.payload.get("gen_ai.conversation.id") == "conv-123"
     assert "unknown_key" not in last_event.payload
@@ -180,8 +183,46 @@ def test_ingest_model_context_none_is_noop() -> None:
     )
     assert result.status == "ok"
     last_event = e._ledger.all_events()[-1]
-    for key in ("gen_ai.request.model", "gen_ai.system", "gen_ai.conversation.id"):
+    for key in ("gen_ai.request.model", "gen_ai.system", "gen_ai.provider.name", "gen_ai.conversation.id"):
         assert key not in last_event.payload
+
+
+def test_ingest_semconv_dual_emit_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Default mode: both gen_ai.provider.name and gen_ai.system are emitted."""
+    import importlib
+
+    import aevum.core.functions.ingest as ingest_mod
+
+    monkeypatch.delenv("OTEL_SEMCONV_STABILITY_OPT_IN", raising=False)
+    importlib.reload(ingest_mod)
+    try:
+        assert ingest_mod._OTEL_LATEST_ONLY is False
+        payload: dict[str, object] = {}
+        ingest_mod._merge_model_context(payload, {"gen_ai.system": "openai"})
+        assert payload.get("gen_ai.provider.name") == "openai"
+        assert payload.get("gen_ai.system") == "openai"
+    finally:
+        importlib.reload(ingest_mod)
+
+
+def test_ingest_semconv_latest_only_opt_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental,
+    gen_ai.provider.name is present and gen_ai.system is absent."""
+    import importlib
+
+    import aevum.core.functions.ingest as ingest_mod
+
+    monkeypatch.setenv("OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental")
+    importlib.reload(ingest_mod)
+    try:
+        assert ingest_mod._OTEL_LATEST_ONLY is True
+        payload: dict[str, object] = {}
+        ingest_mod._merge_model_context(payload, {"gen_ai.system": "openai"})
+        assert payload.get("gen_ai.provider.name") == "openai"
+        assert "gen_ai.system" not in payload
+    finally:
+        monkeypatch.delenv("OTEL_SEMCONV_STABILITY_OPT_IN", raising=False)
+        importlib.reload(ingest_mod)
 
 
 def test_record_capture_gap_writes_event() -> None:

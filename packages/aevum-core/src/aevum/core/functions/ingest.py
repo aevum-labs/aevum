@@ -15,6 +15,7 @@ Phase 3 barrier order (MANDATORY — do not reorder):
 from __future__ import annotations
 
 import logging
+import os
 from datetime import UTC, datetime
 from typing import Any
 
@@ -29,10 +30,17 @@ from aevum.core.types import SourceType, TypedFact
 
 logger = logging.getLogger(__name__)
 
+# Semconv stability opt-in: read once at module import.
+# When "gen_ai_latest_experimental" is present, gen_ai.system is not emitted
+# (dual-emit suppressed). The value uses underscores, not hyphens.
+_OTEL_SEMCONV_OPT_IN: str = os.environ.get("OTEL_SEMCONV_STABILITY_OPT_IN", "")
+_OTEL_LATEST_ONLY: bool = "gen_ai_latest_experimental" in _OTEL_SEMCONV_OPT_IN
+
 _OTEL_GENAI_KEYS: frozenset[str] = frozenset({
     "gen_ai.request.model",
     "gen_ai.response.model",
     "gen_ai.system",
+    "gen_ai.provider.name",
     "gen_ai.conversation.id",
     "gen_ai.operation.name",
 })
@@ -46,7 +54,12 @@ _AEVUM_FACT = "https://aevum.build/fact/"
 
 
 def _merge_model_context(payload: dict[str, Any], model_context: dict[str, Any] | None) -> None:
-    """Merge allowed OTel GenAI keys from model_context into payload in-place."""
+    """Merge allowed OTel GenAI keys from model_context into payload in-place.
+
+    Dual-emit: gen_ai.provider.name is always the primary attribute.
+    gen_ai.system is kept for backward compat unless OTEL_SEMCONV_STABILITY_OPT_IN
+    contains "gen_ai_latest_experimental".
+    """
     if not model_context:
         return
     for key in _OTEL_GENAI_KEYS:
@@ -59,6 +72,18 @@ def _merge_model_context(payload: dict[str, Any], model_context: dict[str, Any] 
     for key in model_context:
         if key not in _OTEL_GENAI_KEYS:
             logger.debug("model_context key %r is not an allowed OTel GenAI key — ignored", key)
+
+    # Dual-emit normalisation: ensure gen_ai.provider.name is always present.
+    _system = payload.get("gen_ai.system")
+    _provider = payload.get("gen_ai.provider.name")
+    if _system is not None and _provider is None:
+        payload["gen_ai.provider.name"] = _system
+    elif _provider is not None and _system is None and not _OTEL_LATEST_ONLY:
+        payload["gen_ai.system"] = _provider
+
+    # In latest-only mode, remove the deprecated attribute.
+    if _OTEL_LATEST_ONLY and "gen_ai.system" in payload:
+        del payload["gen_ai.system"]
 
 
 def _build_typed_fact(
