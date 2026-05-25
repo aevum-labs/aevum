@@ -27,6 +27,8 @@ Usage:
 """
 
 from aevum.otel.bridge import AevumOTelBridge
+from aevum.otel.foqa_bridge import FOQABridge
+from aevum.otel.gatekeeper import GatekeeperFilter
 
 __version__ = "0.6.0"
-__all__ = ["AevumOTelBridge"]
+__all__ = ["AevumOTelBridge", "FOQABridge", "GatekeeperFilter"]

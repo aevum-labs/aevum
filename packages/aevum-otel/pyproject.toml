@@ -45,6 +45,7 @@ Issues = "https://github.com/aevum-labs/aevum/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aevum"]
+artifacts = ["src/aevum/otel/py.typed"]
 
 [tool.uv.sources]
 aevum-core = { workspace = true }
