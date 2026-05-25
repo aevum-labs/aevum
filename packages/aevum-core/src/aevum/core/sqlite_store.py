@@ -157,20 +157,31 @@ class SqliteReceiptStore:
         after: keyset pagination cursor — returns hashes > after.
         tier: filter by tier; None returns all tiers.
         """
-        conds: list[str] = []
-        params: list[object] = []
-        if after is not None:
-            conds.append("receipt_hash > ?")
-            params.append(after)
-        if tier is not None:
-            conds.append("tier = ?")
-            params.append(tier)
-        where = f"WHERE {' AND '.join(conds)}" if conds else ""
-        params.append(limit)
-        rows = self._conn.execute(
-            f"SELECT receipt_hash FROM receipts {where} ORDER BY receipt_hash LIMIT ?",
-            params,
-        ).fetchall()
+        # Use explicit query branches to avoid f-string SQL (bandit B608).
+        if after is not None and tier is not None:
+            sql = (
+                "SELECT receipt_hash FROM receipts"
+                " WHERE receipt_hash > ? AND tier = ?"
+                " ORDER BY receipt_hash LIMIT ?"
+            )
+            rows = self._conn.execute(sql, [after, tier, limit]).fetchall()
+        elif after is not None:
+            sql = (
+                "SELECT receipt_hash FROM receipts"
+                " WHERE receipt_hash > ?"
+                " ORDER BY receipt_hash LIMIT ?"
+            )
+            rows = self._conn.execute(sql, [after, limit]).fetchall()
+        elif tier is not None:
+            sql = (
+                "SELECT receipt_hash FROM receipts"
+                " WHERE tier = ?"
+                " ORDER BY receipt_hash LIMIT ?"
+            )
+            rows = self._conn.execute(sql, [tier, limit]).fetchall()
+        else:
+            sql = "SELECT receipt_hash FROM receipts ORDER BY receipt_hash LIMIT ?"
+            rows = self._conn.execute(sql, [limit]).fetchall()
         return [r[0] for r in rows]
 
     # ── Ambient receipts ──────────────────────────────────────────────────────
