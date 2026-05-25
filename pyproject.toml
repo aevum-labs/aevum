@@ -74,3 +74,7 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "anthropic.*"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "opentelemetry.exporter.otlp.*"
+ignore_missing_imports = true

@@ -11,7 +11,32 @@ new deferral decisions are made. Resolved entries move to CHANGELOG.md.
 
 ---
 
-## V07-ADAPTER-DRIFT: Adapter Drift Tests Use importorskip Guards (Open — v0.7.0)
+## V07-AGENT-CONTEXT: gen_ai.agent.name/id Not Emitted by OTel Bridge (Open — v0.7.0)
+
+**Item:** V07-AGENT-CONTEXT — deferred in Session 3B
+
+**Question:** Why are gen_ai.agent.name and gen_ai.agent.id not emitted by the
+aevum-otel bridge?
+
+**Root cause:** AuditEvent does not carry structured agent identity at OTel bridge
+emit time. The `actor` field exists but is a free-form string (not a structured
+agent_id/agent_name pair). The OTel GenAI semantic conventions (gen_ai.agent.name,
+gen_ai.agent.id) require a structured identity that is not currently available.
+
+**Resolution path:** Wire agent_id from AevumReceipt into spans once the receipt
+store is queryable at OTel span emit time. The receipt contains `agent_id` as a
+structured field, but the bridge currently does not have access to the receipt at
+span emit time (it only receives AuditEvents, not AevumReceipts).
+
+**Target:** v0.8.0 or when receipt store is connected to the OTel bridge. The
+ExceedanceDetector (Session 3B) now processes AevumReceipt objects — the same
+pattern can be applied to the OTel bridge when the design is ready.
+
+**Last confirmed:** Session 3B (2026-05-25).
+
+---
+
+## V07-ADAPTER-DRIFT: Adapter Drift Tests Use importorskip Guards (CLOSED — Session 1A)
 
 **Item:** V07-ADAPTER-DRIFT — confirmed in Session 1A gate
 
@@ -19,10 +44,9 @@ new deferral decisions are made. Resolved entries move to CHANGELOG.md.
 the optional framework packages (Anthropic SDK, LangChain, etc.) are absent
 from the test environment? Is this a test failure or expected behavior?
 
-**Resolution (confirmed Session 1A):** The 10 adapter drift tests use
-`pytest.importorskip()` guards. All 10 skip when the optional framework
-packages are absent from the environment. This is intentional — the adapter
-packages are optional extras, not core dependencies. Skip is not a failure.
+**Resolution (confirmed Session 1A):** CLOSED. All 10 adapter drift tests use
+`pytest.importorskip()` guards. Skip is intentional — optional framework packages
+not installed in CI. Confirmed in Session 1A pre-flight investigation.
 
 The guards are:
 ```python
@@ -35,7 +59,7 @@ langchain = pytest.importorskip("langchain")
 adapter package updates are published. In a future CI configuration with
 optional-extras test environments, these tests will run against real adapters.
 
-**Last confirmed:** Session 1A gate (2026-05-25).
+**Last confirmed:** Session 1A gate (2026-05-25). Status confirmed CLOSED Session 3B.
 
 ---
 

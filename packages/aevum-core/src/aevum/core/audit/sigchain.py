@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from aevum.publish.encoder import ReceiptEncoder
 
     from aevum.core.ambient import AmbientContextEncoder, AmbientContextReceipt
+    from aevum.core.exceedance import ExceedanceDetector
     from aevum.core.signing import DualSigner
     from aevum.core.store import ReceiptStore
     from aevum.core.tsa import TSAClient
@@ -55,7 +56,20 @@ def _uuid7() -> str:
 
 
 class Sigchain:
-    """Per-node Ed25519 signing chain with optional Phase 1 dual-sig + TSA. Append-only by design."""
+    """
+    Per-node Ed25519 signing chain with optional Phase 1 dual-sig + TSA. Append-only by design.
+
+    Optional constructor parameters (accumulated across sessions):
+      signer / private_key / key_id  — signing key (defaults to InProcessSigner)
+      dual_signer                    — Phase 1 post-quantum dual-sig
+      tsa_client                     — Phase 1 RFC 3161 timestamp authority
+      receipt_encoder                — Phase 1A COSE_Sign1 receipt encoding
+      ambient_encoder                — Phase 1B ambient context snapshots
+      receipt_store                  — Session 2 three-tier SQLite receipt storage
+      exceedance_detector            — Session 3B FOQA per-session exceedance detection
+
+    Do NOT refactor to a config object without an ADR-level decision.
+    """
 
     def __init__(
         self,
@@ -74,6 +88,8 @@ class Sigchain:
         ambient_encoder: AmbientContextEncoder | None = None,
         # Session 2: receipt store — optional; stores COSE_Sign1 bytes after encoding
         receipt_store: ReceiptStore | None = None,
+        # Session 3B: FOQA exceedance detector — optional, per-session, non-blocking
+        exceedance_detector: ExceedanceDetector | None = None,
     ) -> None:
         if signer is not None:
             self._signer = signer
@@ -93,6 +109,7 @@ class Sigchain:
         self._receipt_encoder = receipt_encoder
         self._ambient_encoder = ambient_encoder
         self._receipt_store = receipt_store
+        self._exceedance_detector = exceedance_detector
 
     @property
     def key_id(self) -> str:
@@ -272,6 +289,18 @@ class Sigchain:
                     logger.warning("escalation check failed (non-blocking): %s", _e)
             except Exception as exc:
                 logger.warning("receipt store.put() failed (non-blocking): %s", exc)
+
+        # Session 3B: FOQA exceedance detection — optional, non-blocking
+        if self._exceedance_detector is not None and event.receipt_cbor is not None:
+            try:
+                import cbor2
+
+                from aevum.core.receipt import AevumReceipt
+                cose = cbor2.loads(event.receipt_cbor)
+                receipt = AevumReceipt.model_validate(cbor2.loads(cose[2]))
+                self._exceedance_detector.process(receipt)
+            except Exception as _e:
+                logger.warning("exceedance detection failed (non-blocking): %s", _e)
 
         return event
 
