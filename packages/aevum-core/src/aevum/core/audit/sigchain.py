@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
     from aevum.core.ambient import AmbientContextEncoder, AmbientContextReceipt
     from aevum.core.signing import DualSigner
+    from aevum.core.store import ReceiptStore
     from aevum.core.tsa import TSAClient
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,8 @@ class Sigchain:
         receipt_encoder: ReceiptEncoder | None = None,
         # Phase 1B: ambient context encoder — optional, caller-driven
         ambient_encoder: AmbientContextEncoder | None = None,
+        # Session 2: receipt store — optional; stores COSE_Sign1 bytes after encoding
+        receipt_store: ReceiptStore | None = None,
     ) -> None:
         if signer is not None:
             self._signer = signer
@@ -89,6 +92,7 @@ class Sigchain:
         self._tsa_client = tsa_client
         self._receipt_encoder = receipt_encoder
         self._ambient_encoder = ambient_encoder
+        self._receipt_store = receipt_store
 
     @property
     def key_id(self) -> str:
@@ -237,6 +241,38 @@ class Sigchain:
             except Exception as exc:
                 logger.warning("Receipt encoding failed (non-blocking): %s", exc)
 
+        # Session 2: store receipt blob and trigger escalation if applicable
+        if self._receipt_store is not None and event.receipt_cbor is not None:
+            try:
+                receipt_hash = hashlib.sha3_256(event.receipt_cbor).hexdigest()
+                self._receipt_store.put(
+                    receipt_hash=receipt_hash,
+                    blob=event.receipt_cbor,
+                    entry_hash=event.payload_hash,
+                    rekor_entry_ref="",
+                    tier="operational",
+                )
+                try:
+                    import cbor2
+
+                    from aevum.core.escalation import escalate_if_triggered
+                    from aevum.core.receipt import AevumReceipt
+                    cose = cbor2.loads(event.receipt_cbor)
+                    receipt_payload = cbor2.loads(cose[2])
+                    receipt_obj = AevumReceipt.model_validate(receipt_payload)
+                    escalate_if_triggered(
+                        store=self._receipt_store,
+                        receipt_hash=receipt_hash,
+                        event_action=receipt_obj.action,
+                        handoff_type=receipt_obj.handoff_type,
+                        human_override_action=receipt_obj.human_override_action,
+                        barrier_evaluations=receipt_obj.barrier_evaluations,
+                    )
+                except Exception as _e:
+                    logger.warning("escalation check failed (non-blocking): %s", _e)
+            except Exception as exc:
+                logger.warning("receipt store.put() failed (non-blocking): %s", exc)
+
         return event
 
     def verify_chain(self, events: list[AuditEvent]) -> bool:
@@ -365,5 +401,27 @@ class Sigchain:
             trigger=trigger,
             prior_snapshot_id=env_signals.get("prior_snapshot_id"),  # type: ignore[arg-type]
         )
+
+        # Session 2: store ambient receipt if store is configured
+        if self._receipt_store is not None:
+            try:
+                if self._ambient_encoder is not None:
+                    ambient_cbor = self._ambient_encoder.encode(snapshot)
+                else:
+                    # Fall back to raw CBOR payload (not COSE_Sign1) with a warning
+                    logger.warning(
+                        "ambient_encoder not set but receipt_store is configured — "
+                        "storing raw CBOR payload (not COSE_Sign1) for snapshot %s",
+                        snapshot.snapshot_id,
+                    )
+                    ambient_cbor = snapshot.to_cbor_payload()
+                self._receipt_store.put_ambient(
+                    snapshot_id=snapshot.snapshot_id,
+                    blob=ambient_cbor,
+                    session_id=snapshot.session_id,
+                    trigger=snapshot.trigger,
+                )
+            except Exception as exc:
+                logger.warning("ambient receipt storage failed (non-blocking): %s", exc)
 
         return snapshot

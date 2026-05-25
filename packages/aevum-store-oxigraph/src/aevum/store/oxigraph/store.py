@@ -24,6 +24,10 @@ from pyoxigraph import Literal, NamedNode, Quad, QuerySolutions, Store
 from aevum.store.oxigraph.vocabulary import (
     PRED_CLASS_LVL,
     PRED_INGEST_AT,
+    PRED_IS_LOCKED,
+    PRED_RECEIPT_HASH,
+    PRED_REKOR_REF,
+    PRED_STORED_TIER,
     PRED_SUBJECT_ID,
     PRED_TYPE,
     TYPE_ENTITY,
@@ -38,6 +42,7 @@ GRAPH_CONSENT    = NamedNode("urn:aevum:consent")
 XSD_STRING   = NamedNode("http://www.w3.org/2001/XMLSchema#string")
 XSD_INTEGER  = NamedNode("http://www.w3.org/2001/XMLSchema#integer")
 XSD_DATETIME = NamedNode("http://www.w3.org/2001/XMLSchema#dateTime")
+XSD_BOOLEAN  = NamedNode("http://www.w3.org/2001/XMLSchema#boolean")
 
 
 def _entity_node(entity_id: str) -> NamedNode:
@@ -241,6 +246,39 @@ class OxigraphStore:
                 None, PRED_TYPE, TYPE_ENTITY, GRAPH_KNOWLEDGE
             ))
         return len(quads)
+
+    def store_receipt_ref(
+        self,
+        receipt_hash: str,
+        tier: str,
+        locked: bool,
+        rekor_entry_ref: str = "",
+    ) -> None:
+        """
+        Store receipt cross-reference metadata in urn:aevum:provenance.
+
+        Subject IRI: <urn:aevum:receipt:{receipt_hash}>
+        Triples added:
+          aevum:receiptHash   — the SHA3-256 hex hash of the COSE_Sign1 blob
+          aevum:storedTier    — 'operational' | 'crash_protected' | 'long_term'
+          aevum:isLocked      — xsd:boolean
+          aevum:rekorRef      — Rekor entry UUID/URL (empty string if not submitted)
+
+        Blobs live in SqliteReceiptStore; this method stores metadata only.
+        Callers with both OxigraphStore and SqliteReceiptStore should call this
+        immediately after SqliteReceiptStore.put() to maintain RDF queryability.
+        """
+        subject = NamedNode(f"urn:aevum:receipt:{receipt_hash}")
+        bool_val = "true" if locked else "false"
+        quads = [
+            Quad(subject, PRED_RECEIPT_HASH, _lit_str(receipt_hash), GRAPH_PROVENANCE),
+            Quad(subject, PRED_STORED_TIER, _lit_str(tier), GRAPH_PROVENANCE),
+            Quad(subject, PRED_IS_LOCKED, Literal(bool_val, datatype=XSD_BOOLEAN), GRAPH_PROVENANCE),
+            Quad(subject, PRED_REKOR_REF, _lit_str(rekor_entry_ref), GRAPH_PROVENANCE),
+        ]
+        with self._lock:
+            for q in quads:
+                self._store.add(q)
 
     def clear_knowledge_graph(self) -> None:
         """
