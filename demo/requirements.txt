@@ -4,3 +4,4 @@ aevum-store-oxigraph==0.3.0
 fastapi==0.115.14
 uvicorn[standard]==0.32.1
 slowapi==0.1.9
+scalar-fastapi==1.8.2
