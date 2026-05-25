@@ -202,24 +202,60 @@ def conform(
 
 @app.command(name="verify-receipt")
 def verify_receipt(
-    receipt_file: Annotated[Path, typer.Argument(help="Path to COSE_Sign1 receipt file")],
+    receipt_file: Annotated[
+        Path | None,
+        typer.Argument(help="Path to COSE_Sign1 receipt file"),
+    ] = None,
+    receipt_hash: Annotated[
+        str | None,
+        typer.Option("--hash", help="SHA3-256 hex hash — lookup from AEVUM_RECEIPT_DB"),
+    ] = None,
 ) -> None:
     """
-    Verify an Aevum COSE_Sign1 receipt file.
+    Verify an Aevum COSE_Sign1 receipt file or hash.
 
     Decodes the receipt, verifies the Ed25519 signature over the canonical payload,
     and prints a human-readable summary. Exit 0 on valid, exit 1 on invalid signature.
+    Exit 2 on unsupported algorithm or hash not found.
+
+    Examples:
+      aevum verify-receipt receipt.cbor
+      aevum verify-receipt --hash <sha3-256-hex>
     """
     import cbor2
     import nacl.exceptions
     import nacl.signing
     from aevum.core.receipt import AevumReceipt
 
-    if not receipt_file.exists():
-        typer.echo(f"File not found: {receipt_file}", err=True)
+    if receipt_file is None and receipt_hash is None:
+        typer.echo("Provide a receipt file path or --hash <hash>.", err=True)
+        raise typer.Exit(code=1)
+    if receipt_file is not None and receipt_hash is not None:
+        typer.echo("Provide either a file path or --hash, not both.", err=True)
         raise typer.Exit(code=1)
 
-    raw = receipt_file.read_bytes()
+    store_info: dict[str, object] | None = None
+
+    if receipt_hash is not None:
+        try:
+            from aevum.core.sqlite_store import SqliteReceiptStore
+            store = SqliteReceiptStore.from_env()
+            raw = store.get(receipt_hash)
+            if raw is None:
+                typer.echo(f"RECEIPT NOT FOUND: {receipt_hash}", err=True)
+                raise typer.Exit(code=2)
+            store_info = store.get_receipt_info(receipt_hash)
+        except typer.Exit:
+            raise
+        except RuntimeError as exc:
+            typer.echo(f"Store error: {exc}", err=True)
+            raise typer.Exit(code=1) from None
+    else:
+        assert receipt_file is not None
+        if not receipt_file.exists():
+            typer.echo(f"File not found: {receipt_file}", err=True)
+            raise typer.Exit(code=1)
+        raw = receipt_file.read_bytes()
 
     try:
         cose = cbor2.loads(raw)
@@ -276,19 +312,20 @@ def verify_receipt(
             verified = True
         except nacl.exceptions.BadSignatureError:
             typer.echo("SIGNATURE INVALID", err=True)
-            _print_receipt_summary(receipt, unprotected, verified=False)
+            _print_receipt_summary(receipt, unprotected, verified=False, store_info=store_info)
             raise typer.Exit(code=1) from None
         except Exception as exc:  # noqa: BLE001
             typer.echo(f"SIGNATURE INVALID: {exc}", err=True)
             raise typer.Exit(code=1) from None
 
-    _print_receipt_summary(receipt, unprotected, verified=verified)
+    _print_receipt_summary(receipt, unprotected, verified=verified, store_info=store_info)
 
 
 def _print_receipt_summary(
     receipt: Any,
     unprotected: dict,  # type: ignore[type-arg]
     verified: bool,
+    store_info: dict[str, object] | None = None,
 ) -> None:
     """Print human-readable receipt summary."""
 
@@ -320,6 +357,14 @@ def _print_receipt_summary(
     typer.echo(f"Policy version: {receipt.policy_version}")
     typer.echo(f"TSA timestamp:  {tsa_info}")
     typer.echo(f"Barriers:       {barriers_summary}")
+
+    if store_info is not None:
+        tier = store_info.get("tier", "unknown")
+        locked = store_info.get("locked", False)
+        rekor_ref = store_info.get("rekor_entry_ref", "") or "not submitted"
+        typer.echo(f"Tier:           {tier}")
+        typer.echo(f"Crash-protected:{' yes' if locked else ' no'}")
+        typer.echo(f"Rekor ref:      {rekor_ref}")
 
 
 @app.command()

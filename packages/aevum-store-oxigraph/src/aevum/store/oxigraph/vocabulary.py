@@ -24,3 +24,9 @@ PRED_INGEST_AT  = NamedNode(f"{AEVUM}ingestedAt")
 
 # Entity types
 TYPE_ENTITY     = NamedNode(f"{AEVUM}Entity")
+
+# Receipt cross-reference predicates (urn:aevum:provenance graph)
+PRED_RECEIPT_HASH = NamedNode(f"{AEVUM}receiptHash")
+PRED_STORED_TIER  = NamedNode(f"{AEVUM}storedTier")
+PRED_IS_LOCKED    = NamedNode(f"{AEVUM}isLocked")
+PRED_REKOR_REF    = NamedNode(f"{AEVUM}rekorRef")
