@@ -73,7 +73,7 @@ async def test_before_tool_callback_allow_shape() -> None:
     with _permit_patch():
         result = await plugin.before_tool_callback(
             tool=mock_tool,
-            tool_args={"path": "/tmp/test.txt"},
+            tool_args={"path": "/data/test.txt"},
             tool_context=MagicMock(),
         )
     assert result == snapshot(None)
