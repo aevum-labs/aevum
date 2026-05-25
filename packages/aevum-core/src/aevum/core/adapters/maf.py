@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 # this module remains importable when agent-framework is not installed.
 # When absent, fallback base classes allow the subclasses to be defined normally.
 try:
-    from agent_framework import (  # type: ignore[import-not-found]
+    from agent_framework import (
         AgentContext,
         ChatContext,
         FunctionInvocationContext,
@@ -73,7 +73,7 @@ except ImportError:
         pass
 
 
-class AevumAgentMiddleware(_AgentMiddlewareBase):  # type: ignore[misc]
+class AevumAgentMiddleware(_AgentMiddlewareBase):  # type: ignore[misc, unused-ignore]
     """
     MAF AgentMiddleware: records agent session bookend events to sigchain.
 
@@ -118,7 +118,7 @@ class AevumAgentMiddleware(_AgentMiddlewareBase):  # type: ignore[misc]
                 logger.warning("kernel record_event (agent.end) failed: %s", _e)
 
 
-class AevumFunctionMiddleware(_FunctionMiddlewareBase):  # type: ignore[misc]
+class AevumFunctionMiddleware(_FunctionMiddlewareBase):  # type: ignore[misc, unused-ignore]
     """
     MAF FunctionMiddleware: Cedar policy gate on every tool/function call.
 
@@ -199,7 +199,7 @@ class AevumFunctionMiddleware(_FunctionMiddlewareBase):  # type: ignore[misc]
                 logger.warning("kernel record_event (tool.end) failed: %s", _e)
 
 
-class AevumChatMiddleware(_ChatMiddlewareBase):  # type: ignore[misc]
+class AevumChatMiddleware(_ChatMiddlewareBase):  # type: ignore[misc, unused-ignore]
     """
     MAF ChatMiddleware: observational recording of LLM API calls.
 
