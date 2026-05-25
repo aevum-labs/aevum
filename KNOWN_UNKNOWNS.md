@@ -251,6 +251,25 @@ live validation against Vault dev mode in Docker.
 
 ---
 
+## V07-OTEL-SEMCONV: gen_ai.system → gen_ai.provider.name Migration (CLOSED — Session 3A)
+
+**Item:** V07-OTEL semconv attribute fix — found in v0.7.0 investigation gate (2026-05-24)
+
+**Resolution:** gen_ai.provider.name is now emitted as the primary attribute on every
+ingest event that previously used gen_ai.system. gen_ai.system is emitted in dual-emit
+mode for backward compat (default on). To disable dual-emit and emit only the current
+attribute: set `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.
+
+Span naming in AevumOTelBridge (`aevum.{event_type}`) is correct for its purpose
+(audit event spans, not GenAI client spans). No change needed there.
+
+**Files modified:** `packages/aevum-core/src/aevum/core/functions/ingest.py`,
+`packages/aevum-core/tests/test_functions.py`, `.env.example`
+
+**Closed:** Session 3A (2026-05-25).
+
+---
+
 ## V07-OTEL: Grafana Tempo + Langfuse AevumOTelBridge Live Testing (Open — v0.7.0)
 
 **Item:** V07-OTEL — documented in Phase DOC otel-bridge.md
