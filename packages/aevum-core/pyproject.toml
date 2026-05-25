@@ -61,6 +61,9 @@ openai-agents = [
 adk = [
     "google-adk>=1.0.0",
 ]
+maf = [
+    "agent-framework>=1.0.0",
+]
 anthropic = [
     "anthropic>=0.50.0",
 ]
@@ -116,6 +119,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "oqs"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "aevum.core.adapters.maf"
 ignore_missing_imports = true
 
 [tool.ruff]
