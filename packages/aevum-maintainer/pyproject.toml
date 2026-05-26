@@ -1,6 +1,6 @@
 [project]
 name = "aevum-maintainer"
-version = "0.7.0"
+version = "0.7.1"
 description = "Aevum maintenance tooling: compliance pack generator and release utilities"
 readme = "README.md"
 requires-python = ">=3.11"
