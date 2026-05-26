@@ -1,0 +1,43 @@
+name: Benchmark Regression
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # Weekly, Monday 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  benchmark:
+    name: Performance regression check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081  # v5
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run signing benchmark
+        id: bench
+        run: |
+          uv run python3 scripts/benchmark_regression.py 2>&1 | tee /tmp/bench_output.txt
+          # Script exits 1 if regression detected
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_ENV
+
+      - name: Open regression issue
+        if: env.exit_code == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "perf-regression: Ed25519 signing latency exceeded threshold" \
+            --label "perf-regression" \
+            --body "$(cat /tmp/bench_output.txt)"
