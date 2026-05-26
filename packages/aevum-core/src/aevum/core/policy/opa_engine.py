@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """OPA HTTP sidecar adapter. Implements PolicyEngine via the OPA REST API."""
 from __future__ import annotations
 

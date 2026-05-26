@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Tests for ConformanceAdapter — verifies Engine behaviour against the protocol scenarios."""
 
 from __future__ import annotations

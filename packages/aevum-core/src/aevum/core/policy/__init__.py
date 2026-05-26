@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Policy engine protocol for aevum-core.
 The kernel accepts any object conforming to PolicyEngine.

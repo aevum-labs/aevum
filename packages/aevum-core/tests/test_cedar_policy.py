@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Tests for the Cedar policy bridge in PolicyBridge.
 cedarpy must be installed for real Cedar evaluation; falls back to permissive if not.

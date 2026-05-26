@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Tests for sigchain integrity and HLC."""
 
 from __future__ import annotations

@@ -67,7 +67,9 @@ jobs:
           retention-days: 90
 
       - name: Remove private packages from dist
-        run: rm -f dist/aevum_maintainer-*.whl dist/aevum_maintainer-*.tar.gz
+        run: |
+          rm -f dist/aevum_maintainer-*.whl dist/aevum_maintainer-*.tar.gz
+          rm -f dist/aevum_llm-*.whl dist/aevum_llm-*.tar.gz
 
       - name: Verify PyPI registration
         run: |

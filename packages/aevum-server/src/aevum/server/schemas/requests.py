@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 HTTP request schemas — Pydantic models for incoming JSON bodies.
 These are HTTP wire types. They map to Engine function parameters.

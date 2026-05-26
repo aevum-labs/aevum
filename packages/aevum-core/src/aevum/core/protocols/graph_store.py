@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """GraphStore Protocol. Spec Section 04.3."""
 
 from __future__ import annotations

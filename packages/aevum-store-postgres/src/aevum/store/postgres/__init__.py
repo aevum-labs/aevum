@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 aevum.store.postgres -- PostgreSQL backends for graph, consent, and ledger.
 

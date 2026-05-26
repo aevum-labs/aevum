@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """pytest configuration for aevum-core test suite."""
 from __future__ import annotations
 

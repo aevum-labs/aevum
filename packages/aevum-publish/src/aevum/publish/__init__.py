@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 aevum.publish — Rekor v2 transparency log complication.
 

@@ -84,3 +84,11 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "opentelemetry.exporter.otlp.*"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "agent_framework"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "aevum.core.adapters.maf"
+ignore_missing_imports = true

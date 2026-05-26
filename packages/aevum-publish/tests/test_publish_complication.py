@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Tests for PublishComplication.
 Uses mocked httpx and Engine — no real Rekor instance required.

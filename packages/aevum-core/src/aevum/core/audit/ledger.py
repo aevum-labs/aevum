@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Episodic ledger — append-only. Barrier 4 enforced here. Spec Section 06.
 """

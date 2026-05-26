@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """PolicyEngine Protocol conformance tests. No cedarpy required."""
 import pytest
 

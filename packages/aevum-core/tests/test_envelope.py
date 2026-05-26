@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Tests for OutputEnvelope and sub-type models."""
 
 from __future__ import annotations

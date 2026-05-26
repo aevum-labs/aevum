@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 commit — REMEMBER — append to the episodic ledger. Spec Section 08.6.
 """

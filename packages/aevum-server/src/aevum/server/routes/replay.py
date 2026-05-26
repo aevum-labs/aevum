@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 GET /v1/replay/{audit_id} — reconstruct a past decision. Spec Section 10.3.
 """

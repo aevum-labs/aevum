@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """ConsentLedgerProtocol — runtime-checkable interface for consent ledger backends."""
 
 from __future__ import annotations

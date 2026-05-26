@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Entry point: aevum <command>
 Invoked via [project.scripts] aevum = "aevum.cli.__main__:app"

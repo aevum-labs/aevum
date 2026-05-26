@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 aevum.spiffe — SPIFFE/SPIRE cryptographic agent identity complication.
 

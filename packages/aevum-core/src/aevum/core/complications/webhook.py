@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 WebhookRegistry -- register endpoints and dispatch review events.
 

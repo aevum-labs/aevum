@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 python -m aevum.server — development convenience entrypoint.
 

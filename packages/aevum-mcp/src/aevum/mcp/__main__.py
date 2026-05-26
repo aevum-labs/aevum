@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 python -m aevum.mcp — start the Aevum MCP server (stdio transport).
 

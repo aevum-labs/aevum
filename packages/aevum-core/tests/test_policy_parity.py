@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Policy parity tests — verify OPA and Cedar produce identical decisions.
 Uses mocked HTTP server; no live OPA required.

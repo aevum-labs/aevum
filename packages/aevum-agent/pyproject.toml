@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aevum-agent"
-version = "0.6.0"
+version = "0.7.0"
 description = "Aevum — A2A v1.0 agent protocol interceptor and governance layer."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,7 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "aevum-core>=0.3.0",
+    "aevum-core>=0.7.0",
 ]
 
 [project.optional-dependencies]

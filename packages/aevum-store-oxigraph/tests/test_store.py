@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Tests for OxigraphStore — GraphStore Protocol conformance.
 All tests run against in-memory store (no disk I/O in CI).

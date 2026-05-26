@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Tests for SpiffeComplication.
 Uses mocked SPIFFE WorkloadApiClient — no real SPIRE deployment required.

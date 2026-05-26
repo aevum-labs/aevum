@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 AuditEvent — the episodic ledger entry. Spec Section 06.2.
 Phase 1 adds 6 optional dual-sig + TSA fields (nullable for backward compat).

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 POST /v1/ingest, POST /v1/query, POST /v1/commit — public data API.
 Spec Section 10.3.

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 A2A task format — Pydantic model and state machine for agent-to-agent task exchange.
 

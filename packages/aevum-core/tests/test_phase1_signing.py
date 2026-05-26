@@ -5,7 +5,7 @@ import pytest
 
 try:
     import oqs as _oqs_check  # noqa: F401
-except (ImportError, OSError, SystemExit):
+except (ImportError, OSError, RuntimeError, SystemExit):
     pytest.skip("liboqs native library not available — skipping oqs-dependent tests", allow_module_level=True)
 
 from aevum.core.signing import DualSignature, DualSigner, SignatureError

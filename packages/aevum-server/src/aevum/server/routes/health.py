@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 GET /v1/health — liveness probe. No auth required. Spec Section 10.3.
 """

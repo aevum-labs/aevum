@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 OutputEnvelope — the mandatory return type of all five functions.
 Spec Section 05.

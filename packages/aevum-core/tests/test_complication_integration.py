@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Integration tests for the complication lifecycle: install, approve, query, suspend, replay, conflict detection.
 

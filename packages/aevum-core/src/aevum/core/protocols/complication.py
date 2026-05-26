@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Complication Protocol — runtime-checkable interface for complication instances."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """ConsentGrant — the unit of permission. Spec Section 07.2."""
 
 from __future__ import annotations

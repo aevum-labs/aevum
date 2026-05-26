@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 HTTP response schemas.
 Most routes return OutputEnvelope directly.

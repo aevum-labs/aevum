@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Admin router stubs — mounted by aevum-server at /_aevum/v1/.
 FastAPI is NOT a dependency of aevum-core; the full implementation

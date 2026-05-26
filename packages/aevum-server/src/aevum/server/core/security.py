@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Authentication — X-Aevum-Key header validation.
 

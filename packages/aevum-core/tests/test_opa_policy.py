@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Tests for OPA sidecar integration in PolicyBridge.
 Uses mocked httpx -- no real OPA sidecar required in CI.

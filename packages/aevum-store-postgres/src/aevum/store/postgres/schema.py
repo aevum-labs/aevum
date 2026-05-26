@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 DDL for the Aevum PostgreSQL schema.
 

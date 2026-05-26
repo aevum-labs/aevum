@@ -304,21 +304,23 @@ what changed, what breaks, what is the migration scope?
 
 ---
 
-## V07-VAULT: VaultTransitSigner Live Vault Validation (Open — v0.7.0)
+## V07-VAULT: VaultTransitSigner Live Vault Validation (Open — live test only)
 
-**Item:** V07-VAULT — documented in Phase G gate report
+**Item:** V07-VAULT — OPEN (live test only)
 
-**Question:** Does VaultTransitSigner work correctly against a real Vault
-instance with transit secrets engine enabled? It has been tested only with
-mocks.
+VaultTransitSigner implementation is **COMPLETE** (httpx calls, real sign/verify —
+confirmed in gate report and Session 13). The `VaultTransitSigner` class is present
+in `aevum.core.audit.signer.VaultTransitSigner` and performs real HTTP calls to the
+Vault transit secrets engine. Implementation wording: **complete**.
+Do **NOT** describe this as "not yet implemented" — that is factually wrong.
 
-**Why deferred:** Setting up a live Vault instance in CI requires an
-infrastructure decision (Vault dev mode in Docker vs. HashiCorp Cloud).
-Neither was provisioned during v0.6.0.
+**What remains open:** Live integration test against a real Vault dev server is
+deferred to a PC-based session. Setting up a live Vault instance in CI requires an
+infrastructure decision (Vault dev mode in Docker vs. HashiCorp Cloud) that has not
+been provisioned.
 
-**Condition for revisitation:** When a production deployment requires
-HSM-backed signing, this item becomes a P0 build task. For v0.7.0, run a
-live validation against Vault dev mode in Docker.
+**Condition for revisitation:** PC-based session with Vault dev server available.
+This is a v0.7.1 item. See v0.7.0 Open Items section below.
 
 ---
 
@@ -482,3 +484,16 @@ og:image tag but does not produce a recognizable preview when shared.
 **Condition for revisitation:** Before any public launch announcement or v1.0,
 commission and deploy a real OG image. The spec: 1200×630px, SVG or PNG,
 consistent with the aevum.build color scheme.
+
+---
+
+## v0.7.0 Release — Open Items (carry to v0.7.1)
+
+1. **V07-VAULT:** Live integration test requires PC + Vault server (implementation is complete)
+2. **V07-AGENT-CONTEXT:** gen_ai.agent.name/id not yet wired into OTel bridge
+3. **EX-10:** Concurrent conflicting tool calls — requires cross-session context
+4. **EX-14:** A2A communication failure — requires cross-agent message tracking
+5. **ScittTsBackend:** stub only — awaiting ScrAPI RFC (draft-ietf-scitt-scrapi)
+6. **liboqs-python FIPS 140-3 module certification:** not yet obtained
+7. **codeql-action/upload-sarif v3 deprecation:** advisory until December 2026
+8. **Session 12C:** Standards participation actions (IETF SCITT, prEN 18229-1, ISO DIS 24970, PROV-AGENT authors) — human, in progress

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Tests for complication framework: registry, circuit breaker,
 manifest validation, conflict detection, webhook dispatch.

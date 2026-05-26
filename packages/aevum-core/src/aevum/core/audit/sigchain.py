@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Sigchain — Ed25519 signing and SHA3-256 chaining. Spec Section 06.
 Phase 1: adds ImmutableLedgerError, DualSigner integration, TSA integration.
