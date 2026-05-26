@@ -30,6 +30,7 @@ jobs:
           - "anthropic"        # Anthropic SDK AevumAnthropicAdapter snapshot tests
           - "langchain"        # LangChain AevumLangChainCallback snapshot tests
           - "adk"              # Google ADK AevumADKPlugin snapshot tests
+          - "maf"              # Microsoft Agent Framework AevumMAFAdapter snapshot tests
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
@@ -102,11 +103,11 @@ jobs:
           uv pip install --python ${{ matrix.python }} "google-adk>=1.0.0"
 
       - name: Run policy protocol tests
-        if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\",\"anthropic\",\"langchain\",\"adk\"]'), matrix.install-extra)"
+        if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\",\"anthropic\",\"langchain\",\"adk\",\"maf\"]'), matrix.install-extra)"
         run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/test_policy_protocol.py -v
 
       - name: Run aevum-core test suite
-        if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\",\"anthropic\",\"langchain\",\"adk\"]'), matrix.install-extra)"
+        if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\",\"anthropic\",\"langchain\",\"adk\",\"maf\"]'), matrix.install-extra)"
         run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/ -v -m "not integration" --inline-snapshot=disable
 
       - name: Run openai-agents adapter snapshot tests
@@ -132,3 +133,13 @@ jobs:
       - name: Run ADK adapter snapshot tests
         if: matrix.install-extra == 'adk'
         run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/adapters/test_adk_adapter.py -v --inline-snapshot=disable
+
+      - name: Install workspace (maf)
+        if: matrix.install-extra == 'maf'
+        run: |
+          uv sync --frozen --python ${{ matrix.python }}
+          uv pip install --python ${{ matrix.python }} "agent-framework>=1.0.0"
+
+      - name: Run MAF adapter snapshot tests
+        if: matrix.install-extra == 'maf'
+        run: uv run --python ${{ matrix.python }} pytest packages/aevum-core/tests/adapters/test_maf_adapter.py -v --inline-snapshot=disable
