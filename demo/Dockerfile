@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Application files
-COPY main.py seed.py ./
+COPY main.py seed.py sandbox_models.py sandbox_state.py ./
 
 # HF Spaces requires port 7860
 EXPOSE 7860
