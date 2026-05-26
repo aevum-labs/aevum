@@ -4,7 +4,7 @@ description: "EU AI Act Article 12 requires automatic, tamper-evident recording 
 
 # Audit Trails and EU AI Act Article 12: A Python Implementation Guide
 
-EU AI Act Article 12 mandates automatic logging for high-risk AI systems. High-risk obligations become enforceable on 2 August 2026 under Article 85. This guide maps each Article 12 sub-clause to a concrete implementation using Aevum's episodic ledger and sigchain.
+EU AI Act Article 12 mandates automatic logging for high-risk AI systems. For standalone Annex III high-risk systems, obligations become enforceable on December 2, 2027 (deferred by Omnibus political agreement May 7, 2026). This guide maps each Article 12 sub-clause to a concrete implementation using Aevum's episodic ledger and sigchain.
 
 ## What Article 12 requires
 
