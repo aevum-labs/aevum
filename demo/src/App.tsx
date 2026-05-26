@@ -1,6 +1,25 @@
+import { useState, useEffect } from 'react'
 import { Stepper } from './components/Stepper'
 import { ScalarExplorer } from './components/ScalarExplorer'
+import { checkHealth } from './api'
 import './App.css'
+
+function ApiStatus() {
+  const [online, setOnline] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    checkHealth().then(setOnline)
+    const id = setInterval(() => checkHealth().then(setOnline), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  if (online === null) return null
+  return (
+    <span className={`api-status ${online ? 'api-online' : 'api-offline'}`}>
+      {online ? 'API Online' : 'API Offline'}
+    </span>
+  )
+}
 
 export default function App() {
   function scrollToExplorer() {
@@ -10,7 +29,10 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1 className="app-title">AEVUM</h1>
+        <div className="app-header-row">
+          <h1 className="app-title">AEVUM</h1>
+          <ApiStatus />
+        </div>
         <p className="app-tagline">The Black Box for AI Agents — governed context kernel</p>
       </header>
 
