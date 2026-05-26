@@ -11,6 +11,23 @@ new deferral decisions are made. Resolved entries move to CHANGELOG.md.
 
 ---
 
+## V07-ZIZMOR: GitHub Actions Security Scan (CLOSED — Session 12A)
+
+**Item:** V07-ZIZMOR — closed in Session 12A
+
+**Resolution:** zizmor added to CI (ci.yml zizmor job). SARIF results visible in
+GitHub Security → Code scanning tab. The v0.5.0 CHANGELOG claim that zizmor was
+previously added was inaccurate — it was never present in any workflow file.
+Verified absent across all 14 workflow files before adding.
+
+zizmor runs on every push/PR, uploads findings as SARIF to Code Scanning. The job
+does not fail on findings (advisory mode); critical findings appear in the Security
+tab for human review. SHA used: `github/codeql-action/upload-sarif@458d36d7d4f47d0dd16ca424c1d3cda0060f1360` (v3, same as scorecard.yml).
+
+**Closed:** Session 12A (2026-05-26).
+
+---
+
 ## V07-AGENT-CONTEXT: gen_ai.agent.name/id Not Emitted by OTel Bridge (Open — v0.7.0)
 
 **Item:** V07-AGENT-CONTEXT — deferred in Session 3B

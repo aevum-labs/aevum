@@ -1,0 +1,114 @@
+name: Adapter Compatibility (nightly)
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Nightly 02:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  adapter-compat:
+    name: "Adapter: ${{ matrix.adapter }}"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        adapter:
+          - openai-agents
+          - adk
+          - maf
+          - crewai
+          - langgraph
+          - anthropic
+          - langchain
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081  # v5
+        with:
+          version: "latest"
+
+      - name: Build liboqs C library (required by liboqs-python)
+        run: |
+          sudo apt-get install -y --no-install-recommends cmake ninja-build
+          curl -fsSL https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.14.0.tar.gz | tar xz
+          cmake -GNinja \
+            -DCMAKE_INSTALL_PREFIX="$HOME/_oqs" \
+            -DBUILD_SHARED_LIBS=ON \
+            -DOQS_USE_OPENSSL=OFF \
+            -S liboqs-0.14.0 -B liboqs-build
+          ninja -C liboqs-build -j$(nproc) install
+          rm -rf liboqs-0.14.0 liboqs-build
+
+      - name: Install with latest upstream
+        timeout-minutes: 30
+        run: |
+          uv sync --frozen
+          case "${{ matrix.adapter }}" in
+            openai-agents)  uv pip install "openai-agents" ;;
+            adk)            uv pip install "google-adk" ;;
+            maf)            uv pip install "agent-framework" ;;
+            crewai)         uv pip install "crewai" ;;
+            langgraph)      uv pip install "langgraph-checkpoint" ;;
+            anthropic)      uv pip install "anthropic" ;;
+            langchain)      uv pip install "langchain-core" ;;
+          esac
+          python3 -c "
+          import importlib.metadata, sys
+          pkg_map = {
+            'openai-agents': 'openai-agents',
+            'adk': 'google-adk',
+            'maf': 'agent-framework',
+            'crewai': 'crewai',
+            'langgraph': 'langgraph-checkpoint',
+            'anthropic': 'anthropic',
+            'langchain': 'langchain-core',
+          }
+          adapter = sys.argv[1]
+          pkg = pkg_map.get(adapter, adapter)
+          try:
+              v = importlib.metadata.version(pkg)
+              print(f'ADAPTER_VERSION={v}')
+          except Exception:
+              print('ADAPTER_VERSION=unknown')
+          " "${{ matrix.adapter }}" >> \$GITHUB_ENV
+
+      - name: Run snapshot tests
+        id: snapshot_test
+        run: |
+          case "${{ matrix.adapter }}" in
+            openai-agents)  TEST_FILE="test_openai_agents_adapter.py" ;;
+            adk)            TEST_FILE="test_adk_adapter.py" ;;
+            maf)            TEST_FILE="test_maf_adapter.py" ;;
+            crewai)         TEST_FILE="test_crewai_adapter.py" ;;
+            langgraph)      TEST_FILE="test_langgraph_adapter.py" ;;
+            anthropic)      TEST_FILE="test_anthropic_adapter.py" ;;
+            langchain)      TEST_FILE="test_langchain_callback.py" ;;
+          esac
+          uv run pytest packages/aevum-core/tests/adapters/$TEST_FILE \
+            -v --inline-snapshot=disable 2>&1 | tee /tmp/test_output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_ENV
+
+      - name: Open GitHub issue on drift
+        if: env.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="adapter-drift: ${{ matrix.adapter }} ${{ env.ADAPTER_VERSION }}"
+          EXISTING=$(gh issue list \
+            --label adapter-drift \
+            --search "$TITLE" \
+            --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -z "$EXISTING" ]; then
+            gh issue create \
+              --title "$TITLE" \
+              --label "adapter-drift" \
+              --body "$(tail -50 /tmp/test_output.txt)"
+          fi

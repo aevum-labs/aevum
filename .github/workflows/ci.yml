@@ -120,3 +120,25 @@ jobs:
         run: uv sync --frozen --python ${{ matrix.python-version }}
       - name: Run tests
         run: uv run --python ${{ matrix.python-version }} pytest --inline-snapshot=disable
+
+  zizmor:
+    name: GitHub Actions security (zizmor)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        run: |
+          pip install zizmor --quiet
+          zizmor --format sarif .github/workflows/ > zizmor.sarif 2>/dev/null || true
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@458d36d7d4f47d0dd16ca424c1d3cda0060f1360  # v3
+        with:
+          sarif_file: zizmor.sarif
+          category: zizmor

@@ -1,0 +1,37 @@
+name: IETF Draft Monitor
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Daily 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write  # required to commit state file back to repo
+  issues: write
+
+jobs:
+  monitor:
+    name: Check IETF draft statuses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true  # required: workflow pushes state file back
+
+      - name: Check draft statuses
+        run: python3 scripts/ietf_monitor.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit updated state file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet scripts/ietf_monitor_state.json 2>/dev/null; then
+            echo "No state changes to commit."
+          else
+            git add scripts/ietf_monitor_state.json
+            git commit -m "chore: update ietf_monitor_state.json [skip ci]"
+            git push
+          fi

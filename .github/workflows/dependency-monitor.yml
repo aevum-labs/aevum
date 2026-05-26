@@ -1,0 +1,24 @@
+name: Dependency Monitor (major version watch)
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Weekly, Monday 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  monitor:
+    name: Check upstream major versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - name: Check major versions via PyPI API
+        run: python3 scripts/dependency_monitor.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
