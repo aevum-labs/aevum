@@ -76,3 +76,12 @@ export async function sigchain(): Promise<SigchainResult> {
   if (!res.ok) throw new Error(`sigchain failed: ${res.status}`)
   return res.json()
 }
+
+export async function checkHealth(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/health`, { cache: 'no-store' })
+    return res.ok
+  } catch {
+    return false
+  }
+}

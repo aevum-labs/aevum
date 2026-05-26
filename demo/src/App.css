@@ -8,6 +8,31 @@
   margin-bottom: 36px;
 }
 
+.app-header-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.api-status {
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 2px 7px;
+  border-radius: 2px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.api-online {
+  color: var(--ok);
+  border: 1px solid var(--ok);
+}
+
+.api-offline {
+  color: var(--error);
+  border: 1px solid var(--error);
+}
+
 .app-title {
   font-size: 20px;
   color: var(--accent);
