@@ -170,4 +170,4 @@ production dual-signing. See `docs/deployment/liboqs.md`.
 ## EAR §742.15
 
 ML-DSA-65 (FIPS 204) supplemental notification filed 2026-05-24.
-See [SECURITY.md](../../security.md) for the full filing history.
+See [SECURITY.md](../security.md) for the full filing history.

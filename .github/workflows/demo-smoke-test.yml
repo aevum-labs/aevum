@@ -32,7 +32,7 @@ jobs:
         id: health
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            "$DEMO_API_URL/health" --max-time 10)
+            "$DEMO_API_URL/health" --max-time 10) || STATUS="000"
           echo "status=$STATUS" >> $GITHUB_OUTPUT
           if [ "$STATUS" != "200" ]; then
             echo "HEALTH_FAILED=true" >> $GITHUB_ENV
@@ -45,7 +45,7 @@ jobs:
           RESPONSE=$(curl -s -X POST "$DEMO_API_URL/sandbox/scan" \
             -H "Content-Type: application/json" \
             -d '{"host_id": "smoke-test", "scan_type": "diagnostic"}' \
-            --max-time 15)
+            --max-time 15) || RESPONSE=""
           TASK_ID=$(echo "$RESPONSE" | python3 -c \
             "import sys,json; print(json.load(sys.stdin).get('task_id',''))" 2>/dev/null)
           echo "task_id=$TASK_ID" >> $GITHUB_OUTPUT
@@ -61,7 +61,7 @@ jobs:
           RESPONSE=$(curl -s -X POST "$DEMO_API_URL/sandbox/consent" \
             -H "Content-Type: application/json" \
             -d "{\"task_id\": \"$TASK_ID\", \"decision\": \"approve\"}" \
-            --max-time 15)
+            --max-time 15) || RESPONSE=""
           TOKEN=$(echo "$RESPONSE" | python3 -c \
             "import sys,json; print(json.load(sys.stdin).get('consent_token',''))" 2>/dev/null)
           echo "consent_token=$TOKEN" >> $GITHUB_OUTPUT
@@ -78,7 +78,7 @@ jobs:
           RESPONSE=$(curl -s -X POST "$DEMO_API_URL/sandbox/execute" \
             -H "Content-Type: application/json" \
             -d "{\"task_id\": \"$TASK_ID\", \"consent_token\": \"$TOKEN\"}" \
-            --max-time 15)
+            --max-time 15) || RESPONSE=""
           HEAD=$(echo "$RESPONSE" | python3 -c \
             "import sys,json; print(json.load(sys.stdin).get('sigchain_head',''))" 2>/dev/null)
           if [ -z "$HEAD" ]; then
@@ -89,7 +89,7 @@ jobs:
       - name: Sigchain step
         if: env.EXECUTE_FAILED != 'true'
         run: |
-          RESPONSE=$(curl -s "$DEMO_API_URL/sandbox/sigchain" --max-time 10)
+          RESPONSE=$(curl -s "$DEMO_API_URL/sandbox/sigchain" --max-time 10) || RESPONSE=""
           COUNT=$(echo "$RESPONSE" | python3 -c \
             "import sys,json; print(json.load(sys.stdin).get('entry_count',0))" 2>/dev/null)
           echo "Sigchain entries: $COUNT"
