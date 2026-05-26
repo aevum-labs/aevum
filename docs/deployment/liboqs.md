@@ -144,7 +144,7 @@ enabling dual-signing on every sigchain entry.
 ML-DSA-65 (FIPS 204, Module-Lattice-Based Digital Signature Algorithm) is a
 published, standardized NIST algorithm. The original EAR §742.15 notification
 for Aevum was filed 2026-05-20. A supplemental notification adding ML-DSA-65
-was filed 2026-05-24. See [SECURITY.md](../../security.md) for details.
+was filed 2026-05-24. See [SECURITY.md](../security.md) for details.
 
 ---
 
