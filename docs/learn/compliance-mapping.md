@@ -19,7 +19,7 @@ compliance review before making regulatory assertions based on this content.*
 
 | Standard | Provision | Aevum Primitive | Coverage | Notes |
 |----------|-----------|-----------------|----------|-------|
-| EU AI Act (Reg. 2024/1689) | Art. 12(1) Automatic recording over system lifetime | Barrier 4 + sigchain + session.start | ✅ | Deadline 2 Aug 2026 (Digital Omnibus delay unresolved as of May 2026) |
+| EU AI Act (Reg. 2024/1689) | Art. 12(1) Automatic recording over system lifetime | Barrier 4 + sigchain + session.start | ✅ | Deadline December 2, 2027 (Annex III standalone; deferred by Omnibus political agreement May 7, 2026) |
 | EU AI Act | Art. 12(2)(a)–(c) Recording purposes | AuditEvent.payload + episode_id | ✅ | |
 | EU AI Act | Art. 12(3) Biometric-specific fields | AuditEvent.payload (deployer-extended) | ⚠️ | Deployer must populate biometric fields |
 | EU AI Act | Art. 19(1) Provider log retention ≥6 months | Append-only ledger | 🔧 | Retention period is deployer config |
@@ -34,9 +34,10 @@ compliance review before making regulatory assertions based on this content.*
 | NIST AI RMF 1.0 | MEASURE 2.7/2.8 Security/privacy risk logging | Sigchain + AuditEvent | ✅ | |
 | NIST AI RMF 1.0 | MANAGE 4.1 Post-deployment monitoring | review() + replay() | ✅ | |
 | NIST AI 600-1 (GenAI Profile) | GV-1.1-002 GenAI incident records | AuditEvent + sigchain | ✅ | |
-| Colorado SB 24-205 | Impact assessment documentation retention (5 yr) | REMEMBER + payload | 🔧 | Effective 30 Jun 2026; assessment workflow external |
+| Colorado SB 26-189 (signed May 14, 2026; eff. January 1, 2027) | Impact assessment documentation retention (5 yr) | REMEMBER + payload | 🔧 | Supersedes SB 24-205; assessment workflow external |
 | OECD AI Principles 2024 | Principle 1.4 Traceability | Provenance barrier + sigchain | ✅ | Voluntary |
 | G7 Hiroshima AI Code (2023) | Traceability and audit | Sigchain | ✅ | Voluntary |
+| NIST CAISI AI Agent Standards Initiative | AI agent identity, authorization, and security | sigchain + OIDC provenance receipts | ⚠️ | Launched February 17, 2026; RFI comment period closed March 2026; SP guidance expected 2027 |
 
 ---
 
@@ -99,7 +100,7 @@ compliance review before making regulatory assertions based on this content.*
 | EDPB Opinion 28/2024 | AI training/deployment processing records | AuditEvent substrate | ⚠️ | Opinion interpretation is legal counsel responsibility |
 | CCPA/CPRA ADMT regs (eff. 1 Jan 2026) | Risk assessment retention 5 years | REMEMBER + payload | 🔧 | Assessment workflow external |
 | CCPA/CPRA | Cybersecurity audit (annual) | Sigchain provides evidence | ⚠️ | Audit itself is external process |
-| Colorado SB 24-205 (eff. 30 Jun 2026) | Deployer risk management logging | Sigchain | ✅ | Impact assessment workflow external |
+| Colorado SB 26-189 (signed May 14, 2026; eff. January 1, 2027) | Deployer risk management logging | Sigchain | ✅ | Supersedes SB 24-205; impact assessment workflow external |
 | PIPEDA | General accountability, openness | Sigchain + consent model | ✅ | AIDA dead (Jan 2025); Quebec Law 25 is Canadian baseline |
 | Quebec Law 25 | ADM notice and impact assessment | AuditEvent + payload | ⚠️ | Workflow external |
 | UK ICO AI Auditing Framework | Fairness/accuracy/security monitoring logs | Sigchain | ✅ | Non-binding guidance |

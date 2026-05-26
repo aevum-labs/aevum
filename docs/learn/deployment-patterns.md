@@ -59,8 +59,7 @@ without traversing the gateway's policy engine. Aevum records the pre-call
 context envelope (model identity, tool definitions, conversation ID) and the
 consent grant that authorized the operation.
 
-**When to use:** EU AI Act Article 12 high-risk deployments (enforcement
-August 2026), SOC 2 PI1.2, production enterprise deployments where
+**When to use:** EU AI Act Article 12 high-risk deployments (Annex III standalone enforcement December 2, 2027), SOC 2 PI1.2, production enterprise deployments where
 non-compliance must be architecturally impossible rather than auditable.
 
 **Compatible gateways:** agentgateway (Linux Foundation / Solo.io),

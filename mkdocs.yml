@@ -168,6 +168,13 @@ nav:
       - Billing Walkthrough: use-cases/billing-inquiry.md
       - MCP Audit Trail: guides/mcp-audit-trail.md
       - Troubleshooting and FAQ: guides/troubleshooting-faq.md
+      - OpenAI Agents SDK: guides/openai-agents.md
+      - LangGraph: guides/langgraph.md
+      - CrewAI: guides/crewai.md
+      - Google ADK: guides/google-adk.md
+      - Microsoft Agent Framework: guides/microsoft-agent-framework.md
+      - MCP Integration: guides/mcp.md
+      - SEP-1763 Status: guides/sep-1763-status.md
     - FAQ: getting-started/faq.md
     - Domain Examples:
       - Overview: domain-examples/index.md
@@ -182,6 +189,13 @@ nav:
     - OWASP Crosswalk: owasp_crosswalk.md
     - SOC 2: compliance/soc2.md
     - GDPR Article 17: compliance/gdpr-article-17.md
+  - Standards:
+    - SCITT Profile: standards/scitt-profile.md
+    - ISO 42001 Evidence Map: standards/iso42001-evidence-map.md
+    - FOQA De-Identification: standards/foqa-deidentification-spec.md
+  - Legal:
+    - FRE 902(13) Template: legal/fre-902-13-certification-template.md
+    - AI Incident Investigation: legal/ai-incident-investigation-workflow.md
   - ADRs:
     - adr-001 Single Sigchain: adrs/adr-001-single-sigchain.md
     - adr-002 HLC Bounds: adrs/adr-002-hlc-bounds.md
