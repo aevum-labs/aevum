@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Aevum MCP server — five governed functions exposed as MCP tools, plus two
 A2A task tools (create_task, get_task) backed by the episodic ledger.

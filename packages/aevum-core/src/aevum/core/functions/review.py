@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 review — GOVERN — human decision gate. Spec Section 08.5.
 Veto-as-default: silence = veto if deadline elapsed.

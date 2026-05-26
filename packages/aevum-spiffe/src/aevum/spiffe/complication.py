@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 SpiffeComplication — SPIFFE agent identity via JWT-SVIDs.
 

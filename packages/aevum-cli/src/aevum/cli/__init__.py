@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 aevum.cli -- Command-line interface for operating Aevum nodes.
 

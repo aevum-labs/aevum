@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 aevum version -- print installed package versions.
 """

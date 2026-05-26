@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 HybridLogicalClock — causal ordering. Spec Section 06.5.
 Timestamp: bits 63-16 = ms since epoch, bits 15-0 = logical counter.

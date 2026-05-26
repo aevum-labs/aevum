@@ -210,4 +210,24 @@ treat it as a blocking issue requiring an explicit ADR before proceeding.
 
 ---
 
+**S-17 / R10 — Every public endpoint has a corresponding test**
+Every public function, route, and CLI command must have at least one test.
+New endpoints without tests must not be merged.
+
+---
+
+## Aevum-Specific Rules
+
+A1  OIDC sub claim: exact match only — no wildcards
+A2  jti deduplication mandatory
+A3  A2A tasks use SCREAMING_SNAKE_CASE states (v1.0 ratified)
+A4  Task IDs server-generated — never accept client-provided
+A5  Consent receipt verification not optional
+A6  Break-glass path must be documented
+A7  Demo sandbox uses separate sigchain — never production data
+A8  Rekor anchors append-only — never delete
+A9  Constitutional key ops require second signing key
+
+---
+
 > Maintenance templates live in aevum-labs/aevum-ops

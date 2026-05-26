@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Tests for PostgresLedger.
 Uses FakeConn (no real database). Integration tests skip without AEVUM_TEST_POSTGRES_DSN.

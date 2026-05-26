@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 aevum.core.audit.signer — Pluggable signing interface.
 

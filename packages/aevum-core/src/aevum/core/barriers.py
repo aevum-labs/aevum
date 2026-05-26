@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Unconditional Barriers — hardcoded, unconditional, non-configurable.
 Spec Section 09.3. Canary tests in tests/test_canary.py.

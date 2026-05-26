@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Tests for A2A task format and MCP tools.
 Uses direct tool invocation -- no real MCP protocol.

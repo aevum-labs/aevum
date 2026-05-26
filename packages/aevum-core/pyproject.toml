@@ -1,6 +1,6 @@
 [project]
 name = "aevum-core"
-version = "0.6.0"
+version = "0.7.0"
 description = "Aevum — the sealed movement. Replay-first, policy-governed context kernel."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -20,7 +20,7 @@ dependencies = [
     "cryptography>=42.0",
     "httpx>=0.27.0",
     "PyNaCl>=1.5.0",
-    "liboqs-python>=0.10.0",
+    "liboqs-python>=0.14.0",
     "rfc3161-client>=1.0.0",
     "pyyaml>=6.0",
     "base58>=2.1",
@@ -34,20 +34,20 @@ dependencies = [
 cedar = ["cedarpy>=4.8.1"]
 default = ["aevum-store-oxigraph"]
 server = [
-    "aevum-server>=0.3.0",
+    "aevum-server>=0.7.0",
     # aevum-oidc added back in Phase 1 when OIDC package is restored
 ]
 mcp = [
-    "aevum-mcp>=0.3.0",
+    "aevum-mcp>=0.7.0",
 ]
 a2a = [
-    "aevum-agent>=0.3.0",
+    "aevum-agent>=0.7.0",
 ]
 oxigraph = [
-    "aevum-store-oxigraph>=0.3.0",
+    "aevum-store-oxigraph>=0.7.0",
 ]
 postgres = [
-    "aevum-store-postgres>=0.3.0",
+    "aevum-store-postgres>=0.7.0",
 ]
 langgraph = [
     "langgraph-checkpoint>=4.1.0",

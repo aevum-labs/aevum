@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Smoke tests for /_aevum/v1/* admin API endpoints."""
 
 from fastapi.testclient import TestClient

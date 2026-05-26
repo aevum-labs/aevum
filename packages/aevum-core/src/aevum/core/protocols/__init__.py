@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """aevum.core.protocols -- GraphStore, Complication, ConsentLedger, AuditLedger interfaces."""
 
 from aevum.core.protocols.audit_ledger import AuditLedgerProtocol

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Integration test: Engine using OxigraphStore instead of InMemoryGraphStore.
 Verifies the real backend works end-to-end with the kernel.

@@ -8,6 +8,88 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-05-26
+
+### Added (Session 14 — pre-release cleanup and v0.7.0 version bump)
+
+- **`docs/release/v0.7.0-notes.md`** — Draft release notes for v0.7.0 human review gate.
+- **`CLAUDE.md`** — Added R10 (every public endpoint has a test) and A1–A9 aevum-specific rules.
+- **`KNOWN_UNKNOWNS.md`** — Corrected V07-VAULT wording to "implementation complete; live test deferred"; added v0.7.0 Open Items carry-forward section.
+
+### Changed (Session 14 — pre-release cleanup and v0.7.0 version bump)
+
+- All 13 packages bumped from 0.6.0 → 0.7.0; cross-package lower bounds updated to >=0.7.0.
+- **`CHANGELOG.md`** — `[Unreleased]` renamed to `[0.7.0] — 2026-05-26`.
+- **`packages/aevum-core/pyproject.toml`** — `liboqs-python` lower bound raised from `>=0.10.0` to `>=0.14.0`.
+- **`.github/workflows/deploy-demo.yml`** — SHA-pinned `actions/checkout` and `actions/setup-python`; documented superfly exception.
+- **`.github/workflows/release.yml`** — Added `aevum_llm-*` removal to dist cleanup step (Option B — deprecation exclusion).
+- **`packages/aevum-core/tests/test_phase1_signing.py`** — Added `RuntimeError` to skip-guard exception tuple.
+
+### Fixed (Session 14 — pre-release cleanup)
+
+- SPDX `Apache-2.0` license headers added to 121 Python source files across 9 packages (aevum-cli, aevum-core, aevum-maintainer, aevum-mcp, aevum-publish, aevum-server, aevum-spiffe, aevum-store-oxigraph, aevum-store-postgres).
+
+### Added (Session 12B — ops monitoring workflows)
+
+- **`.github/workflows/`** — Demo smoke test, benchmark regression guard, and license compliance CI workflows added via ops session.
+
+### Added (Session 12A — zizmor CI and adapter matrix expansion)
+
+- **`.github/workflows/ci.yml`** — zizmor GitHub Actions security scanner job; SARIF results uploaded to Code Scanning tab.
+- Adapter matrix expanded; additional automation workflows added.
+
+### Added (Session 11 — integration guides and compliance corrections)
+
+- **`docs/learn/guides/`** — Integration guides for all supported frameworks; compliance corrections and ISO 42001 evidence map added.
+
+### Added (Session 10 — OPA full-barrier fallback)
+
+- **`packages/aevum-core/src/aevum/core/policy/`** — OPA full-barrier fallback and Rego parity policies; Cedar/OPA policy role separation documented in `docs/spec/09-policy.md`.
+
+### Added (Session 9 — MCP Docker Gateway and A2A audit middleware)
+
+- **`packages/aevum-mcp/`** — MCP Docker Gateway shim; A2A ASGI audit middleware in `packages/aevum-agent/`.
+
+### Added (Session 8 — Microsoft Agent Framework adapter)
+
+- **`packages/aevum-agent/src/aevum/agent/adapters/`** — `AevumMAFMiddleware` adapter for Microsoft Agent Framework; mypy cross-environment `type: ignore` compatibility fix.
+
+### Added (Session 7 — Google ADK adapter)
+
+- **`packages/aevum-agent/src/aevum/agent/adapters/`** — `AevumADKPlugin` adapter for Google Agent Development Kit.
+
+### Added (Session 6 — demo Vite/React frontend)
+
+- **`demo/`** — Vite/React stepper frontend and Scalar API explorer UI integration.
+
+### Added (Session 5 — Scalar API explorer API side)
+
+- **`demo/`** — Scalar API explorer backend wiring and demo server enhancements.
+
+### Deferred (Session 4 — ScittTsBackend)
+
+- **`ScittTsBackend`** — stub only; implementation deferred pending ScrAPI RFC (`draft-ietf-scitt-scrapi`). See KNOWN_UNKNOWNS.md.
+
+### Added (Session 3B — QAR/FOQA analytics layer)
+
+- **`packages/aevum-core/src/aevum/core/`** — `ExceedanceDetector`, `GatekeeperFilter`, `FOQABridge` — the QAR/FOQA-equivalent operational analytics layer.
+
+### Fixed (Session 3A — OTel semconv migration)
+
+- **`packages/aevum-core/src/aevum/core/functions/ingest.py`** — Migrated `gen_ai.system` → `gen_ai.provider.name`; dual-emit backward compat mode; S-13 rekor URL hardcoding removed.
+
+### Added (Session 2 — three-tier SQLite WAL receipt store)
+
+- **`packages/aevum-core/`**, **`packages/aevum-cli/`**, **`packages/aevum-store-oxigraph/`** — Three-tier SQLite WAL receipt store with hot/warm/cold tier management.
+
+### Added (Session 1B — SCITT profile and AmbientContextReceipt)
+
+- **`packages/aevum-publish/`** — SCITT profile headers, `AmbientContextReceipt`, ADR-009 cross-chain reference architecture, invariants documentation.
+
+### Added (Session 1A — black box receipt format layer)
+
+- **`packages/aevum-publish/`** — `AevumReceipt` baseline with COSE_Sign1 signing path; the FDR/VDR-equivalent forensic receipt layer.
+
 ### Added (Session 13 — ML-DSA-65 hardening)
 
 - **`docs/deployment/liboqs.md`** — Native library installation guide for all

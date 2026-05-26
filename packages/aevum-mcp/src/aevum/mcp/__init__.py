@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 aevum.mcp — MCP server exposing Aevum's five functions as tools.
 

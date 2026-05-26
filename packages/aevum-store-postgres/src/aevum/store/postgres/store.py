@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 PostgresStore — GraphStore Protocol backed by PostgreSQL via psycopg3 (sync).
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 /_aevum/v1/* — admin API for complication lifecycle and server diagnostics.
 """

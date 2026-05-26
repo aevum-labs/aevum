@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 AuditLedgerProtocol -- runtime-checkable Protocol for episodic ledger backends.
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 migrate_from_oxigraph — export Oxigraph data and import into PostgresStore.
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 InMemoryGraphStore — development and testing only. NOT for production.
 For production use aevum-store-oxigraph (single-node) or aevum-store-postgres (team).

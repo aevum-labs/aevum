@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Tests for middleware — correlation IDs, security headers, rate limits."""
 
 from __future__ import annotations

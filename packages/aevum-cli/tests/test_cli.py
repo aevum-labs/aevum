@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Tests for aevum-cli commands.
 Uses typer's CliRunner -- no real server, no real graph backend.

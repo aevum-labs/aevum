@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 query — NAVIGATE — graph traversal for declared purpose. Spec Section 08.4.
 

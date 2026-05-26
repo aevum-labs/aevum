@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Server configuration via environment variables.
 All settings have safe defaults for development.

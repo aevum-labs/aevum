@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 ConformanceAdapter — wraps Engine to return plain dicts for the conformance suite.
 Engine returns Pydantic models; this adapter converts them for protocol-level testing.

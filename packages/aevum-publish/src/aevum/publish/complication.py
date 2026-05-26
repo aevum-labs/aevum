@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 PublishComplication — Rekor v2 transparency log integration.
 

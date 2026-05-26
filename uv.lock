@@ -80,7 +80,7 @@ wheels = [
 
 [[package]]
 name = "aevum-agent"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-agent" }
 dependencies = [
     { name = "aevum-core" },
@@ -104,7 +104,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "aevum-cli"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-cli" }
 dependencies = [
     { name = "aevum-core" },
@@ -140,7 +140,7 @@ provides-extras = ["conform", "dev"]
 
 [[package]]
 name = "aevum-conformance"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-conformance" }
 dependencies = [
     { name = "aevum-core" },
@@ -151,7 +151,7 @@ requires-dist = [{ name = "aevum-core", editable = "packages/aevum-core" }]
 
 [[package]]
 name = "aevum-core"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-core" }
 dependencies = [
     { name = "base58" },
@@ -261,7 +261,7 @@ requires-dist = [
     { name = "inline-snapshot", marker = "extra == 'dev'", specifier = ">=0.13" },
     { name = "langchain-core", marker = "extra == 'langchain'", specifier = ">=0.2.0" },
     { name = "langgraph-checkpoint", marker = "extra == 'langgraph'", specifier = ">=4.1.0" },
-    { name = "liboqs-python", specifier = ">=0.10.0" },
+    { name = "liboqs-python", specifier = ">=0.14.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.9" },
     { name = "openai-agents", marker = "extra == 'openai-agents'", specifier = ">=0.0.12" },
     { name = "oxrdflib", specifier = ">=0.4.0" },
@@ -281,12 +281,12 @@ provides-extras = ["cedar", "default", "server", "mcp", "a2a", "oxigraph", "post
 
 [[package]]
 name = "aevum-llm"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-llm" }
 
 [[package]]
 name = "aevum-maintainer"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-maintainer" }
 dependencies = [
     { name = "aevum-core" },
@@ -309,7 +309,7 @@ requires-dist = [
 
 [[package]]
 name = "aevum-mcp"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-mcp" }
 dependencies = [
     { name = "aevum-core" },
@@ -337,7 +337,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "aevum-otel"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-otel" }
 dependencies = [
     { name = "aevum-core" },
@@ -375,7 +375,7 @@ provides-extras = ["otlp", "otlp-http", "dev"]
 
 [[package]]
 name = "aevum-publish"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-publish" }
 dependencies = [
     { name = "aevum-core" },
@@ -407,7 +407,7 @@ provides-extras = ["rekor", "dev"]
 
 [[package]]
 name = "aevum-server"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-server" }
 dependencies = [
     { name = "aevum-core" },
@@ -432,7 +432,7 @@ requires-dist = [
 
 [[package]]
 name = "aevum-spiffe"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-spiffe" }
 dependencies = [
     { name = "aevum-core" },
@@ -460,7 +460,7 @@ provides-extras = ["spiffe", "dev"]
 
 [[package]]
 name = "aevum-store-oxigraph"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-store-oxigraph" }
 dependencies = [
     { name = "aevum-core" },
@@ -475,7 +475,7 @@ requires-dist = [
 
 [[package]]
 name = "aevum-store-postgres"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aevum-store-postgres" }
 dependencies = [
     { name = "aevum-core" },

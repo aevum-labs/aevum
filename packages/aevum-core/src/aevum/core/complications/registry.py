@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 ComplicationRegistry — 7-state machine for complication lifecycle.
 Spec Section 11.2.

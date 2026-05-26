@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 ConflictDetector — detect capability conflicts at install time.
 Fail-closed: if a conflict exists, installation is refused.

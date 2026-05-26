@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Tests for /v1/ingest, /v1/query, /v1/commit, /v1/replay, /v1/review."""
 
 from __future__ import annotations

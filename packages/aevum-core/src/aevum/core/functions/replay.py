@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 replay — faithful reconstruction of past decision. Spec Section 08.7.
 Read-only, deterministic, consent-gated.

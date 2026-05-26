@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """aevum.server — HTTP API server wrapping the Aevum kernel."""
 
 from aevum.server.app import create_app

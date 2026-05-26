@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Middleware — correlation IDs, security headers, rate limit headers.
 Applied to every response via app.middleware("http").
