@@ -195,8 +195,7 @@ class VaultTransitSigner(Signer):
         input_b64 = base64.b64encode(digest).decode()
         body: dict[str, object] = {
             "input": input_b64,
-            "prehashed": True,
-            "signature_algorithm": "pkcs1v15",  # ignored for ed25519; required for rsa
+            "prehashed": False,  # ed25519 in Vault requires prehashed=false (Pure Ed25519)
         }
         if self._key_version is not None:
             body["key_version"] = self._key_version
@@ -220,6 +219,43 @@ class VaultTransitSigner(Signer):
         if padding != 4:
             sig_b64 += "=" * padding
         return base64.urlsafe_b64decode(sig_b64)
+
+    def verify(self, digest: bytes, signature: bytes) -> bool:
+        """
+        Verify a signature via the Vault Transit verify endpoint.
+
+        Returns True if Vault confirms the signature is valid, False otherwise.
+        Raises on connection failure (allows callers to distinguish network error
+        from cryptographic rejection).
+        """
+        import base64
+
+        try:
+            import httpx
+        except ImportError as exc:
+            raise ImportError(
+                "VaultTransitSigner requires httpx: pip install httpx"
+            ) from exc
+
+        input_b64 = base64.b64encode(digest).decode()
+        # Vault expects standard base64 (not URL-safe) in the vault:v1: prefix format
+        vault_sig = f"vault:v1:{base64.b64encode(signature).decode()}"
+
+        body: dict[str, object] = {
+            "input": input_b64,
+            "signature": vault_sig,
+            "prehashed": False,
+        }
+        url = f"{self._vault_addr}/v1/transit/verify/{self._key_name}"
+        headers = {"X-Vault-Token": self._token}
+
+        with httpx.Client(timeout=self._timeout) as client:
+            resp = client.post(url, json=body, headers=headers)
+            if resp.status_code != 200:
+                return False
+            data = resp.json()
+
+        return bool(data.get("data", {}).get("valid", False))
 
     def public_key_bytes(self) -> bytes:
         """

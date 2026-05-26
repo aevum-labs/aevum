@@ -3,17 +3,25 @@
 Tests for VaultTransitSigner.
 
 All tests mock the HTTP calls — no live Vault instance required.
-See docs/deployment/key-rotation.md for the test procedure against a live Vault dev instance.
+Integration tests (marked @pytest.mark.integration) require a live Vault instance:
+  VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=dev-root AEVUM_VAULT_TEST_KEY=aevum-signing-test
+See docs/deployment/vault-setup.md for setup instructions.
 """
 
 from __future__ import annotations
 
 import base64
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from aevum.core.audit.signer import VaultTransitSigner
+
+_VAULT_SKIP = pytest.mark.skipif(
+    not os.environ.get("VAULT_ADDR"),
+    reason="VAULT_ADDR not set — Vault integration test requires live Vault",
+)
 
 
 def _make_fake_sig_b64url(raw_bytes: bytes = b"\xab" * 64) -> str:
@@ -81,7 +89,7 @@ class TestVaultTransitSignerSign:
             signer.sign(digest)
             call_args = mock_client.post.call_args
             assert "aevum-key" in call_args[0][0]
-            assert call_args[1]["json"]["prehashed"] is True
+            assert call_args[1]["json"]["prehashed"] is False
 
     def test_sign_sends_base64_encoded_digest(self):
         signer = VaultTransitSigner("aevum-key", vault_addr="http://vault:8200", token="root")
@@ -183,3 +191,70 @@ class TestVaultTransitSignerWithSigchain:
 
         assert event.signer_key_id == signer.key_id
         assert event.signature != ""
+
+
+def _live_signer() -> VaultTransitSigner:
+    return VaultTransitSigner(
+        key_name=os.environ.get("AEVUM_VAULT_TEST_KEY", "aevum-signing-test"),
+        vault_addr=os.environ.get("VAULT_ADDR", "http://127.0.0.1:8200"),
+        token=os.environ.get("VAULT_TOKEN", ""),
+    )
+
+
+@pytest.mark.integration
+@_VAULT_SKIP
+class TestVaultTransitSignerLive:
+    """Live integration tests — require VAULT_ADDR, VAULT_TOKEN, AEVUM_VAULT_TEST_KEY."""
+
+    def test_sign_returns_bytes(self):
+        signer = _live_signer()
+        sig = signer.sign(b"aevum vault live test 2026")
+        assert isinstance(sig, bytes)
+        assert len(sig) == 64
+
+    def test_verify_valid_signature(self):
+        signer = _live_signer()
+        payload = b"aevum vault live test 2026"
+        sig = signer.sign(payload)
+        assert signer.verify(payload, sig) is True
+
+    def test_verify_rejects_tampered_payload(self):
+        signer = _live_signer()
+        payload = b"aevum vault live test 2026"
+        sig = signer.sign(payload)
+        assert signer.verify(b"tampered payload", sig) is False
+
+    def test_verify_rejects_corrupted_signature(self):
+        signer = _live_signer()
+        payload = b"aevum vault live test 2026"
+        sig = signer.sign(payload)
+        corrupted = bytes([b ^ 0xFF for b in sig[:32]]) + sig[32:]
+        assert signer.verify(payload, corrupted) is False
+
+    def test_key_id_is_not_empty(self):
+        signer = _live_signer()
+        assert signer.key_id != ""
+        assert len(signer.key_id) > 0
+
+    def test_does_not_use_production_key(self):
+        signer = _live_signer()
+        assert signer._key_name != "aevum-signing", (
+            "Integration tests must use the test key, not the production key"
+        )
+
+    def test_receipt_encoder_accepts_vault_signer(self):
+        from aevum.publish.encoder import ReceiptEncoder
+        signer = _live_signer()
+        encoder = ReceiptEncoder(signer=signer)
+        assert encoder is not None
+
+    def test_circuit_breaker_on_vault_unavailable(self):
+        import httpx
+        signer = VaultTransitSigner(
+            key_name="aevum-signing-test",
+            vault_addr="http://127.0.0.1:19999",
+            token="dev-root",
+            timeout=1.0,
+        )
+        with pytest.raises(httpx.TransportError):
+            signer.sign(b"aevum vault live test 2026")
