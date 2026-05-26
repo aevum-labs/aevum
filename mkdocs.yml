@@ -137,8 +137,10 @@ nav:
     - Security: learn/security.md
     - Deployment: learn/deployment.md
     - Deployment Patterns: learn/deployment-patterns.md
+    - liboqs Setup: deployment/liboqs.md
     - Key Rotation: deployment/key-rotation.md
     - Rekor Self-Hosted: deployment/rekor-self-hosted.md
+    - Signing Architecture: architecture/signing.md
     - Demo Site: deployment/demo-site.md
     - Performance Baseline: deployment/performance-baseline.md
     - Dev to Production: learn/dev-to-production.md

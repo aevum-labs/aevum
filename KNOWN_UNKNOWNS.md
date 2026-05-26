@@ -11,6 +11,35 @@ new deferral decisions are made. Resolved entries move to CHANGELOG.md.
 
 ---
 
+## V07-MLDSA65: ML-DSA-65 Post-Quantum Signing (CLOSED implementation / OPEN validation)
+
+**Item:** V07-MLDSA65 — confirmed closed for implementation in Session 13
+
+**CLOSED (implementation):** ML-DSA-65 dual-signing is implemented in `DualSigner` since
+v0.4.0, confirmed present in 17 files. `DualSigner` in
+`packages/aevum-core/src/aevum/core/signing.py` signs every sigchain entry with
+BOTH Ed25519 (PyNaCl) AND ML-DSA-65 (liboqs-python). Both signatures must be valid;
+neither alone is sufficient. `DualSigner` is wired into `Sigchain` as an optional
+`dual_signer` constructor argument — it is not the default (the default is
+`InProcessSigner`, Ed25519 only). See `docs/architecture/signing.md`.
+
+**CLOSED (export control):** EAR §742.15 supplemental notification for ML-DSA-65
+(FIPS 204, Module-Lattice-Based Digital Signature Algorithm) filed 2026-05-24.
+See SECURITY.md.
+
+**OPEN (FIPS 140-3 module certification):** ML-DSA-65 implements the FIPS 204
+algorithm standard. FIPS 140-3 module certification (a security certification for
+cryptographic modules, distinct from algorithm standardization) has not been
+obtained. FIPS 140-3 is out of scope until a regulated customer requires it.
+
+**OPEN (deployment):** liboqs native `.so` must be pre-installed in production
+environments — it is NOT bundled with the `liboqs-python` pip package.
+See `docs/deployment/liboqs.md` for platform-specific setup instructions.
+
+**Closed:** Session 13 (2026-05-26) — implementation confirmed.
+
+---
+
 ## V07-ZIZMOR: GitHub Actions Security Scan (CLOSED — Session 12A)
 
 **Item:** V07-ZIZMOR — closed in Session 12A
@@ -183,9 +212,10 @@ configuration — it is not guaranteed by default.
    RHEL with `fips=1` in the kernel, Ubuntu FIPS, and custom builds.
    A single guide cannot cover all cases accurately.
 
-2. **ML-DSA-65 (post-quantum) is not yet implemented.** FIPS 140-3
-   validation for the post-quantum migration path (Phase C) is out of scope
-   until the migration is complete.
+2. **ML-DSA-65 FIPS 140-3 module certification not yet obtained.** ML-DSA-65
+   (FIPS 204 algorithm standard) is implemented in `DualSigner` since v0.4.0
+   (see V07-MLDSA65). FIPS 140-3 module certification for the post-quantum
+   signing path is out of scope until a regulated customer requires it.
 
 3. **No regulated customer requiring FIPS has been onboarded.** Writing a
    guide without a concrete deployment to validate it against risks being
