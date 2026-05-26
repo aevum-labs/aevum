@@ -304,23 +304,24 @@ what changed, what breaks, what is the migration scope?
 
 ---
 
-## V07-VAULT: VaultTransitSigner Live Vault Validation (Open — live test only)
+## V07-VAULT: VaultTransitSigner Live Vault Validation (CLOSED — Session 4)
 
-**Item:** V07-VAULT — OPEN (live test only)
+**Item:** V07-VAULT — CLOSED. VaultTransitSigner confirmed functional against
+live Vault 2.0.0 dev server on Windows 10 PC. Sign/verify round-trip passes.
+Integration tests added (skipif VAULT_ADDR not set).
+CLI command: `aevum vault-check`. Closed: Session 4 (2026-05-26).
 
-VaultTransitSigner implementation is **COMPLETE** (httpx calls, real sign/verify —
-confirmed in gate report and Session 13). The `VaultTransitSigner` class is present
-in `aevum.core.audit.signer.VaultTransitSigner` and performs real HTTP calls to the
-Vault transit secrets engine. Implementation wording: **complete**.
-Do **NOT** describe this as "not yet implemented" — that is factually wrong.
+**Bug fixed:** `prehashed: true` in Vault Transit sign call was rejected by Vault 2.0.0
+ed25519 keys ("only Pure Ed25519 signatures supported, prehashed must be false").
+Fixed to `prehashed: false`. `verify()` method was also missing — added with Vault
+Transit verify endpoint. Base64 encoding fixed: Vault uses standard base64 (`+`/`/`),
+not URL-safe (`-`/`_`).
 
-**What remains open:** Live integration test against a real Vault dev server is
-deferred to a PC-based session. Setting up a live Vault instance in CI requires an
-infrastructure decision (Vault dev mode in Docker vs. HashiCorp Cloud) that has not
-been provisioned.
-
-**Condition for revisitation:** PC-based session with Vault dev server available.
-This is a v0.7.1 item. See v0.7.0 Open Items section below.
+**Files modified:**
+- `packages/aevum-core/src/aevum/core/audit/signer.py` — prehashed fix, verify() added
+- `packages/aevum-core/tests/test_vault_transit_signer.py` — 8 integration tests added
+- `packages/aevum-cli/src/aevum/cli/app.py` — vault-check command added
+- `docs/deployment/vault-setup.md` — created
 
 ---
 
@@ -489,7 +490,7 @@ consistent with the aevum.build color scheme.
 
 ## v0.7.0 Release — Open Items (carry to v0.7.1)
 
-1. **V07-VAULT:** Live integration test requires PC + Vault server (implementation is complete)
+1. **V07-VAULT:** CLOSED Session 4 (2026-05-26) — sign/verify confirmed, integration tests added, CLI vault-check added
 2. **V07-AGENT-CONTEXT:** gen_ai.agent.name/id not yet wired into OTel bridge
 3. **EX-10:** Concurrent conflicting tool calls — requires cross-session context
 4. **EX-14:** A2A communication failure — requires cross-agent message tracking

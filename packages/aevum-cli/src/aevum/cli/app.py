@@ -367,6 +367,56 @@ def _print_receipt_summary(
         typer.echo(f"Rekor ref:      {rekor_ref}")
 
 
+@app.command(name="vault-check")
+def vault_check() -> None:
+    """
+    Verify Vault Transit connectivity with a sign/verify round-trip.
+
+    Reads VAULT_ADDR, VAULT_TOKEN, and AEVUM_VAULT_KEY_NAME from the environment.
+    Exits 0 on success, exits 1 on failure.
+    """
+    import os
+
+    vault_addr = os.environ.get("VAULT_ADDR", "http://127.0.0.1:8200")
+    vault_token = os.environ.get("VAULT_TOKEN", "")
+    key_name = os.environ.get("AEVUM_VAULT_KEY_NAME", "aevum-signing")
+
+    if not vault_token:
+        typer.echo("VAULT_TOKEN is not set.", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Vault address : {vault_addr}")
+    typer.echo(f"Key name      : {key_name}")
+
+    try:
+        from aevum.core.audit.signer import VaultTransitSigner
+        signer = VaultTransitSigner(key_name=key_name, vault_addr=vault_addr, token=vault_token)
+    except Exception as exc:
+        typer.echo(f"Failed to create VaultTransitSigner: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    payload = b"aevum vault-check probe"
+    try:
+        sig = signer.sign(payload)
+        typer.echo(typer.style("  sign()   PASS", fg=typer.colors.GREEN))
+    except Exception as exc:
+        typer.echo(typer.style("  sign()   FAIL", fg=typer.colors.RED))
+        typer.echo(f"  {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    try:
+        valid = signer.verify(payload, sig)
+        if not valid:
+            raise RuntimeError("verify() returned False for a freshly signed payload")
+        typer.echo(typer.style("  verify() PASS", fg=typer.colors.GREEN))
+    except Exception as exc:
+        typer.echo(typer.style("  verify() FAIL", fg=typer.colors.RED))
+        typer.echo(f"  {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    typer.echo(typer.style("Vault Transit check PASSED.", fg=typer.colors.GREEN))
+
+
 @app.command()
 def replay(
     session_id: Annotated[str, typer.Argument(help="Session ID to replay")],
