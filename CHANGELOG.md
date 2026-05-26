@@ -8,6 +8,32 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added (Session 13 — ML-DSA-65 hardening)
+
+- **`docs/deployment/liboqs.md`** — Native library installation guide for all
+  platforms: cmake build from source, Conda, Docker two-stage build, and a
+  verification snippet. Includes key-size table and EAR §742.15 reference.
+- **`docs/architecture/signing.md`** — Dual-signing architecture documentation:
+  `DualSigner` wiring into `Sigchain` as an optional constructor argument, the
+  two-layer signing model (sigchain vs. COSE_Sign1 receipt), Ed25519-only fallback
+  mode, and `InProcessSigner` location (`aevum.core.audit.signer`).
+
+### Changed (Session 13 — ML-DSA-65 hardening)
+
+- **`KNOWN_UNKNOWNS.md`** — Added V07-MLDSA65 entry: implementation is closed
+  (present since v0.4.0, 17 files); EAR §742.15 supplemental filed 2026-05-24;
+  FIPS 140-3 module certification and liboqs deployment remain open. Fixed
+  D-FIPS entry which incorrectly stated "ML-DSA-65 (post-quantum) is not yet
+  implemented" — ML-DSA-65 has been implemented since v0.4.0.
+- **`SECURITY.md`** — Added ML-DSA-65 to the cryptographic algorithms table;
+  updated EAR §742.15 section with supplemental filing (2026-05-24) for
+  ML-DSA-65 (FIPS 204).
+- **`docs/deployment/key-rotation.md`** — Added ML-DSA-65 dual-signing key
+  rotation section (DualSigner keypair generation, transition window, emergency
+  rotation). Fixed VaultTransitSigner status table: implementation is present
+  in `aevum.core.audit.signer.VaultTransitSigner` (was incorrectly marked
+  "Not yet implemented").
+
 ### Fixed
 
 - **`release.yml`** — Added "Verify PyPI registration" step before the PyPI

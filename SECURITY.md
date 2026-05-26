@@ -69,7 +69,8 @@ The five barriers cannot be disabled by any policy, configuration, or complicati
 
 | Component | Algorithm | Standard |
 |---|---|---|
-| Event signing | Ed25519 | RFC 8032, FIPS 186-5 |
+| Event signing (default) | Ed25519 | RFC 8032, FIPS 186-5 |
+| Post-quantum signing (optional) | ML-DSA-65 | FIPS 204 |
 | Chain hash | SHA3-256 | FIPS 202 |
 | Payload hash | SHA3-256 | FIPS 202 |
 | Canonicalization | RFC 8785 JCS | RFC 8785 |
@@ -85,13 +86,22 @@ and record the outcome here before the 1.0.0 release.
 
 ## EAR §742.15 Export Notification (D-19)
 
-**Status: FILED — 2026-05-20**
+**Original filing: FILED — 2026-05-20**
+**Supplemental filing (ML-DSA-65): FILED — 2026-05-24**
 
-Filed: 2026-05-20. Sent to crypt@bis.doc.gov and enc@nsa.gov.
+Original filing: 2026-05-20. Sent to crypt@bis.doc.gov and enc@nsa.gov.
+Supplemental filing: 2026-05-24. Additional algorithm notified: ML-DSA-65
+(FIPS 204, Module-Lattice-Based Digital Signature Algorithm — post-quantum
+digital signatures).
 No response required — notification only.
 
-Aevum-core uses Ed25519 digital signatures and SHA3-256 hashing. These are
-encryption items subject to EAR (Export Administration Regulations) §742.15.
+All algorithms are published, standardized algorithms. No proprietary
+cryptographic functionality is implemented.
+Contact: security@aevum.build
+
+Aevum-core uses Ed25519 digital signatures, ML-DSA-65 post-quantum signatures,
+and SHA3-256 hashing. These are encryption items subject to EAR (Export
+Administration Regulations) §742.15.
 Open-source cryptographic software qualifies for the License Exception ENC
 (15 C.F.R. §740.17(b)(4)) — a one-time notification to BIS and NSA is
 sufficient; no license is required.
