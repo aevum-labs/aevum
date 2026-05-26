@@ -1,0 +1,50 @@
+name: License Compliance
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'   # Weekly, Monday 04:00 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "packages/**/*.py"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  license-check:
+    name: SPDX header check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - name: Check SPDX headers
+        id: check
+        run: |
+          python3 scripts/license_check.py 2>&1 | tee /tmp/license_output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_ENV
+
+      - name: Comment on PR (if PR trigger)
+        if: github.event_name == 'pull_request' && env.exit_code == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "$(cat /tmp/license_output.txt)"
+
+      - name: Open issue (if scheduled trigger)
+        if: github.event_name == 'schedule' && env.exit_code == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "license-compliance: files missing SPDX headers" \
+            --label "license-compliance" \
+            --body "$(cat /tmp/license_output.txt)"
+
+      - name: Fail workflow on violations
+        if: env.exit_code == '1'
+        run: exit 1
