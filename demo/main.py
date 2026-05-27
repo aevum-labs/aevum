@@ -2,7 +2,7 @@
 Aevum Demo — FastAPI application.
 
 Public routes:
-  GET  /              Landing page (scenario guide)
+  GET  /              React SPA (served from dist/ via StaticFiles)
   GET  /docs          Swagger UI
   GET  /redoc         Redoc
   GET  /scalar        Scalar API explorer (interactive demo flow)
@@ -45,6 +45,7 @@ import os
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
+from pathlib import Path
 from typing import Annotated, Any, Literal
 from uuid import uuid4
 
@@ -55,6 +56,7 @@ from fastapi import Body, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from sandbox_models import (
     ConsentRequest,
@@ -89,8 +91,10 @@ _ALLOWED_ACTORS = frozenset({
 
 _DEMO_ORIGINS = [
     "https://demo.aevum.build",
-    "http://localhost:5173",    # Vite dev server (Session 6)
+    "https://aevum-demo.fly.dev",
+    "http://localhost:5173",    # Vite dev server
     "http://localhost:3000",    # Alternative dev port
+    "http://localhost:7860",    # Local preview
 ]
 
 _SANDBOX_TAGS = [
@@ -827,11 +831,6 @@ async def scalar_ui() -> HTMLResponse:
     )
 
 
-@app.get("/", include_in_schema=False)
-async def landing() -> HTMLResponse:
-    return HTMLResponse(_LANDING_HTML)
-
-
 # ── Custom OpenAPI — adds X-Demo-Actor security scheme and sandbox tags ────────
 
 def _build_openapi() -> dict:
@@ -868,278 +867,13 @@ def _build_openapi() -> dict:
 app.openapi = _build_openapi  # type: ignore[method-assign]
 
 
-# ── HTML pages ────────────────────────────────────────────────────────────────
+# ── Static files — React SPA ─────────────────────────────────────────────────
+# Must be LAST — routes above take priority; this catches everything else.
+# html=True serves index.html for unmatched paths (React client-side routing).
 
-_LANDING_HTML = """<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Aevum — Live Demo</title>
-  <style>
-    :root {
-      --bg: #0d0d0d; --surface: #161616; --border: #2a2a2a;
-      --text: #e0e0e0; --muted: #888; --accent: #a78bfa;
-      --ok: #4ade80; --error: #f87171; --pending: #fbbf24;
-      --mono: "SF Mono","Fira Code","Cascadia Code",monospace;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: var(--mono);
-           font-size: 13px; line-height: 1.7; padding: 24px 20px 48px; max-width: 820px;
-           margin: 0 auto; }
-    h1 { font-size: 20px; color: var(--accent); letter-spacing: .08em; margin-bottom: 4px; }
-    .tagline { color: var(--muted); font-size: 12px; margin-bottom: 32px; }
-    .open-btn {
-      display: inline-block; background: var(--accent); color: #0d0d0d;
-      padding: 9px 20px; font-family: var(--mono); font-size: 13px;
-      font-weight: 600; text-decoration: none; margin-bottom: 40px;
-    }
-    .open-btn:hover { opacity: .85; }
-    h2 { font-size: 13px; color: var(--accent); margin-bottom: 6px; }
-    .scenario { border: 1px solid var(--border); margin-bottom: 20px; }
-    .scenario-header { padding: 10px 14px; border-bottom: 1px solid var(--border);
-                       background: var(--surface); }
-    .scenario-label { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
-    .scenario-title { font-size: 13px; color: var(--text); }
-    .scenario-desc { font-size: 11px; color: var(--muted); margin-top: 3px; }
-    .steps { padding: 12px 14px; }
-    .step { margin-bottom: 16px; }
-    .step:last-child { margin-bottom: 0; }
-    .step-num { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
-    .step-fn { color: var(--accent); font-size: 12px; }
-    .step-actor { font-size: 11px; color: var(--muted); }
-    .step-actor span { color: var(--text); }
-    pre {
-      background: #111; border: 1px solid var(--border); padding: 8px 10px;
-      margin-top: 6px; font-size: 11px; overflow-x: auto;
-      white-space: pre; line-height: 1.5;
-    }
-    .note { font-size: 11px; color: var(--muted); margin-top: 6px;
-            border-left: 2px solid var(--accent); padding-left: 8px; }
-    .actor-table { width: 100%; border-collapse: collapse; margin-bottom: 32px;
-                   font-size: 12px; }
-    .actor-table th { text-align: left; color: var(--muted); font-weight: normal;
-                      padding: 4px 8px; border-bottom: 1px solid var(--border); }
-    .actor-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); }
-    .actor-name { color: var(--accent); }
-    .section-label { font-size: 10px; color: var(--muted); text-transform: uppercase;
-                     letter-spacing: .1em; margin-bottom: 10px; margin-top: 32px; }
-    footer { margin-top: 48px; font-size: 11px; color: var(--muted); border-top:
-             1px solid var(--border); padding-top: 16px; }
-    footer a { color: var(--muted); }
-  </style>
-</head>
-<body>
-<main id="main-content">
-
-<h1>AEVUM</h1>
-<p class="tagline">The governed context kernel — live playground</p>
-
-<a class="open-btn" href="/scalar" target="_blank">Open API Explorer →</a>
-
-<p class="section-label">How to use</p>
-<p style="font-size:12px; color:var(--muted); margin-bottom:16px;">
-  The API Explorer (Scalar) opens in a new tab. Click <strong>Authorize</strong>
-  and enter your actor name. Then follow the scenarios below — each step maps
-  directly to an endpoint you can try in the explorer.
-</p>
-
-<table class="actor-table">
-  <thead>
-    <tr><th>Actor</th><th>Consent grants</th><th>Use in</th></tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td class="actor-name">demo-agent</td>
-      <td>ingest, query, replay on user-demo</td>
-      <td>Scenarios A and B (step 1)</td>
-    </tr>
-    <tr>
-      <td class="actor-name">intruder-agent</td>
-      <td>None initially</td>
-      <td>Scenario B (steps 2–4)</td>
-    </tr>
-    <tr>
-      <td class="actor-name">demo-human</td>
-      <td>None (review does not check consent)</td>
-      <td>Scenario C (approve/veto)</td>
-    </tr>
-  </tbody>
-</table>
-
-<p class="section-label">Scenario A — Replay Proof</p>
-
-<div class="scenario">
-  <div class="scenario-header">
-    <div class="scenario-label">Scenario A</div>
-    <div class="scenario-title">Replay Proof</div>
-    <div class="scenario-desc">A compliance auditor arrives. Prove your agent's decision used only consented data.</div>
-  </div>
-  <div class="steps">
-
-    <div class="step">
-      <div class="step-num">Step 1</div>
-      <div class="step-fn">POST /demo/ingest</div>
-      <div class="step-actor">Actor: <span>demo-agent</span></div>
-      <pre>{
-  "data": {"invoice_id": "INV-2026-001", "amount": 1500.00},
-  "provenance": {
-    "source_id": "billing-system",
-    "chain_of_custody": ["billing-system"],
-    "classification": 1
-  },
-  "purpose": "billing-inquiry",
-  "subject_id": "user-demo"
-}</pre>
-      <div class="note">Response: status ok, audit_id issued and signed into the sigchain.</div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">Step 2</div>
-      <div class="step-fn">POST /demo/commit</div>
-      <div class="step-actor">Actor: <span>demo-agent</span></div>
-      <pre>{
-  "event_type": "demo.payment.approved",
-  "payload": {"invoice_id": "INV-2026-001", "amount": 1500.00}
-}</pre>
-      <div class="note">Copy the audit_id from this response. You will use it in step 3.</div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">Step 3</div>
-      <div class="step-fn">GET /demo/replay/{audit_id}</div>
-      <div class="step-actor">Actor: <span>demo-agent</span> — paste the audit_id from step 2</div>
-      <div class="note">replayed_payload is identical to the original commit payload. The same audit_id always returns the same result. This is the guarantee.</div>
-    </div>
-
-  </div>
-</div>
-
-<p class="section-label">Scenario B — Consent Barrier</p>
-
-<div class="scenario">
-  <div class="scenario-header">
-    <div class="scenario-label">Scenario B</div>
-    <div class="scenario-title">Consent Barrier</div>
-    <div class="scenario-desc">Your agent tries to access data it was never authorized to see.</div>
-  </div>
-  <div class="steps">
-
-    <div class="step">
-      <div class="step-num">Step 1</div>
-      <div class="step-fn">POST /demo/query</div>
-      <div class="step-actor">Actor: <span>demo-agent</span></div>
-      <pre>{
-  "purpose": "billing-inquiry",
-  "subject_ids": ["user-demo"],
-  "classification_max": 1
-}</pre>
-      <div class="note">status: ok — consent grant exists.</div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">Step 2</div>
-      <div class="step-fn">POST /demo/query</div>
-      <div class="step-actor">Actor: <span>intruder-agent</span> — change actor in Scalar</div>
-      <pre>{
-  "purpose": "billing-inquiry",
-  "subject_ids": ["user-demo"],
-  "classification_max": 1
-}</pre>
-      <div class="note">status: error — Barrier 3 fires. The data was not filtered. The operation was blocked.</div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">Step 3</div>
-      <div class="step-fn">POST /demo/grant</div>
-      <div class="step-actor">Actor: any</div>
-      <pre>{
-  "subject_id": "user-demo",
-  "grantee_id": "intruder-agent",
-  "operations": ["query"],
-  "purpose": "billing-inquiry",
-  "classification_max": 1
-}</pre>
-    </div>
-
-    <div class="step">
-      <div class="step-num">Step 4</div>
-      <div class="step-fn">POST /demo/query</div>
-      <div class="step-actor">Actor: <span>intruder-agent</span> — same request as step 2</div>
-      <div class="note">status: ok — consent granted. Same actor, same query, different outcome. The kernel enforced it.</div>
-    </div>
-
-  </div>
-</div>
-
-<p class="section-label">Scenario C — GOVERN Gate</p>
-
-<div class="scenario">
-  <div class="scenario-header">
-    <div class="scenario-label">Scenario C</div>
-    <div class="scenario-title">GOVERN Gate</div>
-    <div class="scenario-desc">An autonomous agent has queued an action that requires human oversight before execution.</div>
-  </div>
-  <div class="steps">
-
-    <div class="step">
-      <div class="step-num">Step 1</div>
-      <div class="step-fn">POST /demo/review/create</div>
-      <div class="step-actor">Actor: <span>demo-agent</span></div>
-      <pre>{
-  "proposed_action": "Issue $15,000 credit to customer account",
-  "reason": "Billing dispute resolution — amount exceeds autonomous limit",
-  "autonomy_level": 3,
-  "risk_assessment": "Irreversible financial transaction"
-}</pre>
-      <div class="note">Response includes review_id. Copy it — you will use it in steps 2 and 3.</div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">Step 2</div>
-      <div class="step-fn">GET /demo/review/{review_id}</div>
-      <div class="step-actor">Actor: <span>demo-agent</span> — paste the review_id</div>
-      <div class="note">status: pending_review, review_required: true. The veto clock is running. If the deadline passes with no decision, the operation is automatically blocked.</div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">Step 3a — Approve</div>
-      <div class="step-fn">POST /demo/review/{review_id}/approve</div>
-      <div class="step-actor">Actor: <span>demo-human</span> — change actor in Scalar</div>
-      <div class="note">status: ok. Approval recorded in the sigchain alongside the original action.</div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">Step 3b — Veto (alternative)</div>
-      <div class="step-fn">POST /demo/review/{review_id}/veto</div>
-      <div class="step-actor">Actor: <span>demo-human</span></div>
-      <div class="note">status: error. Vetoed and recorded. The agent cannot retry without a new review gate.</div>
-    </div>
-
-  </div>
-</div>
-
-<p class="section-label">Utilities</p>
-<p style="font-size:12px; color:var(--muted);">
-  <strong>GET /demo/ledger</strong> — See every sigchain entry accumulate as you run the scenarios.<br>
-  <strong>POST /demo/reset</strong> — Clear your session and return to the seeded state.
-</p>
-
-</main>
-<footer>
-  <p>
-    <a href="https://github.com/aevum-labs/aevum">GitHub</a> ·
-    <a href="https://aevum.build">aevum.build</a> ·
-    Apache-2.0
-  </p>
-  <p style="margin-top:6px;">
-    Session data is isolated per visitor and resets on container restart.
-    No data leaves your browser session. No accounts required.
-  </p>
-</footer>
-
-</body>
-</html>"""
+_dist = Path(__file__).parent / "dist"
+if _dist.exists():
+    app.mount("/", StaticFiles(directory=str(_dist), html=True), name="static")
 
 
 if __name__ == "__main__":

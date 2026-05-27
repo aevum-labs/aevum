@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL as string
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
 
 export interface ScanResult {
   task_id: string
