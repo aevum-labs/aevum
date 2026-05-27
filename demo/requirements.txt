@@ -1,6 +1,7 @@
 # Demo runtime dependencies — pinned for reproducible deploys
 aevum-core==0.3.0
 aevum-store-oxigraph==0.3.0
+aiofiles==24.1.0
 fastapi==0.115.14
 uvicorn[standard]==0.32.1
 slowapi==0.1.9

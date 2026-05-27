@@ -8,6 +8,19 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Changed (demo consolidation — single Fly.io app)
+
+- **`demo/Dockerfile`** — Two-stage build: Node 20 builds React SPA, Python 3.12 serves API + static files.
+- **`demo/main.py`** — React SPA now served at `/` via `StaticFiles`; removed Python HTML landing page. Added `https://aevum-demo.fly.dev` and `http://localhost:7860` to CORS origins.
+- **`demo/src/api.ts`** — `API_BASE` falls back to `''` (same-origin) when `VITE_API_URL` is unset.
+- **`demo/vite.config.ts`** — Added explicit `base: '/'`.
+- **`demo/requirements.txt`** — Added `aiofiles==24.1.0` (required by FastAPI `StaticFiles`).
+- **`.github/workflows/deploy-demo.yml`** — axe-audit job now builds frontend before starting server.
+
+### Removed (demo consolidation — single Fly.io app)
+
+- **`.github/workflows/deploy-frontend.yml`** — Obsolete; frontend now served from Fly.io alongside the API.
+
 ## [0.7.0] — 2026-05-26
 
 ### Added (Session 14 — pre-release cleanup and v0.7.0 version bump)
