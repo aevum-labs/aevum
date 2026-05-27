@@ -7,7 +7,7 @@ const ApiReference = lazy(() =>
 
 export function ScalarExplorer() {
   const [open, setOpen] = useState(false)
-  const apiUrl = import.meta.env.VITE_API_URL as string
+  const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
 
   if (!open) {
     return (
