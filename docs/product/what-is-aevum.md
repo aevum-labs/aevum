@@ -72,23 +72,25 @@ end-to-end data flow.
 
 ---
 
-## v0.6.0 capabilities
+## v0.7.1 capabilities
 
 **Zero-config developer mode.** Set `AEVUM_DEV=1` to get a fully working
 Aevum engine with no consent configuration, no database, and no signer setup.
 The quickstart is five minutes. The [Dev to Production checklist](../learn/dev-to-production.md)
 shows what to replace before you deploy.
 
-**Six adapters in CI.** Aevum ships production-ready governance adapters for:
+**Eight adapters in CI.** Aevum ships production-ready governance adapters for:
 
 | Adapter | Package extra | CI status |
 |---|---|---|
 | Anthropic Claude | `aevum-core[anthropic]` | ✓ Py 3.11–3.13 |
+| CrewAI | `aevum-core[crewai]` | ✓ Py 3.11–3.13 |
+| Google ADK | `aevum-core[adk]` | ✓ Py 3.11–3.13 |
 | LangChain | `aevum-core[langchain]` | ✓ Py 3.11–3.13 |
 | LangGraph | `aevum-core[langgraph]` | ✓ Py 3.11–3.13 |
-| OpenAI Agents | `aevum-core[openai-agents]` | ✓ Py 3.11–3.13 |
-| CrewAI | `aevum-core[crewai]` | ✓ Py 3.11–3.13 |
 | MCP | `aevum-core[mcp]` | ✓ 24 round-trip tests |
+| Microsoft Agent Framework | `aevum-core[maf]` | ✓ Py 3.11–3.13 |
+| OpenAI Agents | `aevum-core[openai-agents]` | ✓ Py 3.11–3.13 |
 
 **AevumOTelBridge.** Routes sigchain events to any OTel backend as GenAI
 spans. Privacy-preserving by default: only `audit_id` is emitted unless
