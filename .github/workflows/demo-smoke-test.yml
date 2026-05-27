@@ -13,7 +13,7 @@ permissions:
   issues: write
 
 env:
-  DEMO_API_URL: https://api.demo.aevum.build
+  DEMO_API_URL: https://demo.aevum.build
 
 jobs:
   smoke-test:
