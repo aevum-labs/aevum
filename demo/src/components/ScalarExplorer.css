@@ -20,9 +20,12 @@
 .scalar-loading {
   color: var(--muted);
   font-size: 12px;
-  padding: 20px 0;
+  padding: 20px;
+  border: 1px solid var(--border);
 }
 
 .scalar-wrapper {
-  min-height: 600px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  overflow: hidden;
 }

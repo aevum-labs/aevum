@@ -23,7 +23,26 @@ export function ScalarExplorer() {
         <ApiReference
           configuration={{
             spec: { url: `${apiUrl}/openapi.json` },
-            servers: [{ url: apiUrl }],
+            ...(apiUrl ? { servers: [{ url: apiUrl }] } : {}),
+            darkMode: true,
+            customCss: `
+              :root {
+                --scalar-font: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+                --scalar-font-code: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+              }
+              .dark-mode {
+                --scalar-background-1: #0d0d0d;
+                --scalar-background-2: #161616;
+                --scalar-background-3: #1e1e1e;
+                --scalar-color-1: #e0e0e0;
+                --scalar-color-2: #aaa;
+                --scalar-color-3: #888;
+                --scalar-color-accent: #a78bfa;
+                --scalar-background-accent: rgba(167, 139, 250, 0.12);
+                --scalar-border-color: #2a2a2a;
+                --scalar-color-purple: #a78bfa;
+              }
+            `,
           }}
         />
       </Suspense>

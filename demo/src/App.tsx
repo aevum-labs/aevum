@@ -46,10 +46,9 @@ export default function App() {
         </section>
 
         <section className="section" aria-label="API Explorer" id="api-explorer">
-          <p className="section-label">Full API Reference</p>
-          <h2 className="section-heading">API Explorer</h2>
+          <p className="section-label">API Explorer</p>
           <p className="section-sub">
-            Explore all endpoints interactively. The explorer loads on demand (~2 MB).
+            All endpoints — interactive. Loads on demand (~2 MB).
           </p>
           <ScalarExplorer />
         </section>
