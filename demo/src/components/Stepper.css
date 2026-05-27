@@ -44,12 +44,12 @@
 
 .stepper-nav-item.locked {
   cursor: not-allowed;
-  opacity: 0.4;
+  color: var(--muted);
 }
 
 .step-num {
   font-size: 10px;
-  color: var(--muted);
+  color: #aaa;
   margin-bottom: 2px;
 }
 
