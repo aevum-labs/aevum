@@ -266,7 +266,7 @@ app = FastAPI(
         "**Scenario C — GOVERN Gate:** `review/create` → `review/{id}` (pending) "
         "→ `review/{id}/approve` or `review/{id}/veto`"
     ),
-    version="0.1.0-demo",
+    version="0.7.1",
     openapi_tags=_SANDBOX_TAGS,
     lifespan=lifespan,
 )
@@ -854,6 +854,7 @@ def _build_openapi() -> dict:
                 "Values: `demo-agent`, `intruder-agent`, `demo-human`. "
                 "Unknown values silently fall back to `demo-agent`."
             ),
+            "x-default": "demo-agent",
         }
     }
     for path_data in schema.get("paths", {}).values():
