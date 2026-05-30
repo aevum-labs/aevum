@@ -35,9 +35,14 @@ if TYPE_CHECKING:
 
 
 class ConsentRequired(Exception):
-    """
-    Raised when an operation requires consent that has not been granted.
-    This is an absolute barrier.
+    """Raised when a DEK-protected operation cannot proceed because the DEK was shredded.
+
+    Despite the name, this is NOT the same as Barrier 3 (Consent). ConsentRequired in this
+    module is raised specifically by encrypt_for_subject() and decrypt_for_subject() when
+    the subject's AES-256-GCM data encryption key (DEK) has been destroyed by shred().
+    The "required" is: the DEK is required for the operation but is gone (GDPR Art. 17
+    erasure was exercised). Barrier 3 (no consent grant) is enforced in barriers.py and
+    returns an error OutputEnvelope rather than raising.
     """
 
 
@@ -62,16 +67,22 @@ class ConsentGrant:
 
 
 class ConsentLedger:
-    """
-    Consent ledger with OR-Set CRDT semantics and AES-256-GCM DEK vault.
+    """Consent ledger with OR-Set CRDT semantics and AES-256-GCM DEK vault.
 
-    All grant/revoke operations are persisted to SQLite immediately.
-    The DEK vault maps subject_id → 32-byte AES key.
-    Calling shred(subject) destroys the key, making all encrypted
-    data for that subject permanently unreadable.
+    All grant/revoke operations are persisted to SQLite immediately. The schema uses two
+    tables — consent_grants (add-set) and consent_revocations (remove-set) — implementing
+    OR-Set semantics: a grant is active if it is in consent_grants, NOT in consent_revocations,
+    and not yet expired. This structure means revocation is immediate and non-destructive:
+    the original grant record is preserved for audit purposes.
 
-    db_path defaults to ":memory:" for in-process / test usage.
-    Pass a Path for persistent storage (production deployments).
+    The DEK vault (dek_vault table) maps subject_id to a 32-byte AES-256-GCM key. All
+    subject data encrypted with this key becomes permanently unreadable when shred() deletes
+    the key row. The grant audit records remain (append-only) — this separation of concerns
+    is what makes GDPR Art. 17 erasure provable: the chain shows "erasure happened" while
+    the encrypted data becomes irrecoverable.
+
+    db_path=":memory:" for in-process or test usage (data lost on close).
+    Pass a Path for persistent storage in production deployments.
     """
 
     def __init__(self, db_path: Path | str = ":memory:") -> None:

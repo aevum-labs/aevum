@@ -3,13 +3,23 @@
 """
 Dual-signature engine for the Aevum sigchain.
 
-Provides Ed25519 (via PyNaCl) and ML-DSA-65 (via liboqs-python) signatures
-on every sigchain entry from genesis. Both signatures must be present and
-valid for a chain entry to be accepted.
+Provides Ed25519 (RFC 8032 / FIPS 186-5, via PyNaCl) and ML-DSA-65 (NIST FIPS 204 /
+CRYSTALS-Dilithium, via liboqs-python) signatures on every sigchain entry. Both algorithms
+sign the same canonical bytes — the caller (sigchain.new_event) is responsible for applying
+RFC 8785 JCS serialisation before calling sign(), so that the bytes are identical across all
+platforms and Python versions.
 
-Ed25519: Fast, compact (64 bytes), widely supported. Quantum-vulnerable long-term.
-ML-DSA-65: NIST FIPS 204. Post-quantum secure. 3,309-byte signatures.
-The combination provides defense-in-depth: one algorithm must survive.
+Algorithm choice rationale:
+  Ed25519 — Fast, compact (64-byte signatures), widely audited, FIPS 186-5 approved.
+             Quantum-vulnerable in the long term (Shor's algorithm can break it once
+             large-scale quantum computers exist, projected 10-20 year horizon).
+  ML-DSA-65 — NIST FIPS 204 (final standard). Post-quantum secure. ~3.3 KB signatures.
+              Provides defense-in-depth: if Ed25519 is ever broken, ML-DSA-65 survives.
+
+Trust boundary (see ADR-004): DualSigner's keys live in the same process as the agent.
+A compromised process could re-sign forged events with both algorithms. For deployments
+requiring stronger trust guarantees, use VaultTransitSigner (external signing) — it exposes
+the same interface but the private key never enters the aevum-core process.
 
 Key sizes (ML-DSA-65):
   Public key:  1,952 bytes
@@ -22,7 +32,7 @@ Usage:
   signer.save(state_dir)                  # persist to disk
 
   sigs = signer.sign(data)                # DualSignature
-  signer.verify(data, sigs)               # raises SignatureError if invalid
+  DualSigner.verify(data, sigs)           # raises SignatureError if either is invalid
 """
 from __future__ import annotations
 
@@ -50,9 +60,14 @@ class SignatureError(Exception):
 
 @dataclasses.dataclass(frozen=True)
 class DualSignature:
-    """
-    A pair of signatures over the same data.
-    Both must be present and valid for the entry to be accepted.
+    """A pair of signatures over the same canonical payload bytes.
+
+    Both signatures cover the same bytes (RFC 8785 JCS canonical form of the signing_fields
+    dict). This means an attacker cannot forge one signature and substitute it — both
+    Ed25519 and ML-DSA-65 must be valid for the entry to be accepted by verify_chain().
+
+    Field sizes are fixed by their respective standards: ed25519_sig 64 bytes, mldsa65_sig
+    3,309 bytes, ed25519_pub 32 bytes, mldsa65_pub 1,952 bytes.
     """
     ed25519_sig: bytes     # 64 bytes
     mldsa65_sig: bytes     # 3,309 bytes
@@ -80,10 +95,21 @@ class DualSignature:
 
 
 class DualSigner:
-    """
-    Signs data with both Ed25519 (PyNaCl) and ML-DSA-65 (liboqs-python).
+    """Signs data with both Ed25519 (RFC 8032) and ML-DSA-65 (FIPS 204) simultaneously.
 
-    Keys are persisted to a state directory. If no keys exist, call generate().
+    Both algorithms sign the same bytes. The caller must ensure the bytes are canonically
+    serialised (RFC 8785 JCS) before calling sign() — this class does not apply any
+    serialisation itself. Keys are persisted to a state directory; call generate() first
+    to create a keypair, then save() to persist it.
+
+    Trust boundary (see ADR-004): both private keys live in this process. A compromised
+    process could forge signatures with both algorithms. For higher-trust deployments,
+    replace with VaultTransitSigner, which exposes the same Signer protocol but uses an
+    external Vault transit endpoint so the private key never enters this process.
+
+    Belt-and-suspenders verification: callers should call DualSigner.verify() immediately
+    after sign() to catch key corruption or library bugs at write time rather than at
+    the point of audit, when remediation is no longer possible.
     """
 
     _ED25519_KEYFILE = "ed25519.key"
@@ -154,7 +180,16 @@ class DualSigner:
         pk_path.chmod(0o644)
 
     def sign(self, data: bytes) -> DualSignature:
-        """Sign data with both algorithms. Returns DualSignature."""
+        """Sign data with Ed25519 (RFC 8032) and ML-DSA-65 (FIPS 204). Returns DualSignature.
+
+        Both algorithms sign the identical bytes passed in. The caller is responsible for
+        ensuring data is the RFC 8785 JCS canonical form of the payload dict — the same
+        bytes must be reproduced at verification time to pass verify(). Passing raw dict
+        bytes without JCS canonicalisation would make signatures non-reproducible.
+
+        After this call, immediately verify() the result (belt-and-suspenders) to detect
+        key corruption or liboqs library bugs at signing time rather than at audit time.
+        """
         if not _OQS_AVAILABLE:
             raise ImportError(
                 "liboqs-python is required for ML-DSA-65 signing. "
@@ -179,10 +214,20 @@ class DualSigner:
 
     @staticmethod
     def verify(data: bytes, dual_sig: DualSignature) -> None:
-        """
-        Verify both signatures over data.
-        Raises SignatureError if either signature is invalid.
-        BOTH must be valid — this is not an OR check.
+        """Verify both Ed25519 and ML-DSA-65 signatures over data. Both must pass.
+
+        This is NOT an OR check — a valid Ed25519 with an invalid ML-DSA-65 is rejected,
+        and vice versa. Both algorithms must independently verify the same data bytes.
+
+        Belt-and-suspenders use: sigchain.new_event() calls verify() immediately after
+        sign() to catch key corruption or liboqs library bugs at signing time. A bug that
+        produces a wrong signature is better caught here (write path) than at audit time
+        (read path), when remediation is impossible — the entry would be unverifiable.
+
+        Raises:
+            SignatureError: If the Ed25519 signature is invalid.
+            SignatureError: If the ML-DSA-65 signature is invalid.
+            ImportError: If liboqs-python is not installed (required for ML-DSA-65 verify).
         """
         # Verify Ed25519
         try:

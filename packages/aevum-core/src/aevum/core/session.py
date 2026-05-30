@@ -1,6 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2024-2026 Aevum Labs contributors
-"""Session — per-request context carrier with async context manager."""
+"""Session — per-request context carrier and the REMEMBER (commit) write path.
+
+Session accumulates RELATE/NAVIGATE/GOVERN events within one logical episode context.
+On __aexit__ it seals the episode: Merkle root over all events, optional dual-sign,
+optional RFC 3161 timestamp, SQLite persist, and a sigchain append.
+
+Lifecycle (always use as an async context manager):
+  async with Session(actor="...", kernel=kernel, db_path=path) as session:
+      engine.ingest(..., session=session)   # RELATE — events accumulate
+      engine.query(..., session=session)    # NAVIGATE — events accumulate
+      engine.review(..., session=session)   # GOVERN — events accumulate
+  # __aexit__: _remember() fires, seals the episode
+
+REMEMBER always fires on __aexit__ regardless of exception type (including BarrierError —
+a crisis session still gets committed so the crisis record is in the episodic ledger).
+If _remember() itself fails, the failure is logged at ERROR level and session close
+is not blocked — an incomplete REMEMBER is a principle violation, not a crash.
+"""
 
 from __future__ import annotations
 
@@ -14,6 +31,11 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Session records are persisted to SQLite rather than the Oxigraph provenance graph because
+# receipt blobs (COSE_Sign1 bytes) and Merkle root payloads are binary and can be tens of
+# kilobytes — too large for efficient RDF xsd:base64Binary triple-store storage. SQLite in
+# WAL mode provides append-only semantics, fast range queries by session_id, and atomic
+# commits without the overhead of a triple store. See the Session 2 SQLite WAL plan.
 # SQLite schema for session records
 _CREATE_SESSIONS = """
 CREATE TABLE IF NOT EXISTS sessions (
@@ -52,6 +74,17 @@ CREATE TABLE IF NOT EXISTS session_events (
 
 @dataclasses.dataclass
 class Session:
+    """Per-request context carrier. Accumulates events and seals the episode on close.
+
+    Field split by development phase:
+      Phase 1 fields (actor, correlation_id, episode_id, trace_id, span_id, metadata):
+        Always present. Identify the principal and provide distributed tracing context.
+        These cannot be removed without breaking backward compatibility (S-12 sigchain fields).
+      Phase 4 fields (purpose, kernel, db_path):
+        All optional. If kernel is None, REMEMBER still fires but skips dual-signing and
+        TSA timestamping. If db_path is None, the session record is not written to SQLite.
+        This allows lightweight in-memory sessions that still produce a sigchain entry.
+    """
     # Original Phase 1 fields (unchanged — backward compatible)
     actor: str
     correlation_id: str | None = None
@@ -72,6 +105,11 @@ class Session:
         self._started_at: datetime = datetime.now(UTC)
         self._principal: str = self.actor
 
+    # Async context manager protocol: __aenter__ returns self immediately (no setup needed at
+    # entry); __aexit__ is where REMEMBER fires. All RELATE/NAVIGATE/GOVERN events accumulate
+    # in self._events during the body of the `async with` block and are committed as a single
+    # sealed unit on exit. This guarantees that the session record reflects the complete
+    # episode, not a partial view from an intermediate commit.
     async def __aenter__(self) -> Session:
         return self
 
@@ -94,10 +132,23 @@ class Session:
         await self._remember(commit_type=commit_type)
 
     async def _remember(self, commit_type: str) -> None:
-        """
-        Mandatory COMMIT on session close. Called by __aexit__.
-        Must not raise — if it fails, log and continue.
-        Session close must not be blocked by a REMEMBER failure.
+        """Seal the episode: Merkle root → dual-sign → TSA → SQLite → sigchain. Called by __aexit__.
+
+        Implementation steps (numbered comments in body):
+          1. Collect all accumulated SessionEvent records into an immutable tuple.
+          2. Compute Merkle root (SHA3-256 pairwise tree) over all events. A Merkle root
+             rather than a simple hash of the last event means any individual event can be
+             proven present or absent without replaying the full session history.
+          3. Build a SessionRecord and serialize to RFC 8785 JCS canonical JSON for signing.
+          4. Dual-sign with Ed25519 (tamper-detection) and ML-DSA-65 (post-quantum
+             tamper-detection). Non-blocking: signing failure is logged but does not abort.
+          5. RFC 3161 timestamp — circuit-breaker pattern; TSA outage never blocks close.
+          6. Write session row and per-event rows to SQLite (if db_path is configured).
+          7. Append "session.committed" to the kernel sigchain (if kernel is configured).
+
+        This method must never raise. A REMEMBER failure must not prevent __aexit__ from
+        completing — leaving a session in limbo would corrupt subsequent episode accounting.
+        Any failure is logged at ERROR level and is a principle violation requiring triage.
         """
         try:
             from aevum.core.session_record import CommitType, SessionRecord

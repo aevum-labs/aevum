@@ -1,7 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
 """
-Sigchain — Ed25519 signing and SHA3-256 chaining. Spec Section 06.
-Phase 1: adds ImmutableLedgerError, DualSigner integration, TSA integration.
+Sigchain — the append-only, cryptographically chained episodic ledger for aevum-core.
+
+In the aviation sense this is the flight data recorder (FDR): every event is signed,
+every entry references the hash of its predecessor, and no entry may ever be modified
+or deleted after it has been written (I1-APPEND_ONLY invariant).
+
+Cryptographic primitives used throughout this module:
+  Ed25519 (RFC 8032)  — primary per-event signature; 64-byte output, 32-byte key.
+                        Fast, well-audited, and supported by all HSM vendors.
+  SHA3-256 (FIPS 202) — both the per-entry payload hash and the chain-linkage hash.
+                        SHA3 is based on the Keccak sponge, independent of SHA-2;
+                        a SHA-2 collision would not compromise the chain hash.
+  RFC 8785 JCS        — JSON Canonicalization Scheme: sort_keys=True + compact separators
+                        produce identical bytes on every platform regardless of dict
+                        insertion order, making signatures reproducible and verifiable.
+
+Signing modes (see ADR-004 for trust-boundary analysis):
+  InProcessSigner (default) — Ed25519 key lives in the same process as the agent.
+    Sufficient for tamper-detection by a third party, but a compromised process could
+    re-sign forged events. Use VaultTransitSigner for higher-trust deployments.
+  DualSigner (optional, Phase 1) — adds ML-DSA-65 (CRYSTALS-Dilithium, FIPS 204 draft)
+    as a belt-and-suspenders post-quantum second signature over the same canonical payload.
+
+Spec reference: Section 06 (Episodic Ledger and Sigchain).
 """
 
 from __future__ import annotations
@@ -34,18 +56,36 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# GENESIS_HASH is the expected prior_hash of the very first chain entry (Spec Section 06).
+# sha3_256(b"aevum:genesis") was chosen so that any independent validator can reproduce
+# the correct starting sentinel without trusting the operator's stored state. A deterministic
+# constant — not a randomly generated seed — is required so that cross-node chain verification
+# can begin from the same known point regardless of when or where the chain was created.
 GENESIS_HASH = hashlib.sha3_256(b"aevum:genesis").hexdigest()
 
 
 class ImmutableLedgerError(Exception):
-    """
-    Raised when code attempts to modify or delete an audit chain entry.
-    The audit chain is append-only. This error is permanent and intentional.
+    """Raised when code attempts to modify or delete an audit chain entry.
+
+    This exception enforces Barrier 4 — Audit Immutability (I1-APPEND_ONLY invariant).
+    The episodic ledger is append-only by design: once an entry is written it cannot be
+    overwritten, updated, or deleted. This error signals a permanent invariant violation,
+    not a transient failure. Application code must not catch and suppress it — doing so
+    would silently break the immutability guarantee that the entire sigchain depends on.
     """
 
 
 def _uuid7() -> str:
-    """UUID version 7 (time-ordered). Inline — no external dep."""
+    """Generate a UUID version 7 (time-ordered) identifier without an external dependency.
+
+    UUID v7 is preferred over UUID v4 because its 48-bit millisecond-precision timestamp
+    prefix enables natural temporal ordering of audit records by ID alone. This matters for
+    chain reconstruction: events can be sorted without trusting the HLC system_time field —
+    useful when replaying a chain from a dump or when system_time is unavailable.
+
+    Bit layout follows draft-ietf-uuidrev-rfc4122bis §5.7: 48-bit Unix millisecond
+    timestamp | version nibble 0x7 | 12-bit random_a | variant bits | 62-bit random_b.
+    """
     ts_ms = int(time.time() * 1000) & 0xFFFFFFFFFFFF
     rand = int.from_bytes(os.urandom(10), "big")
     rand_a = (rand >> 62) & 0x0FFF
@@ -57,10 +97,22 @@ def _uuid7() -> str:
 
 
 class Sigchain:
-    """
-    Per-node Ed25519 signing chain with optional Phase 1 dual-sig + TSA. Append-only by design.
+    """Append-only Ed25519 signing chain; the in-process implementation of the sigchain spec.
 
-    Optional constructor parameters (accumulated across sessions):
+    Each call to new_event() atomically increments the sequence counter, computes a
+    SHA3-256 chain hash over the completed entry, and Ed25519-signs the canonical payload.
+    The chain is a singly-linked list: every entry's prior_hash references the hash of its
+    predecessor, and any modification to an entry breaks the chain from that point forward.
+
+    Signing modes (trust-boundary analysis — see ADR-004):
+      InProcessSigner (default) — Ed25519 key lives in the same process as the agent.
+        A compromised process could re-sign forged events. Sufficient for tamper-detection
+        by an independent third party; use VaultTransitSigner for higher-trust deployments.
+      DualSigner (optional, Phase 1) — adds ML-DSA-65 post-quantum signature alongside the
+        primary Ed25519 signature. Both cover the same canonical payload; both must verify
+        for the entry to be considered intact.
+
+    Optional constructor parameters (accumulated across development phases):
       signer / private_key / key_id  — signing key (defaults to InProcessSigner)
       dual_signer                    — Phase 1 post-quantum dual-sig
       tsa_client                     — Phase 1 RFC 3161 timestamp authority
@@ -138,6 +190,7 @@ class Sigchain:
         self._sequence, self._prior_hash = checkpoint
 
     def _sign(self, fields: dict[str, Any]) -> str:
+        """RFC 8785 JCS-canonicalize fields, SHA3-256 hash, Ed25519-sign; return url-safe base64."""
         canonical = json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()
         # Sign SHA3-256(canonical) — enables prehashed external signing
         digest = hashlib.sha3_256(canonical).digest()
@@ -158,7 +211,23 @@ class Sigchain:
         valid_from: str | None = None,
         valid_to: str | None = None,
     ) -> AuditEvent:
-        """Append a new signed event to the chain."""
+        """Append a new signed event to the chain and return the completed AuditEvent.
+
+        Signing sequence:
+          1. Increment sequence counter and assign a UUID v7 event_id.
+          2. Compute SHA3-256(canonical_payload) as payload_hash (independently verifiable).
+          3. Build signing_fields dict from all 16 identifying fields.
+          4. RFC 8785 JCS canonicalise → SHA3-256 digest → Ed25519 sign (RFC 8032).
+          5. If DualSigner is present: also sign with ML-DSA-65 and immediately verify
+             both signatures (belt-and-suspenders — catches key corruption at write time,
+             not at audit time when it would be too late to remediate).
+          6. If TSAClient is present: request an RFC 3161 timestamp token (non-blocking —
+             a TSA outage must never prevent audit events from being recorded).
+          7. Advance self._prior_hash to SHA3-256(completed event fields).
+
+        Returns:
+            AuditEvent: The completed, signed, and chain-linked audit event.
+        """
         self._sequence += 1
         event_id = _uuid7()
         ep_id = episode_id or _uuid7()
@@ -185,6 +254,11 @@ class Sigchain:
             "prior_hash": prior,
             "signer_key_id": self._signer.key_id,
         }
+        # RFC 8785 JCS: sort_keys=True + compact separators ensure identical canonical bytes
+        # across all Python versions and platforms regardless of dict insertion order.
+        # SHA3-256 (FIPS 202) is then applied to those bytes, and the digest is Ed25519-signed
+        # (RFC 8032). Signing the hash rather than the raw payload enables prehashed external
+        # signing via HSMs or Vault transit without exposing the full canonical payload.
         canonical = json.dumps(signing_fields, sort_keys=True, separators=(",", ":")).encode()
         signature = base64.urlsafe_b64encode(
             self._signer.sign(hashlib.sha3_256(canonical).digest())
@@ -210,6 +284,9 @@ class Sigchain:
             except Exception as exc:
                 logger.error("Dual-sig failed on new chain entry: %s", exc)
 
+            # Circuit-breaker: TSA failures are caught and logged but never block the audit write.
+            # A TSA outage must not prevent events from being recorded — the entry is written
+            # without a timestamp token if the RFC 3161 authority is unreachable or rate-limited.
             if self._tsa_client is not None:
                 try:
                     tsa_token = self._tsa_client.timestamp(canonical)
@@ -306,7 +383,26 @@ class Sigchain:
         return event
 
     def verify_chain(self, events: list[AuditEvent]) -> bool:
-        """Verify entire chain from genesis. Returns True if intact."""
+        """Verify the entire chain from genesis. Returns True only if every entry is intact.
+
+        An entry is "intact" when all of the following hold:
+          1. prior_hash matches the expected value (GENESIS_HASH for the first entry, or the
+             chain hash of the preceding entry for all subsequent entries).
+          2. payload_hash matches SHA3-256(canonical_payload) — the payload was not modified.
+          3. The Ed25519 signature (RFC 8032) verifies against SHA3-256(signing_fields).
+          4. If DualSigner is present and the entry carries mldsa65_sig: the ML-DSA-65
+             signature also verifies. Both must pass when present.
+
+        A modification to any entry breaks the chain from that point forward because the
+        next entry's prior_hash will no longer match. The verifier returns False as soon as
+        any check fails — it does not attempt to isolate or skip the broken entry.
+
+        Args:
+            events: Ordered list of AuditEvent entries beginning at sequence=1.
+
+        Returns:
+            True if every entry passes every integrity check; False on first failure.
+        """
         # Obtain public key bytes and reconstruct Ed25519PublicKey for verification
         pub_key_bytes = self._signer.public_key_bytes()
         public_key = Ed25519PublicKey.from_public_bytes(pub_key_bytes)

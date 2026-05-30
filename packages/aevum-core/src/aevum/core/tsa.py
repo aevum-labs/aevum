@@ -1,24 +1,37 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2024-2026 Aevum Labs contributors
 """
-RFC 3161 timestamping client for the Aevum sigchain.
+RFC 3161 Time-Stamping Authority (TSA) client for the Aevum sigchain.
 
-Uses rfc3161-client (Trail of Bits) for binary encoding/decoding.
-Uses httpx for the actual HTTP network calls.
+What RFC 3161 is: a standard (RFC 3161 / RFC 5816) for requesting a trusted third-party
+timestamp over a hash of data. The TSA signs the timestamp with its own certificate,
+providing proof that the data existed before a specific time — independently of the
+operator's clock. This is the "notary" in the sigchain: even if the operator's system
+time is wrong or spoofed, the TSA timestamp is signed by an external authority.
 
-Default TSA: Sigstore TSA (OpenSSF-operated)
-  POST https://timestamp.sigstore.dev/api/v1/timestamp
-  Content-Type: application/timestamp-query
+Why external timestamps matter for regulated workloads:
+  HIPAA §164.312(b) — Audit controls: requires accurate time sources for audit log entries.
+    A self-asserted system clock is not a trusted time source under HIPAA.
+  FDA 21 CFR Part 11 — Electronic records: requires audit trail entries to include accurate
+    dates and times from a trusted source.
+  The TSA provides the "trusted source" element that operator-controlled system time cannot.
 
-Fallback TSA: DigiCert
-  http://timestamp.digicert.com
+TTC ordering (Timestamp Then COSE, draft-ietf-cose-tsa-tst-header-parameter-08):
+  The TST (TimeStampToken) timestamps the canonical payload bytes, not the COSE_Sign1
+  receipt. This ordering matters: the timestamp proves the payload existed at this time;
+  the COSE receipt then wraps both. Reversing the order would make the timestamp cover
+  only the receipt metadata, not the underlying data being timestamped.
 
-Design notes:
-  - rfc3161-client makes no network calls — it is a pure codec library.
-  - TSA calls are optional in tests (mock httpx or skip with --no-tsa flag).
-  - A circuit breaker prevents TSA failures from blocking sigchain writes.
-    On TSA timeout/error, the entry is written with tsa_token=None and
-    a warning is logged. The entry is still valid (just without external time).
+Rate-limiting: The Sigstore TSA (~100 req/min) and DigiCert TSA are free but rate-limited.
+  In CI and dev mode, the sigchain uses NullBackend or mocked httpx to avoid consuming
+  rate-limit quota. Never send real TSA requests from test suites.
+
+Uses rfc3161-client (Trail of Bits) for binary encoding/decoding (pure codec, no network).
+Uses httpx for HTTP transport.
+
+Circuit-breaker design: TSA failures never block sigchain writes. An entry written without
+a tsa_token is still cryptographically valid (Ed25519+SHA3-256); it simply lacks the
+third-party time attestation. The evidentiary strength is reduced but the audit record exists.
 """
 from __future__ import annotations
 
@@ -45,10 +58,12 @@ TSA_CONTENT_TYPE = "application/timestamp-query"
 
 @dataclasses.dataclass(frozen=True)
 class TSAToken:
-    """
-    The result of a successful RFC 3161 timestamp request.
-    token_bytes is the raw DER-encoded TimeStampResponse.
-    Store this alongside the sigchain entry.
+    """Result of a successful RFC 3161 timestamp request.
+
+    token_bytes is the raw DER-encoded TimeStampResponse (the TSA's signed token).
+    It should be stored alongside the sigchain entry (in the tsa_token field as hex).
+    An investigator can decode token_bytes with any RFC 3161 client library to verify
+    the timestamp and the TSA certificate chain without trusting the operator.
     """
     tsa_url: str
     token_bytes: bytes
@@ -68,11 +83,17 @@ class TSAToken:
 
 
 class TSAClient:
-    """
-    Fetches RFC 3161 timestamps from a TSA server.
+    """Fetches RFC 3161 timestamps from one or more TSA servers.
 
-    On failure, the circuit breaker allows the sigchain to continue
-    without a timestamp token rather than blocking.
+    Implements the circuit-breaker pattern: every failure mode (HTTP error, network
+    timeout, parse error) is caught and logged; timestamp() returns None rather than
+    raising. A sigchain entry written with tsa_token=None is cryptographically valid —
+    the Ed25519+SHA3-256 integrity is unaffected. Only the external time attestation
+    (the "trusted time source" element required by HIPAA §164.312(b) and FDA 21 CFR Part 11)
+    is absent.
+
+    Multiple TSA URLs are tried in order; the first successful response wins. This avoids
+    a single point of failure when the primary TSA is rate-limited or unavailable.
     """
 
     def __init__(
@@ -86,13 +107,21 @@ class TSAClient:
         self._enabled = enabled
 
     def timestamp(self, data: bytes) -> TSAToken | None:
-        """
-        Request an RFC 3161 timestamp for data.
+        """Request an RFC 3161 timestamp over the canonical payload bytes.
 
-        Returns a TSAToken on success, or None if TSA is disabled or
-        all TSA servers fail (circuit breaker — does not raise).
+        Follows TTC ordering (Timestamp Then COSE): the TST covers the raw payload bytes,
+        not any outer wrapper. This proves the payload existed before the timestamp time,
+        which is the correct evidentiary claim for audit purposes.
 
-        The token_bytes is the raw DER-encoded TimeStampResponse.
+        Circuit-breaker: returns None rather than raising if TSA is disabled or all
+        configured TSA servers fail. The caller (sigchain.new_event) logs the failure
+        and writes the entry without a timestamp token — the entry is still valid.
+
+        Args:
+            data: The canonical payload bytes to timestamp (RFC 8785 JCS form).
+
+        Returns:
+            TSAToken with DER-encoded TimeStampResponse on success; None on any failure.
         """
         if not self._enabled:
             return None
