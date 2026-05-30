@@ -1,6 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
 """
-Engine — wires all kernel components together.
+Engine — the governed membrane: every operation passes through the five unconditional
+barriers before reaching the knowledge graph or the policy engine.
+
+This module wires together the core kernel components:
+  episodic ledger  (InMemoryLedger backed by Sigchain)
+  consent ledger   (ConsentLedger or DevModeConsentLedger)
+  knowledge graph  (GraphStore — InMemoryGraphStore, Oxigraph, or Postgres)
+  policy bridge    (Cedar + optional OPA HTTP sidecar)
+  complication registry  (signed, approved, circuit-broken extensions)
+
+And exposes the five public functions (all return OutputEnvelope — never raise on denial):
+  ingest  (RELATE)   — write data through the governed membrane
+  query   (NAVIGATE) — traverse the graph for a declared purpose
+  review  (GOVERN)   — present context for a human decision point
+  commit  (REMEMBER) — append event to the episodic ledger directly
+  replay             — reconstruct any past decision from the episodic ledger
+
+Evaluation order for every operation: unconditional barriers → policy engine → graph.
 """
 
 from __future__ import annotations
@@ -54,11 +71,21 @@ def _resolve_default_policy_engine(*, dev_mode: bool = False) -> PolicyEngine:
 
 
 class Engine:
-    """
-    The Aevum context kernel.
+    """The Aevum context kernel — governed membrane between raw data and AI consumers.
 
-    Wires together the episodic ledger, consent ledger, graph store,
-    policy bridge, complication registry, and the five governed functions.
+    Every ingest/query/review/commit/replay call passes through the five unconditional
+    barriers (barriers.py) before any graph write or policy check. Barriers are absolute
+    and non-configurable; the policy engine is configurable. Evaluation order:
+      unconditional barriers → policy engine → knowledge graph
+
+    Default component selection on construction:
+      graph_store:    InMemoryGraphStore (warns — use oxigraph/postgres for persistence)
+      sigchain:       Sigchain() with InProcessSigner (Ed25519 in-process key; see ADR-004)
+      consent_ledger: ConsentLedger (production) or DevModeConsentLedger (AEVUM_DEV=1)
+      policy_engine:  CedarPolicyEngine if [cedar] extra present, else NullPolicyEngine
+      ledger:         InMemoryLedger wrapping the sigchain
+
+    See THREAT_MODEL.md — Assumption 4 for the in-memory storage risk statement.
     """
 
     def __init__(
@@ -274,6 +301,23 @@ class Engine:
         model_context: dict[str, Any] | None = None,
         session: Any = None,        # aevum.core.session.Session | None
     ) -> OutputEnvelope:
+        """RELATE — write data through the governed membrane to the knowledge graph.
+
+        Evaluation order (barriers fire before any graph write):
+          1. Barrier 5 (Provenance): deny if provenance.source_id is absent or empty.
+          2. Barrier 3 (Consent): deny if no active consent grant for this subject/operation.
+          3. Barrier 1 (Crisis): halt if payload contains crisis keywords.
+          4. Policy engine: Cedar/OPA permission check.
+          5. Knowledge graph write.
+          6. Episodic ledger append.
+
+        Provenance fires before consent because chain-of-custody must be established
+        before Cedar can evaluate data-origin attributes in a consent policy expression.
+
+        Returns:
+            OutputEnvelope — status "ok" on success, "error" on barrier/policy denial,
+            "crisis" if Barrier 1 fired. Never raises on denial; inspect envelope.status.
+        """
         import time
         t0 = time.monotonic()
         result = _ingest(
@@ -315,6 +359,22 @@ class Engine:
         capture_witness: bool = True,
         session: Any = None,        # aevum.core.session.Session | None
     ) -> OutputEnvelope:
+        """NAVIGATE — traverse the knowledge graph for a declared purpose.
+
+        Evaluation order:
+          1. Barrier 3 (Consent): deny if no active consent grant for this subject/operation.
+          2. Graph traversal.
+          3. Barrier 2 (Classification Ceiling): redact entities that exceed actor_clearance.
+             Results are silently filtered; envelope status becomes "degraded" (not "error")
+             to signal an incomplete but valid view — the actor sees the maximum they can see.
+          4. Barrier 1 (Crisis): halt if results contain crisis keywords.
+          5. Optional: Witness capture seals the result hash against the consent ledger
+             sequence at query time, protecting against TOCTOU revocation.
+
+        Returns:
+            OutputEnvelope — status "ok" (full results), "degraded" (some redacted by Barrier 2),
+            "error" (consent or policy denial), or "crisis". Never raises on denial.
+        """
         import time
         t0 = time.monotonic()
         result = _query(
@@ -352,6 +412,25 @@ class Engine:
         correlation_id: str | None = None,
         session: Any = None,        # aevum.core.session.Session | None
     ) -> OutputEnvelope:
+        """GOVERN — present a pending action for human review at a checkpoint.
+
+        review() implements the veto-as-default contract: a pending action that is not
+        explicitly approved is treated as vetoed. Timeout = veto, not approval. This is
+        the primary defence against OWASP ASI06 (Human-in-the-Loop Bypass): the system
+        defaults to the safe path (halt) rather than the permissive path (proceed).
+
+        S-15 (AUTOMATION_BIAS_WARNING): every consequential or irreversible GOVERN
+        checkpoint must emit the automation bias warning. This friction is intentional —
+        the ICLR 2025 finding (84.30% mixed-attack success, humans correct ~50% under
+        automation bias) is the justification.
+
+        action=None means "present for review"; action="approve" or "veto" resolves it.
+        Resolving a review resets the AgentComplication consecutive-action counter.
+
+        Returns:
+            OutputEnvelope — status "ok" on present/approve/veto, "error" if audit_id
+            not found or action is invalid. Never raises on policy denial.
+        """
         import time
         t0 = time.monotonic()
         result = _review(
@@ -392,6 +471,21 @@ class Engine:
         episode_id: str | None = None,
         correlation_id: str | None = None,
     ) -> OutputEnvelope:
+        """REMEMBER — append an event to the episodic ledger (the sigchain directly).
+
+        commit() is the low-level ledger write, distinct from Session._remember() which
+        seals a full episode. Use commit() when you need to record a single discrete event
+        without the full session lifecycle (e.g., a standalone policy decision, a break-glass
+        activation, or a system health checkpoint).
+
+        After commit() returns, the event is signed, chained, and immutable (I1-APPEND_ONLY).
+        Any idempotency_key provided causes a cached envelope to be returned for duplicate
+        calls, preventing double-writes in at-least-once delivery scenarios.
+
+        Returns:
+            OutputEnvelope — status "ok" with the signed AuditEvent audit_id in data,
+            or "error" if the ledger write failed. Never raises on policy denial.
+        """
         return _commit(
             event_type=event_type, payload=payload, actor=actor,
             ledger=self._ledger, graph=self._graph, witness=witness,
@@ -410,6 +504,25 @@ class Engine:
         correlation_id: str | None = None,
         model_context: dict[str, Any] | None = None,
     ) -> OutputEnvelope:
+        """Reconstruct any past decision faithfully from the episodic ledger.
+
+        replay() is the primary forensic tool. It reads the signed AuditEvent identified
+        by audit_id from the episodic ledger and returns its full context — the payload,
+        the actor, the consent state at that time, and the cryptographic proof of integrity.
+
+        replay() does NOT re-execute side effects (no graph writes, no LLM calls, no TSA
+        requests). It reconstructs the record as it was signed at the time of the original
+        decision. This is what makes aevum "replay-first": any past decision can be
+        reconstructed and verified by an independent investigator without trusting the
+        operator's current state.
+
+        Consent is checked before returning the replay — an actor cannot replay a record
+        for a subject they are not currently consented to query.
+
+        Returns:
+            OutputEnvelope — status "ok" with the reconstructed decision in data,
+            "error" if audit_id not found or consent denied. Never raises on denial.
+        """
         return _replay(
             audit_id=audit_id, actor=actor, ledger=self._ledger,
             consent_ledger=self._consent_ledger, scope=scope,
