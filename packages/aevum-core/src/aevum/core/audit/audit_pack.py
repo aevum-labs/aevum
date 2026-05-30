@@ -1,27 +1,41 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2024-2026 Aevum Labs contributors
 """
-EU AI Act Article 12 audit pack export.
+EU AI Act Article 12 audit pack exporter.
 
-Article 12 requires high-risk AI systems to maintain logs enabling:
-  - Post-market monitoring
-  - Investigation of incidents
-  - Assessment of conformity
+Article 12 of the EU AI Act (2024/1689) requires providers of high-risk AI systems to
+maintain logs enabling traceability and post-hoc accountability. Specifically, Art. 12(1)
+requires logs that enable: identification of the system (a), the persons responsible (b),
+the time period of operation (c), the input data used (d, as hashes), and the output (e).
 
-The audit pack is a JSON-LD document using the PROV-O vocabulary
-(W3C Provenance Ontology) to describe the session's activities,
-entities (facts, context bundles), and agents (users, AI system).
+The audit pack satisfies these requirements by producing a JSON-LD document using the
+W3C PROV-O vocabulary (W3C Provenance Ontology, 2013). PROV-O is an RDF ontology for
+representing provenance information — it describes what happened (Activities), who did it
+(Agents), and what was produced (Entities). Using a standardised ontology means any
+PROV-O-aware tool can query the audit pack without understanding Aevum-specific schema.
 
-The audit pack is read-only — it is derived from the append-only
-sigchain and cannot be modified.
+Five graph nodes in every audit pack (in order):
+  1. prov:SoftwareAgent — the Aevum kernel (the AI system, Art. 12(1)(a))
+  2. prov:Person         — the human principal (responsible person, Art. 12(1)(b))
+  3. prov:Activity       — the session (time period + purpose, Art. 12(1)(b,c))
+  4. prov:Entity (×N)    — each session event (input/output hashes, Art. 12(1)(d,e))
+  5. Article12Record     — structured compliance metadata block
+
+The named graphs (Spec Section 10.2) that feed this pack:
+  urn:aevum:knowledge   — working graph (entity facts; NOT exported directly)
+  urn:aevum:provenance  — immutable audit (sigchain entries; feeds events)
+  urn:aevum:consent     — consent ledger (grant/revocation records; not in pack)
+These three URIs are frozen invariants — any renaming would break existing audit packs.
+
+The audit pack is read-only: it is derived from the append-only sigchain and SQLite session
+store. It cannot be modified after export. Export during an active session gives a partial
+view; export after session.close() gives the complete sealed record.
 
 Usage:
   from aevum.core.audit.audit_pack import AuditPackExporter
   exporter = AuditPackExporter(db_path=Path("~/.aevum/aevum.db"))
   pack = exporter.export(session_id="sess-abc")
-  # pack is a dict serializable to JSON-LD
-  import json
-  print(json.dumps(pack, indent=2))
+  import json; print(json.dumps(pack, indent=2))
 """
 from __future__ import annotations
 
@@ -54,12 +68,15 @@ class AuditPackError(Exception):
 
 
 class AuditPackExporter:
-    """
-    Exports Article 12 audit packs from the Aevum session store.
+    """Exports EU AI Act Article 12 audit packs as W3C PROV-O JSON-LD documents.
 
-    The export reads from SQLite (append-only, sigchain-protected) and
-    produces a JSON-LD document. The document cannot be modified — it
-    is a read-only view of immutable audit data.
+    Reads from the SQLite session store (append-only, sigchain-protected) and produces a
+    JSON-LD document. The document is a read-only view of immutable audit data — exporting
+    the same session_id twice always produces the same output (modulo generated_at timestamp).
+
+    An investigator receiving an audit pack can verify integrity by re-computing the Merkle
+    root over the session events, cross-checking the sigchain entry, and validating the
+    Ed25519 signature on the session record — all without trusting the operator's claims.
     """
 
     def __init__(self, db_path: Path) -> None:
@@ -69,11 +86,20 @@ class AuditPackExporter:
         self._conn.row_factory = sqlite3.Row
 
     def export(self, session_id: str) -> dict[str, Any]:
-        """
-        Export a complete Article 12 audit pack for a session.
+        """Export a complete EU AI Act Article 12 audit pack for a session.
 
-        Returns a JSON-LD dict with PROV-O structure.
-        Raises AuditPackError if session not found.
+        Produces a JSON-LD document with five W3C PROV-O graph nodes (see module docstring).
+        The @context maps prov: and xsd: prefixes so any PROV-O tool can parse the document
+        without an Aevum-specific schema.
+
+        Args:
+            session_id: The session to export. Must exist in the SQLite sessions table.
+
+        Returns:
+            Dict serializable to JSON-LD with @context, @graph, and _meta sections.
+
+        Raises:
+            AuditPackError: If session_id is not found in the database.
         """
         session = self._load_session(session_id)
         events = self._load_events(session_id)
@@ -81,7 +107,8 @@ class AuditPackExporter:
 
         graph: list[dict[str, Any]] = []
 
-        # 1. The AI system as a prov:SoftwareAgent
+        # Node 1: prov:SoftwareAgent — the AI system itself (Art. 12(1)(a): identification of system).
+        # prov:SoftwareAgent is the W3C PROV-O type for automated software actors.
         graph.append({
             "@id": f"{AEVUM_NS}AevumKernel",
             "@type": ["prov:SoftwareAgent", "prov:Agent"],
@@ -89,7 +116,9 @@ class AuditPackExporter:
             f"{AEVUM_NS}version": "2.0",
         })
 
-        # 2. The human principal as a prov:Person
+        # Node 2: prov:Person — the human principal responsible for this session
+        # (Art. 12(1)(b): identification of persons responsible). prov:wasAssociatedWith
+        # on the Activity node links the principal to the session activity.
         principal_id = f"{AEVUM_AGENT_NS}{session['principal']}"
         graph.append({
             "@id": principal_id,
@@ -97,7 +126,9 @@ class AuditPackExporter:
             "prov:label": session["principal"],
         })
 
-        # 3. The session as a prov:Activity
+        # Node 3: prov:Activity — the session (Art. 12(1)(b,c): time period and purpose).
+        # prov:startedAtTime / prov:endedAtTime satisfy the "time period of operation"
+        # requirement. prov:wasAssociatedWith links to both the principal and the AI system.
         session_uri = f"{AEVUM_SESSION}{session_id}"
         session_node: dict[str, Any] = {
             "@id": session_uri,
@@ -117,7 +148,10 @@ class AuditPackExporter:
             session_node[f"{AEVUM_NS}sigchainEntry"] = session["sigchain_entry_id"]
         graph.append(session_node)
 
-        # 4. Each session event as a prov:Entity
+        # Nodes 4…N: prov:Entity — one per session event (Art. 12(1)(d,e): input data used
+        # and outputs produced). inputHash and outputHash satisfy the "input data" requirement
+        # without storing the raw data itself — an investigator can verify hash matches against
+        # the original data, but the pack does not expose PII or model outputs in plaintext.
         for ev in events:
             event_uri = f"{AEVUM_SESSION}{session_id}/event/{ev['sequence']}"
             graph.append({
@@ -132,7 +166,11 @@ class AuditPackExporter:
                 f"{AEVUM_NS}latencyMs": ev["latency_ms"],
             })
 
-        # 5. Article 12 metadata block
+        # Node 5: Article12Record — structured compliance metadata block. This is an Aevum
+        # extension to PROV-O that collects the Article 12 mandatory fields in one place,
+        # making it easy for a compliance tool to extract them without traversing the graph.
+        # aiSystemId, sessionId, principalId, purpose, startedAt, endedAt satisfy Art. 12(1)(a-c).
+        # merkleRoot and auditIntegrity reference the cryptographic proof of integrity.
         article12: dict[str, Any] = {
             "@id": f"{session_uri}/article12",
             "@type": f"{AEVUM_NS}Article12Record",

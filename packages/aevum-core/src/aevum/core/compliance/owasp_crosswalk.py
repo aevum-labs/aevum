@@ -1,17 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2024-2026 Aevum Labs contributors
 """
-OWASP Agentic Security Initiative Top 10 crosswalk.
+OWASP Agentic Security Initiative (ASI) Top 10 compliance crosswalk.
 
-Maps each OWASP ASI category to the Aevum mechanism(s) that address it.
-This is a static mapping — no runtime evaluation.
+Maps each OWASP ASI category to the Aevum mechanism(s) that address it. This is a
+static, machine-readable mapping — no runtime evaluation. It drives the compliance
+API endpoint (GET /compliance/owasp) so that operators can export their coverage
+matrix without writing custom compliance tooling.
 
-Source: OWASP Top 10 for Agentic Systems (2025)
+How to read coverage levels:
+  "full"    — Aevum provides a structural, non-bypassable mechanism addressing the risk.
+              The protection is always active; it cannot be disabled by configuration.
+  "partial" — Aevum addresses the core risk but full coverage requires additional phases
+              (e.g., A2A integration, Phase 6+) or operator-supplied complementary controls.
+  "none"    — The category is not addressed in the current release.
 
-Usage:
-  from aevum.core.compliance.owasp_crosswalk import OWASP_CROSSWALK, render_crosswalk
-  text = render_crosswalk()
-  print(text)
+Source: OWASP Top 10 for Agentic Systems (2025 pre-release).
+Each entry's `notes` field contains the mechanism explanation for audit documentation.
 """
 from __future__ import annotations
 
@@ -128,6 +133,14 @@ OWASP_CROSSWALK: tuple[OWASPEntry, ...] = (
             "Timeout always results in veto, never in approval."
         ),
     ),
+    # ASI07 — EchoLeak-class exfiltration: the trifecta Cedar policy is the primary control.
+    # The attack requires ALL THREE of these taint labels to be simultaneously active:
+    #   READS_UNTRUSTED   — the agent has consumed untrusted (injectable) input
+    #   READS_PRIVATE     — the agent has accessed private subject data
+    #   CAN_EXFILTRATE    — the agent has access to a tool that can send data externally
+    # Cedar's forbid policy blocks the composition of all three. Blocking any single label
+    # (e.g., marking the exfiltration tool as CAN_EXFILTRATE) prevents the attack without
+    # blocking legitimate uses of the same tool in contexts without private data access.
     OWASPEntry(
         code="ASI07",
         title="Data Exfiltration / Leakage",
