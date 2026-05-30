@@ -1,7 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 """
-AuditEvent — the episodic ledger entry. Spec Section 06.2.
-Phase 1 adds 6 optional dual-sig + TSA fields (nullable for backward compat).
+AuditEvent — the canonical episodic ledger entry format. Spec Section 06.2.
+
+Every entry written to the sigchain is an AuditEvent. It is immutable (frozen dataclass),
+cryptographically signed, and chained to its predecessor via prior_hash. The 18 core fields
+are always present; the 6 optional Phase 1 fields carry dual-sig and TSA data and are
+nullable on pre-Phase-1 entries to preserve backward compatibility across versions.
+
+An investigator reading a serialised AuditEvent can determine, without trusting the operator:
+  WHO caused the event   (actor, signer_key_id)
+  WHAT happened          (event_type, payload, payload_hash)
+  WHEN                   (valid_from, system_time)
+  WHERE in the chain     (sequence, prior_hash)
+  PROOF of integrity     (signature + hash_event_for_chain linkage)
 """
 
 from __future__ import annotations
@@ -14,24 +25,58 @@ from typing import Any
 
 @dataclasses.dataclass(frozen=True)
 class AuditEvent:
-    """Immutable episodic ledger entry. Core 18 fields + 6 optional Phase 1 dual-sig fields."""
+    """Immutable episodic ledger entry. Core 18 fields + 6 optional Phase 1 dual-sig fields.
 
+    Frozen so that field values cannot change after construction — hash_event_for_chain()
+    must produce identical bytes every time for chain verification to hold.
+    """
+
+    # --- Identity fields ---
+    # Uniquely identify the event, its episode group, its position in the chain sequence,
+    # the type of event that occurred, and the schema version for forward-compat parsing.
+    # episode_id groups related events into a logical session or workflow instance.
     event_id: str
     episode_id: str
     sequence: int
     event_type: str
     schema_version: str
+    # --- Temporal / bi-temporal validity fields ---
+    # valid_from / valid_to record the real-world validity window of the fact in payload.
+    # valid_to is None for point-in-time facts with no scheduled expiry.
+    # system_time is a Hybrid Logical Clock (HLC) integer (see aevum.core.audit.hlc) that
+    # provides causal ordering across distributed nodes even when wall-clock time skews.
     valid_from: str
     valid_to: str | None
     system_time: int
+    # --- Distributed tracing and causation fields ---
+    # causation_id / correlation_id support event sourcing patterns: causation_id is the
+    # ID of the event that directly caused this one; correlation_id groups all events in
+    # a logical transaction. Both are optional for events with no upstream cause.
+    # actor is the principal who triggered this event and is required (never empty) —
+    # accountability is a hard invariant; an event without a responsible actor is invalid.
+    # trace_id / span_id carry OpenTelemetry (OTEL) trace context for cross-system correlation.
     causation_id: str | None
     correlation_id: str | None
     actor: str
     trace_id: str | None
     span_id: str | None
+    # --- Payload fields ---
+    # payload is the application-specific data blob for this event. payload_hash is
+    # SHA3-256(canonical_payload) stored separately so the payload can be verified
+    # independently of the chain — an investigator can confirm the payload was not
+    # tampered with by re-hashing, without needing to traverse the full chain.
     payload: dict[str, Any]
     payload_hash: str
+    # --- Chain linkage field ---
+    # prior_hash chains this entry to its predecessor (GENESIS_HASH for the very first entry).
+    # Its value is SHA3-256(hash_event_for_chain(previous_event)). Any modification to a
+    # preceding entry invalidates every subsequent prior_hash — tampering with one entry
+    # makes the chain break at that point and all entries after it fail verification.
     prior_hash: str
+    # --- Primary signing fields ---
+    # signature is the url-safe base64 Ed25519 (RFC 8032) signature over SHA3-256(signing_fields).
+    # signer_key_id identifies which key produced this signature — required for key rotation
+    # so that historical entries can still be verified using the correct archived public key.
     signature: str
     signer_key_id: str
     # Phase 1: dual-sig fields (nullable — absent on pre-Phase-1 entries)
@@ -69,7 +114,24 @@ class AuditEvent:
 
     @staticmethod
     def hash_event_for_chain(event: AuditEvent) -> str:
-        """SHA3-256 over all fields (excluding signature) for prior_hash chaining."""
+        """Compute the SHA3-256 chain hash for an event — stored as prior_hash in the next entry.
+
+        The hash covers the 16 identifying and payload fields but deliberately excludes the
+        signature field. This asymmetry is intentional: the signature is computed over these
+        same fields, so including it would create a circular dependency. The chain hash and
+        the signature are independent proofs — the chain can be traversed without the signing
+        key, and the signature can be verified without traversing the chain.
+
+        Serialisation follows the RFC 8785 JCS approach: sort_keys=True + compact separators
+        produce deterministic bytes on every platform regardless of dict insertion order,
+        making the hash reproducible and identical across all verifiers.
+
+        Args:
+            event: The AuditEvent whose chain hash should be computed.
+
+        Returns:
+            Lowercase hex-encoded SHA3-256 (FIPS 202) digest — always 64 characters.
+        """
         fields = {
             "event_id": event.event_id,
             "episode_id": event.episode_id,
