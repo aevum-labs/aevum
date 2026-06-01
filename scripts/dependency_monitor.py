@@ -48,7 +48,8 @@ def _get_project_floor_major(package: str) -> str | None:
     )
     for path in glob.glob("packages/*/pyproject.toml"):
         try:
-            content = open(path).read()  # noqa: WPS515
+            with open(path) as fh:
+                content = fh.read()
             m = pattern.search(content)
             if m:
                 return m.group(1)
