@@ -5,19 +5,24 @@ Opens a GitHub issue when a major version increment is detected.
 Idempotent: skips if an open issue with the same title already exists.
 """
 
+import glob
 import json
 import os
+import re
 import urllib.request
 from urllib.error import URLError
 
+# Maps package name → last known acceptable major.
+# When a new major ships on PyPI, update this entry AND tighten the pin in
+# the relevant pyproject.toml(s) before the next weekly run.
 WATCHED_PACKAGES: dict[str, str] = {
     "cedarpy": "4",
     "openai-agents": "0",
     "langgraph-checkpoint": "4",
-    "google-adk": "1",
+    "google-adk": "2",
     "agent-framework": "1",
     "mcp": "1",
-    "fastmcp": "2",
+    "fastmcp": "3",
     "liboqs-python": "0",
 }
 
@@ -29,6 +34,28 @@ _HEADERS = {
     "User-Agent": "aevum-dep-monitor/1",
     "Accept": "application/vnd.github+json",
 }
+
+
+def _get_project_floor_major(package: str) -> str | None:
+    """Return the major from the >= floor pin in any workspace pyproject.toml.
+
+    Used to suppress alerts when the project's pin floor already satisfies
+    the detected PyPI major (e.g. fastmcp>=3.2.0 covers major 3 — no alert
+    needed until major 4 ships).  Returns None when the package isn't pinned.
+    """
+    pattern = re.compile(
+        rf"""['"]?{re.escape(package)}>=(\d+)""", re.IGNORECASE
+    )
+    for path in glob.glob("packages/*/pyproject.toml"):
+        try:
+            with open(path) as fh:
+                content = fh.read()
+            m = pattern.search(content)
+            if m:
+                return m.group(1)
+        except OSError:
+            pass
+    return None
 
 
 def _fetch_latest_pypi_version(package: str) -> str | None:
@@ -89,6 +116,24 @@ def main() -> None:
         if current_major == tracked_major:
             print(f"OK: {package} still at major {tracked_major}.x (latest: {version})")
             continue
+
+        # Suppress the alert if the project's own pin floor already covers the
+        # detected major — the dependency was intentionally upgraded but
+        # WATCHED_PACKAGES hasn't been updated yet.  This prevents the detector
+        # from re-opening issues for moves the project has already absorbed.
+        floor_major = _get_project_floor_major(package)
+        if floor_major is not None and int(floor_major) >= int(current_major):
+            msg = (
+                f"ℹ️ {package}: latest major is {current_major}.x — "
+                f"project pin floor already at >={floor_major}, no action needed."
+            )
+            print(msg)
+            step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+            if step_summary:
+                with open(step_summary, "a") as fh:
+                    fh.write(msg + "\n")
+            continue
+
         title = f"upstream major bump: {package} {tracked_major}.x → {current_major}.x"
         if _issue_exists(title):
             print(f"Issue already exists: {title}")
