@@ -14,7 +14,7 @@ classifiers = [
 ]
 dependencies = [
     "aevum-core",
-    "fastmcp>=3.2.0",
+    "fastmcp>=3.2.0,<4",
 ]
 
 [project.scripts]
