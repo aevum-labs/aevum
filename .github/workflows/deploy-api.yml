@@ -6,6 +6,8 @@ on:
     paths:
       - "packages/**"
       - "fly.toml"
+      - "Dockerfile"
+      - "demo/**"
   workflow_dispatch:
 
 jobs:
