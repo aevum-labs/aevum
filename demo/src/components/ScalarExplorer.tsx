@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react'
+import React, { useState, lazy, Suspense } from 'react'
 import './ScalarExplorer.css'
 
 const ApiReference = lazy(() =>
@@ -8,6 +8,46 @@ const ApiReference = lazy(() =>
 export function ScalarExplorer() {
   const [open, setOpen] = useState(false)
   const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+
+  const [isMobile, setIsMobile] = React.useState(
+    () => window.innerWidth < 768
+  )
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  if (isMobile) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '1rem',
+        padding: '2rem 1rem',
+        textAlign: 'center',
+      }}>
+        <p style={{
+          color: 'var(--text-muted, #6b7280)',
+          fontSize: '0.9rem',
+          margin: 0,
+        }}>
+          The API Explorer is best experienced on a larger screen.
+        </p>
+        <a
+          href={`${apiUrl}/scalar`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="scalar-launch-btn"
+          style={{ display: 'inline-block' }}
+        >
+          Open API Explorer →
+        </a>
+      </div>
+    )
+  }
 
   if (!open) {
     return (

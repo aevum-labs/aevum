@@ -33,13 +33,17 @@ from aevum.core.consent.models import ConsentGrant
 from aevum.core.engine import Engine
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from starlette.responses import Response
 
 from aevum_maintainer import mcp_tools
 from aevum_maintainer.a2a_tasks import issue_a2a_task
 from aevum_maintainer.compliance_pack import _safe_version, build_pack_payload
+from aevum_maintainer.demo_routes import limiter, make_demo_router
 
 logger = logging.getLogger(__name__)
 
@@ -193,6 +197,10 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     _engine = engine or Engine()
     app = FastAPI(title="aevum-maintainer", version="0.4.0")
 
+    # Register slowapi rate limiting.
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+
     # Bootstrap consent grant so ingest() does not 500 on first call.
     # subject_id="aevum-maintainer" covers all governed operations this server performs.
     _boot_grant = ConsentGrant(
@@ -214,13 +222,11 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     def get_engine() -> Engine:
         return _engine
 
+    # Keep the package static dir mounted so that the old dashboard HTML is still
+    # accessible at /static/index.html in non-Docker (test/dev) environments.
     _static_dir = Path(__file__).parent / "static"
     if _static_dir.is_dir():
         app.mount("/static", StaticFiles(directory=_static_dir), name="static")
-
-    @app.get("/")
-    async def demo_page() -> FileResponse:
-        return FileResponse(Path(__file__).parent / "static" / "index.html")
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
@@ -512,5 +518,30 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         else:
             result = mcp_tools.verify_sigchain_integrity(_engine)
         return {"tool": tool_name, "result": result}
+
+    # Public read-only demo routes (rate-limited, payload-scrubbed).
+    app.include_router(make_demo_router(get_engine))
+
+    # Catch-all SPA route — MUST be last so all /v1/, /health, /static routes
+    # registered above take priority.  Serves the React app from the Docker
+    # build output at /app/static; falls back to the bundled static/index.html
+    # in development / test environments where the Docker build hasn't run.
+    _STATIC = Path("/app/static")
+    _STATIC_DEV = Path(__file__).parent / "static"
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str) -> Response:
+        for static_root in (_STATIC, _STATIC_DEV):
+            if full_path:
+                target = static_root / full_path
+                if target.is_file():
+                    return FileResponse(target)
+            index = static_root / "index.html"
+            if index.exists():
+                return FileResponse(index)
+        return JSONResponse(
+            {"detail": "Frontend not built. Run: cd demo && npm run build"},
+            status_code=503,
+        )
 
     return app
