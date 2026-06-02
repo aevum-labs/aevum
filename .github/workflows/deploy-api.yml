@@ -1,0 +1,36 @@
+name: Deploy API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/**"
+      - "fly.toml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy API
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Ensure persistent volume exists
+        run: |
+          flyctl volumes create aevum_maintainer_data \
+            --region iad \
+            --size 1 \
+            --app aevum-maintainer \
+            --yes 2>/dev/null \
+            || echo "Volume already exists — skipping"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deploy to Fly.io
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only

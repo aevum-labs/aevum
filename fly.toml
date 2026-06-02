@@ -5,6 +5,11 @@ primary_region = "iad"
 
 [env]
   PORT = "8080"
+  AEVUM_DB_PATH = "/data/aevum_maintainer.db"
+
+[[mounts]]
+  source      = "aevum_maintainer_data"
+  destination = "/data"
 
 [http_service]
   internal_port = 8080
