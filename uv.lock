@@ -294,6 +294,7 @@ dependencies = [
     { name = "fastmcp" },
     { name = "httpx" },
     { name = "pyjwt" },
+    { name = "slowapi" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -304,6 +305,7 @@ requires-dist = [
     { name = "fastmcp", specifier = ">=3.2.0,<4" },
     { name = "httpx", specifier = ">=0.25" },
     { name = "pyjwt", extras = ["cryptography"], specifier = ">=2.8" },
+    { name = "slowapi", specifier = ">=0.1.9" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.27" },
 ]
 
