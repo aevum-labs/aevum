@@ -1,3 +1,4 @@
+# Build: 2026-06-02-force
 # ── Stage 1: Build React / Vite frontend ─────────────────────────────────────
 FROM node:20-slim AS frontend-builder
 WORKDIR /demo
