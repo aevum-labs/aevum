@@ -1,31 +1,4 @@
 export const GLOBAL_STYLES = `
-.tab-bar {
-  background: #111111;
-  border-bottom: 1px solid #2a2a2a;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.tab-btn {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  color: #888888;
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.tab-btn:hover { color: #ffffff; }
-.tab-btn.active {
-  color: #7c3aed;
-  border-bottom-color: #7c3aed;
-}
-
 .intro-strip {
   color: #888888;
   border-bottom: 1px solid #2a2a2a;
