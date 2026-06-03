@@ -134,6 +134,30 @@ export function Stepper({ onViewApiExplorer }: StepperProps) {
 
   return (
     <div className="stepper">
+      <p style={{
+        fontSize: '0.75rem',
+        color: '#8b949e',
+        marginTop: '0.25rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.4rem',
+      }}>
+        <span style={{
+          fontSize: '0.65rem',
+          fontWeight: 700,
+          letterSpacing: '0.05em',
+          padding: '0.15em 0.5em',
+          borderRadius: '4px',
+          background: 'rgba(124,58,237,0.15)',
+          color: '#7c3aed',
+          border: '1px solid rgba(124,58,237,0.3)',
+          textTransform: 'uppercase',
+        }}>
+          Isolated Session
+        </span>
+        Data is ephemeral — resets on page reload.
+        Never touches production.
+      </p>
       <nav className="stepper-nav" aria-label="Demo steps">
         {STEP_LABELS.map((label, i) => {
           const step = (i + 1) as Step
