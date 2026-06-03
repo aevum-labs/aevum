@@ -148,9 +148,9 @@ export function Stepper({ onViewApiExplorer }: StepperProps) {
           letterSpacing: '0.05em',
           padding: '0.15em 0.5em',
           borderRadius: '4px',
-          background: 'rgba(124,58,237,0.15)',
-          color: '#7c3aed',
-          border: '1px solid rgba(124,58,237,0.3)',
+          background: 'var(--accent-dim)',
+          color: 'var(--accent)',
+          border: '1px solid rgba(167,139,250,0.3)',
           textTransform: 'uppercase',
         }}>
           Isolated Session
