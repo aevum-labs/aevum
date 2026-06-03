@@ -55,7 +55,7 @@ export default function App() {
         <p className="app-tagline">The Black Box for AI Agents — governed context kernel</p>
       </header>
 
-      <div style={{
+      <section aria-label="About Aevum" style={{
         background: '#161b22',
         borderBottom: '1px solid #30363d',
         padding: '0.9rem 1rem',
@@ -101,7 +101,7 @@ export default function App() {
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
       <nav
         aria-label="Demo sections"
@@ -127,10 +127,10 @@ export default function App() {
               background: 'none',
               border: 'none',
               borderBottom: activeTab === tab.id
-                ? '2px solid #7c3aed'
+                ? '2px solid #a78bfa'
                 : '2px solid transparent',
               borderRadius: 0,
-              color: activeTab === tab.id ? '#7c3aed' : '#8b949e',
+              color: activeTab === tab.id ? '#a78bfa' : '#8b949e',
               padding: '0.75rem 1rem',
               fontSize: '0.875rem',
               fontWeight: 600,
