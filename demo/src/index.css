@@ -60,3 +60,134 @@ input, select {
 input:focus, select:focus {
   outline: 1px solid var(--accent);
 }
+
+/* ── Shared utility classes ── */
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 1rem;
+  letter-spacing: 0.04em;
+}
+
+.callout {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  padding: 0.75rem 1rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.badge-success {
+  color: var(--ok);
+  background: rgba(74, 222, 128, 0.10);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.badge-danger {
+  color: var(--error);
+  background: rgba(248, 113, 113, 0.10);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.badge-info {
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+.error-msg {
+  color: var(--error);
+  font-size: 0.82rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+section table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+section th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+section td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+section tr:last-child td {
+  border-bottom: none;
+}
+
+button.secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+}
+
+button.secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button.primary {
+  background: var(--accent);
+  color: #0d0d0d;
+  padding: 8px 18px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+button.primary:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

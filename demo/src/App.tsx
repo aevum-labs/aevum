@@ -3,6 +3,9 @@ import { GLOBAL_STYLES } from './styles'
 import { checkHealth } from './api'
 import { Stepper } from './components/Stepper'
 import { ScalarExplorer } from './components/ScalarExplorer'
+import SignchainExplorer from './components/SignchainExplorer'
+import ComplianceReport  from './components/ComplianceReport'
+import OWASPCrosswalk    from './components/OWASPCrosswalk'
 import './App.css'
 
 type TabId = 'sandbox' | 'sigchain' | 'compliance' | 'api-explorer' | 'owasp' | 'docs'
@@ -149,41 +152,9 @@ export default function App() {
             <Stepper onViewApiExplorer={() => setActiveTab('api-explorer')} />
           )}
           {activeTab === 'api-explorer' && <ScalarExplorer />}
-          {activeTab === 'sigchain' && (
-            <div style={{ padding: '2rem 0', color: '#8b949e',
-                          fontSize: '0.9rem', textAlign: 'center' }}>
-              <p style={{ marginBottom: '0.5rem', fontSize: '1rem',
-                          fontWeight: 600, color: '#e6edf3' }}>
-                Live Sigchain
-              </p>
-              <p>Production audit entries from the Aevum maintenance
-                 pipeline will appear here.</p>
-              <p style={{ marginTop: '0.5rem' }}>Coming in the next
-                 release.</p>
-            </div>
-          )}
-          {activeTab === 'compliance' && (
-            <div style={{ padding: '2rem 0', color: '#8b949e',
-                          fontSize: '0.9rem', textAlign: 'center' }}>
-              <p style={{ marginBottom: '0.5rem', fontSize: '1rem',
-                          fontWeight: 600, color: '#e6edf3' }}>
-                EU AI Act Article 12 — Compliance Report
-              </p>
-              <p>Generate a compliance report for any maintenance
-                 session. Coming in the next release.</p>
-            </div>
-          )}
-          {activeTab === 'owasp' && (
-            <div style={{ padding: '2rem 0', color: '#8b949e',
-                          fontSize: '0.9rem', textAlign: 'center' }}>
-              <p style={{ marginBottom: '0.5rem', fontSize: '1rem',
-                          fontWeight: 600, color: '#e6edf3' }}>
-                OWASP Agentic AI Crosswalk
-              </p>
-              <p>How each OWASP Top 10 for Agentic AI risk maps to an
-                 Aevum barrier. Coming in the next release.</p>
-            </div>
-          )}
+          {activeTab === 'sigchain'   && <SignchainExplorer />}
+          {activeTab === 'compliance' && <ComplianceReport />}
+          {activeTab === 'owasp'      && <OWASPCrosswalk />}
           {activeTab === 'docs' && (
             <div style={{ padding: '2rem 0', color: '#8b949e',
                           fontSize: '0.9rem', textAlign: 'center' }}>

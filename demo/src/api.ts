@@ -1,3 +1,5 @@
+import type { SignedEntry, SessionInfo, ComplianceReport } from './types'
+
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
 
 export interface ScanResult {
@@ -74,6 +76,30 @@ export async function execute(task_id: string, consent_token: string): Promise<E
 export async function sigchain(): Promise<SigchainResult> {
   const res = await fetch(`${API_BASE}/sandbox/sigchain`)
   if (!res.ok) throw new Error(`sigchain failed: ${res.status}`)
+  return res.json()
+}
+
+export async function fetchRecentEntries(): Promise<{ count: number; entries: SignedEntry[] }> {
+  const res = await fetch(`${API_BASE}/v1/sigchain/recent`)
+  if (!res.ok) throw new Error(`sigchain/recent failed: ${res.status}`)
+  return res.json()
+}
+
+export async function fetchEntry(hash: string): Promise<SignedEntry> {
+  const res = await fetch(`${API_BASE}/v1/sigchain/${encodeURIComponent(hash)}`)
+  if (!res.ok) throw new Error(`sigchain entry failed: ${res.status}`)
+  return res.json()
+}
+
+export async function fetchSessions(): Promise<{ count: number; sessions: SessionInfo[] }> {
+  const res = await fetch(`${API_BASE}/v1/sessions`)
+  if (!res.ok) throw new Error(`sessions failed: ${res.status}`)
+  return res.json()
+}
+
+export async function fetchCompliance(session_id: string): Promise<ComplianceReport> {
+  const res = await fetch(`${API_BASE}/v1/compliance/${encodeURIComponent(session_id)}`)
+  if (!res.ok) throw new Error(`compliance failed: ${res.status}`)
   return res.json()
 }
 
