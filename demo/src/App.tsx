@@ -1,13 +1,27 @@
 import { useState, useEffect } from 'react'
+import { GLOBAL_STYLES } from './styles'
+import { checkHealth } from './api'
 import { Stepper } from './components/Stepper'
 import { ScalarExplorer } from './components/ScalarExplorer'
-import { checkHealth } from './api'
 import './App.css'
 
-const TABS = [
-  { id: 'demo', label: 'Guided Demo' },
-  { id: 'explorer', label: 'API Explorer' },
+type TabId = 'sandbox' | 'sigchain' | 'compliance' | 'api-explorer' | 'owasp' | 'docs'
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'sandbox',      label: 'Sandbox' },
+  { id: 'sigchain',     label: 'Sigchain' },
+  { id: 'compliance',   label: 'Compliance' },
+  { id: 'api-explorer', label: 'API Explorer' },
+  { id: 'owasp',        label: 'OWASP' },
+  { id: 'docs',         label: 'Docs' },
 ]
+
+const PRIMITIVES = [
+  { label: 'Relate',   desc: 'Ingest with provenance' },
+  { label: 'Navigate', desc: 'Traverse with consent' },
+  { label: 'Govern',   desc: 'Human checkpoint' },
+  { label: 'Remember', desc: 'Append-only sigchain' },
+] as const
 
 function ApiStatus() {
   const [online, setOnline] = useState<boolean | null>(null)
@@ -27,10 +41,20 @@ function ApiStatus() {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('demo')
+  const [activeTab, setActiveTab] = useState<TabId>('sandbox')
 
   return (
     <>
+      <style>{GLOBAL_STYLES}</style>
+
+      <header className="app-header" style={{ padding: '1rem 1rem 0' }}>
+        <div className="app-header-row">
+          <h1 className="app-title">AEVUM</h1>
+          <ApiStatus />
+        </div>
+        <p className="app-tagline">The Black Box for AI Agents — governed context kernel</p>
+      </header>
+
       <div style={{
         background: '#161b22',
         borderBottom: '1px solid #30363d',
@@ -51,6 +75,32 @@ export default function App() {
             cryptographically chained
           </strong>. This demo runs against the live production pipeline.
         </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', margin: '0 -0.25rem' }}>
+          {PRIMITIVES.map((p, i) => (
+            <div key={p.label} style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: '0.1rem',
+              padding: '0.4rem 0.75rem',
+              margin: '0.25rem',
+              border: '1px solid #30363d',
+              borderRadius: '6px',
+              background: '#0d1117',
+              minWidth: '110px',
+            }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#58a6ff', letterSpacing: '0.04em' }}>
+                {i + 1}
+              </span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e6edf3' }}>
+                {p.label}
+              </span>
+              <span style={{ fontSize: '0.7rem', color: '#8b949e', lineHeight: 1.3 }}>
+                {p.desc}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <nav
@@ -93,48 +143,66 @@ export default function App() {
         ))}
       </nav>
 
-      <div className="app">
-        <header className="app-header">
-          <div className="app-header-row">
-            <h1 className="app-title">AEVUM</h1>
-            <ApiStatus />
-          </div>
-          <p className="app-tagline">The Black Box for AI Agents — governed context kernel</p>
-        </header>
-
-        <main>
-          {activeTab === 'demo' && (
-            <section className="section" aria-label="Guided demo">
-              <p className="section-label">Four-step demo</p>
-              <p className="section-sub">
-                Run a governed diagnostic scan. Every step is recorded in the cryptographic audit trail.
-              </p>
-              <Stepper onViewApiExplorer={() => setActiveTab('explorer')} />
-            </section>
+      <main id="main-content">
+        <div className="app">
+          {activeTab === 'sandbox' && (
+            <Stepper onViewApiExplorer={() => setActiveTab('api-explorer')} />
           )}
-          {activeTab === 'explorer' && (
-            <section className="section" aria-label="API Explorer" id="api-explorer">
-              <p className="section-label">API Explorer</p>
-              <p className="section-sub">
-                All endpoints — interactive. Loads on demand (~2 MB).
+          {activeTab === 'api-explorer' && <ScalarExplorer />}
+          {activeTab === 'sigchain' && (
+            <div style={{ padding: '2rem 0', color: '#8b949e',
+                          fontSize: '0.9rem', textAlign: 'center' }}>
+              <p style={{ marginBottom: '0.5rem', fontSize: '1rem',
+                          fontWeight: 600, color: '#e6edf3' }}>
+                Live Sigchain
               </p>
-              <ScalarExplorer />
-            </section>
+              <p>Production audit entries from the Aevum maintenance
+                 pipeline will appear here.</p>
+              <p style={{ marginTop: '0.5rem' }}>Coming in the next
+                 release.</p>
+            </div>
           )}
-        </main>
-
-        <footer className="app-footer">
-          <p>
-            <a href="https://github.com/aevum-labs/aevum">GitHub</a>
-            {' · '}
-            <a href="https://aevum.build">aevum.build</a>
-            {' · Apache-2.0'}
-          </p>
-          <p style={{ marginTop: '6px' }}>
-            Session data is isolated per visitor and resets on container restart. No data leaves your browser session.
-          </p>
-        </footer>
-      </div>
+          {activeTab === 'compliance' && (
+            <div style={{ padding: '2rem 0', color: '#8b949e',
+                          fontSize: '0.9rem', textAlign: 'center' }}>
+              <p style={{ marginBottom: '0.5rem', fontSize: '1rem',
+                          fontWeight: 600, color: '#e6edf3' }}>
+                EU AI Act Article 12 — Compliance Report
+              </p>
+              <p>Generate a compliance report for any maintenance
+                 session. Coming in the next release.</p>
+            </div>
+          )}
+          {activeTab === 'owasp' && (
+            <div style={{ padding: '2rem 0', color: '#8b949e',
+                          fontSize: '0.9rem', textAlign: 'center' }}>
+              <p style={{ marginBottom: '0.5rem', fontSize: '1rem',
+                          fontWeight: 600, color: '#e6edf3' }}>
+                OWASP Agentic AI Crosswalk
+              </p>
+              <p>How each OWASP Top 10 for Agentic AI risk maps to an
+                 Aevum barrier. Coming in the next release.</p>
+            </div>
+          )}
+          {activeTab === 'docs' && (
+            <div style={{ padding: '2rem 0', color: '#8b949e',
+                          fontSize: '0.9rem', textAlign: 'center' }}>
+              <p style={{ marginBottom: '0.5rem', fontSize: '1rem',
+                          fontWeight: 600, color: '#e6edf3' }}>
+                Documentation
+              </p>
+              <p>Full architecture and API reference at{' '}
+                <a href="https://aevum.build"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style={{ color: '#58a6ff' }}>
+                  aevum.build
+                </a>
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
     </>
   )
 }
