@@ -179,3 +179,65 @@ jobs:
           git diff --staged --quiet || \
             git commit -m "chore: monthly scan results — $(date +'%B %Y')"
           git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:main 2>/dev/null || echo "Push skipped (no changes)"
+
+      - name: Ingest maintenance run into production sigchain
+        if: always()
+        continue-on-error: true
+        env:
+          MAINTENANCE_INGEST_TOKEN: ${{ secrets.MAINTENANCE_INGEST_TOKEN }}
+          DEMO_API_URL: https://demo.aevum.build
+        run: |
+          # Skip silently if token not configured yet
+          if [ -z "$MAINTENANCE_INGEST_TOKEN" ]; then
+            echo "MAINTENANCE_INGEST_TOKEN not set — skipping ingest"
+            exit 0
+          fi
+
+          SESSION_ID="maint-${{ github.run_id }}"
+          RUN_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Read audit results if available
+          CVE_COUNT=0
+          if [ -f /tmp/audit.json ]; then
+            CVE_COUNT=$(python3 -c "
+          import json, sys
+          d = json.load(open('/tmp/audit.json'))
+          print(sum(len(dep.get('vulns',[])) for dep in d.get('dependencies',[])))
+          " 2>/dev/null || echo 0)
+          fi
+
+          PAYLOAD=$(python3 -c "
+          import json
+          print(json.dumps({
+            'run_id': '${{ github.run_id }}',
+            'run_date': '$RUN_DATE',
+            'cve_count': $CVE_COUNT,
+            'status': 'clean' if $CVE_COUNT == 0 else 'findings',
+            'trigger': '${{ github.event_name }}',
+            'ref': '${{ github.ref_name }}'
+          }))
+          ")
+
+          curl -sf \
+            -X POST "${DEMO_API_URL}/v1/maintenance/ingest" \
+            -H "Authorization: Bearer ${MAINTENANCE_INGEST_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"session_id\": \"${SESSION_ID}\",
+              \"entries\": [
+                {
+                  \"action\": \"maintenance.scan\",
+                  \"resource\": \"aevum-labs/aevum\",
+                  \"principal\": \"github_actions\",
+                  \"payload\": ${PAYLOAD}
+                },
+                {
+                  \"action\": \"maintenance.complete\",
+                  \"resource\": \"aevum-labs/aevum\",
+                  \"principal\": \"github_actions\",
+                  \"payload\": {\"run_id\": \"${{ github.run_id }}\", \"status\": \"ok\"}
+                }
+              ]
+            }" \
+            && echo "Ingest: 2 entries written to production sigchain" \
+            || echo "Ingest failed — sigchain not updated (non-blocking)"

@@ -163,6 +163,12 @@ class ScanIngestResponse(BaseModel):
     status: str
 
 
+class MaintenanceIngestBody(BaseModel):
+    session_id: str
+    entries: list[dict[str, Any]]
+    # Each entry must have: action, resource, principal, payload
+
+
 # ---------------------------------------------------------------------------
 # Application factory
 # ---------------------------------------------------------------------------
@@ -518,6 +524,77 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         else:
             result = mcp_tools.verify_sigchain_integrity(_engine)
         return {"tool": tool_name, "result": result}
+
+    # -----------------------------------------------------------------------
+    # POST /v1/maintenance/ingest — bearer-auth, not shown in public docs
+    # -----------------------------------------------------------------------
+
+    _INGEST_TOKEN_ENV = "MAINTENANCE_INGEST_TOKEN"
+
+    @app.post(
+        "/v1/maintenance/ingest",
+        status_code=status.HTTP_201_CREATED,
+        include_in_schema=False,
+    )
+    async def maintenance_ingest(
+        body: MaintenanceIngestBody,
+        request: Request,
+        engine: Annotated[Engine, Depends(get_engine)],
+    ) -> dict[str, Any]:
+        """Append governed maintenance entries to the production sigchain.
+
+        Auth: Bearer token must match MAINTENANCE_INGEST_TOKEN env var.
+        Called by monthly-maintenance.yml after each scan run.
+        Never touches the sandbox sigchain (A7).
+        """
+        expected_token = os.environ.get(_INGEST_TOKEN_ENV, "")
+        if not expected_token:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Ingest not configured: MAINTENANCE_INGEST_TOKEN not set",
+            )
+
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer ") or auth_header[7:] != expected_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or missing bearer token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        if not body.entries:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="entries must not be empty",
+            )
+
+        written: list[str] = []
+        for raw in body.entries:
+            for field in ("action", "resource", "principal", "payload"):
+                if field not in raw:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail=f"Entry missing required field: {field!r}",
+                    )
+
+            envelope = engine.commit(
+                event_type=raw["action"],
+                payload=raw["payload"] if isinstance(raw["payload"], dict) else {},
+                actor=raw["principal"],
+                episode_id=body.session_id,
+            )
+            if envelope.status == "error":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Sigchain integrity error: {envelope.data}",
+                )
+            written.append(envelope.audit_id)
+
+        return {
+            "accepted": len(written),
+            "audit_ids": written,
+            "session_id": body.session_id,
+        }
 
     # Public read-only demo routes (rate-limited, payload-scrubbed).
     app.include_router(make_demo_router(get_engine))

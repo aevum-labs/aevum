@@ -21,6 +21,19 @@ jobs:
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Propagate ingest token to Fly.io secrets
+        run: |
+          if [ -n "$MAINTENANCE_INGEST_TOKEN" ]; then
+            flyctl secrets set \
+              MAINTENANCE_INGEST_TOKEN="$MAINTENANCE_INGEST_TOKEN" \
+              --app aevum-maintainer
+          else
+            echo "MAINTENANCE_INGEST_TOKEN not configured — skipping"
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          MAINTENANCE_INGEST_TOKEN: ${{ secrets.MAINTENANCE_INGEST_TOKEN }}
+
       - name: Ensure persistent volume exists
         run: |
           flyctl volumes create aevum_maintainer_data \
