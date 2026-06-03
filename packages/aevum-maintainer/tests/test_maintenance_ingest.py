@@ -109,6 +109,17 @@ def test_ingest_entries_appear_in_sigchain(
     assert "maintenance.scan" in actions
 
 
+def test_sigchain_recent_returns_200_empty(
+    ingest_client: TestClient,
+) -> None:
+    """Even with no entries, /v1/sigchain/recent returns 200."""
+    res = ingest_client.get("/v1/sigchain/recent")
+    assert res.status_code == 200
+    data = res.json()
+    assert "entries" in data
+    assert "count" in data
+
+
 def test_ingest_empty_entries_422(ingest_client: TestClient) -> None:
     res = _ingest(ingest_client, [])
     assert res.status_code == 422
