@@ -61,8 +61,23 @@ export default function SignchainExplorer() {
     <section>
       <div style={{ display: 'flex', alignItems: 'center',
                     justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <h2 className="section-title" style={{ marginBottom: 0 }}>
+        <h2 className="section-title"
+            style={{ marginBottom: 0, display: 'flex',
+                     alignItems: 'center', gap: '0.5rem' }}>
           Live Sigchain
+          <span style={{
+            fontSize: '0.65rem',
+            fontWeight: 700,
+            letterSpacing: '0.05em',
+            padding: '0.15em 0.5em',
+            borderRadius: '4px',
+            background: 'rgba(88,166,255,0.15)',
+            color: '#58a6ff',
+            border: '1px solid rgba(88,166,255,0.3)',
+            textTransform: 'uppercase',
+          }}>
+            Production
+          </span>
         </h2>
         {!loading && (
           <span className="muted" style={{ fontSize: '0.82rem' }}>
