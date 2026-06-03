@@ -7,14 +7,10 @@ A7: asserts that ingest never affects the sandbox sigchain.
 """
 from __future__ import annotations
 
-from unittest.mock import patch
-import os
-
 import pytest
 from aevum.core.engine import Engine
-from fastapi.testclient import TestClient
-
 from aevum_maintainer.server import create_app
+from fastapi.testclient import TestClient
 
 _TEST_TOKEN = "test-ingest-token-abc123"
 
