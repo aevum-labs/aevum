@@ -15,6 +15,7 @@ Rate limits (per-IP, Fly proxy-aware):
   /v1/compliance/{session} 20/minute
 """
 
+import datetime
 import hashlib
 import json
 from collections.abc import Callable
@@ -52,16 +53,19 @@ class PublicSigchainEntry(BaseModel):
     principal: str
     episode_id: str
     payload_hash: str
+    payload_summary: str = ""
     rekor_anchor: dict[str, Any] | None = None
 
 
 def _scrub_entry(raw: dict[str, Any]) -> dict[str, Any]:
     """Convert a raw SignedEntry dict to a scrubbed PublicSigchainEntry dict."""
+    payload = raw.get("payload", {}) or {}
     payload_bytes = json.dumps(
-        raw.get("payload", {}),
+        payload,
         sort_keys=True,
         ensure_ascii=False,
     ).encode()
+    summary = payload.get("summary", "") if isinstance(payload, dict) else ""
     return PublicSigchainEntry(
         entry_hash=raw["entry_hash"],
         prior_hash=raw.get("prior_hash", "genesis"),
@@ -70,6 +74,7 @@ def _scrub_entry(raw: dict[str, Any]) -> dict[str, Any]:
         principal=raw["principal"],
         episode_id=raw.get("session_id", ""),
         payload_hash=hashlib.sha3_256(payload_bytes).hexdigest(),
+        payload_summary=summary,
         rekor_anchor=raw.get("rekor_anchor"),
     ).model_dump()
 
@@ -147,15 +152,45 @@ def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
         request: Request,
         engine: Annotated[Engine, Depends(get_engine)],
     ) -> dict[str, Any]:
-        """Return distinct episode IDs recorded in the sigchain."""
+        """Return distinct session IDs with date labels, entry counts, and type."""
         entries = engine.get_ledger_entries()
-        seen: dict[str, str] = {}
+        seen: dict[str, list[dict[str, Any]]] = {}
         for e in entries:
-            eid = e.get("episode_id", "")
-            if eid and eid not in seen:
-                seen[eid] = e.get("valid_from", "")
-        sessions = [{"episode_id": k, "first_seen": v} for k, v in seen.items()]
-        return {"count": len(sessions), "sessions": sessions}
+            eid = e.get("episode_id", "") or ""
+            if not eid:
+                continue
+            if eid not in seen:
+                seen[eid] = []
+            seen[eid].append(e)
+
+        sessions: list[dict[str, Any]] = []
+        for sid, ents in seen.items():
+            first_seen = ents[0].get("valid_from", "")
+            try:
+                dt = datetime.datetime.fromisoformat(
+                    first_seen.replace("Z", "+00:00")
+                )
+                date_str = dt.strftime("%b %-d, %Y")
+            except Exception:
+                date_str = first_seen[:10]
+
+            if sid.startswith("maint-"):
+                session_type = "maintenance"
+                type_label = "Maintenance"
+            else:
+                session_type = "system"
+                type_label = "System"
+
+            sessions.append({
+                "session_id": sid,
+                "first_seen": first_seen,
+                "entry_count": len(ents),
+                "label": f"{date_str} — {type_label}",
+                "session_type": session_type,
+            })
+
+        sessions.sort(key=lambda s: s["first_seen"], reverse=True)
+        return {"sessions": sessions}
 
     @router.get("/v1/compliance/{session_id}", tags=["public"])
     @limiter.limit("20/minute")

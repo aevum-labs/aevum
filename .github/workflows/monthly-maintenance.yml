@@ -206,6 +206,17 @@ jobs:
           " 2>/dev/null || echo 0)
           fi
 
+          if [ "$CVE_COUNT" -eq 0 ]; then
+            STATUS="clean"
+          else
+            STATUS="findings"
+          fi
+          SCAN_SUMMARY="${CVE_COUNT} CVEs found · status: ${STATUS}"
+          DEP_COUNT=$(cat /tmp/dep_updates.txt 2>/dev/null | grep -c "^" || echo 0)
+          if [ "$DEP_COUNT" -gt 0 ]; then
+            SCAN_SUMMARY="${SCAN_SUMMARY} · ${DEP_COUNT} dep updates"
+          fi
+
           PAYLOAD=$(python3 -c "
           import json
           print(json.dumps({
@@ -214,7 +225,8 @@ jobs:
             'cve_count': $CVE_COUNT,
             'status': 'clean' if $CVE_COUNT == 0 else 'findings',
             'trigger': '${{ github.event_name }}',
-            'ref': '${{ github.ref_name }}'
+            'ref': '${{ github.ref_name }}',
+            'summary': '$SCAN_SUMMARY'
           }))
           ")
 
@@ -235,7 +247,7 @@ jobs:
                   \"action\": \"maintenance.complete\",
                   \"resource\": \"aevum-labs/aevum\",
                   \"principal\": \"github_actions\",
-                  \"payload\": {\"run_id\": \"${{ github.run_id }}\", \"status\": \"ok\"}
+                  \"payload\": {\"run_id\": \"${{ github.run_id }}\", \"status\": \"ok\", \"summary\": \"Maintenance run completed\"}
                 }
               ]
             }" \

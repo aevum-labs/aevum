@@ -1,4 +1,4 @@
-import type { SignedEntry, SessionInfo, ComplianceReport } from './types'
+import type { SignedEntry, SessionsResponse, ComplianceReport } from './types'
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
 
@@ -91,7 +91,7 @@ export async function fetchEntry(hash: string): Promise<SignedEntry> {
   return res.json()
 }
 
-export async function fetchSessions(): Promise<{ count: number; sessions: SessionInfo[] }> {
+export async function fetchSessions(): Promise<SessionsResponse> {
   const res = await fetch(`${API_BASE}/v1/sessions`)
   if (!res.ok) throw new Error(`sessions failed: ${res.status}`)
   return res.json()
