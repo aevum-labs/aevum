@@ -73,7 +73,6 @@ from scalar_fastapi import get_scalar_api_reference
 from seed import seed_engine
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -253,7 +252,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
-limiter = Limiter(key_func=get_remote_address)
+def _rate_limit_key(request: Request) -> str:
+    # slowapi's get_remote_address only reads request.client.host, which behind
+    # Fly.io's http_service proxy is always the Fly.io edge IP — not the caller.
+    # All visitors would share one rate-limit bucket, starving the smoke test.
+    # Fly-Client-IP is injected by Fly.io and cannot be set by the client.
+    fly_ip = request.headers.get("Fly-Client-IP")
+    if fly_ip:
+        return fly_ip
+    return request.client.host if request.client else "127.0.0.1"
+
+
+limiter = Limiter(key_func=_rate_limit_key)
 
 app = FastAPI(
     title="Aevum Demo API",
