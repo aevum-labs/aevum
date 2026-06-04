@@ -47,7 +47,7 @@ jobs:
             -d '{"host_id": "smoke-test", "scan_type": "diagnostic"}' \
             --max-time 15) || RESPONSE=""
           TASK_ID=$(echo "$RESPONSE" | python3 -c \
-            "import sys,json; print(json.load(sys.stdin).get('task_id',''))" 2>/dev/null)
+            "import sys,json; print(json.load(sys.stdin).get('task_id',''))" 2>/dev/null) || TASK_ID=""
           echo "task_id=$TASK_ID" >> $GITHUB_OUTPUT
           if [ -z "$TASK_ID" ]; then
             echo "SCAN_FAILED=true" >> $GITHUB_ENV
@@ -63,7 +63,7 @@ jobs:
             -d "{\"task_id\": \"$TASK_ID\", \"decision\": \"approve\"}" \
             --max-time 15) || RESPONSE=""
           TOKEN=$(echo "$RESPONSE" | python3 -c \
-            "import sys,json; print(json.load(sys.stdin).get('consent_token',''))" 2>/dev/null)
+            "import sys,json; print(json.load(sys.stdin).get('consent_token',''))" 2>/dev/null) || TOKEN=""
           echo "consent_token=$TOKEN" >> $GITHUB_OUTPUT
           if [ -z "$TOKEN" ]; then
             echo "CONSENT_FAILED=true" >> $GITHUB_ENV
@@ -80,30 +80,36 @@ jobs:
             -d "{\"task_id\": \"$TASK_ID\", \"consent_token\": \"$TOKEN\"}" \
             --max-time 15) || RESPONSE=""
           HEAD=$(echo "$RESPONSE" | python3 -c \
-            "import sys,json; print(json.load(sys.stdin).get('sigchain_head',''))" 2>/dev/null)
+            "import sys,json; print(json.load(sys.stdin).get('sigchain_head',''))" 2>/dev/null) || HEAD=""
           if [ -z "$HEAD" ]; then
             echo "EXECUTE_FAILED=true" >> $GITHUB_ENV
           fi
           echo "Sigchain head: $HEAD"
 
       - name: Sigchain step
-        if: env.EXECUTE_FAILED != 'true'
+        if: >
+          env.HEALTH_FAILED != 'true' &&
+          env.SCAN_FAILED != 'true' &&
+          env.CONSENT_FAILED != 'true' &&
+          env.EXECUTE_FAILED != 'true'
         run: |
           RESPONSE=$(curl -s "$DEMO_API_URL/sandbox/sigchain" --max-time 10) || RESPONSE=""
           COUNT=$(echo "$RESPONSE" | python3 -c \
-            "import sys,json; print(json.load(sys.stdin).get('entry_count',0))" 2>/dev/null)
+            "import sys,json; print(json.load(sys.stdin).get('entry_count',0))" 2>/dev/null) || COUNT=0
           echo "Sigchain entries: $COUNT"
-          if [ "$COUNT" -lt 1 ]; then
+          if [ "${COUNT:-0}" -lt 1 ]; then
             echo "SIGCHAIN_FAILED=true" >> $GITHUB_ENV
           fi
 
       - name: Open incident issue on failure
         if: >
-          env.HEALTH_FAILED == 'true' ||
-          env.SCAN_FAILED == 'true' ||
-          env.CONSENT_FAILED == 'true' ||
-          env.EXECUTE_FAILED == 'true' ||
-          env.SIGCHAIN_FAILED == 'true'
+          always() && (
+            env.HEALTH_FAILED == 'true' ||
+            env.SCAN_FAILED == 'true' ||
+            env.CONSENT_FAILED == 'true' ||
+            env.EXECUTE_FAILED == 'true' ||
+            env.SIGCHAIN_FAILED == 'true'
+          )
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
