@@ -45,6 +45,17 @@ function ApiStatus() {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('sandbox')
+  const [auditSession, setAuditSession] = useState<string | null>(null)
+
+  function handleAuditSession(sessionId: string) {
+    setAuditSession(sessionId)
+    setActiveTab('compliance')
+  }
+
+  function handleTabChange(tabId: TabId) {
+    if (tabId !== 'compliance') setAuditSession(null)
+    setActiveTab(tabId)
+  }
 
   return (
     <>
@@ -123,7 +134,7 @@ export default function App() {
         {TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             aria-current={activeTab === tab.id ? 'page' : undefined}
             style={{
               flexShrink: 0,
@@ -152,8 +163,12 @@ export default function App() {
             <Stepper onViewApiExplorer={() => setActiveTab('api-explorer')} />
           )}
           {activeTab === 'api-explorer' && <ScalarExplorer />}
-          {activeTab === 'sigchain'   && <SignchainExplorer />}
-          {activeTab === 'compliance' && <ComplianceReport />}
+          {activeTab === 'sigchain' && (
+            <SignchainExplorer onAuditSession={handleAuditSession} />
+          )}
+          {activeTab === 'compliance' && (
+            <ComplianceReport preselectedSession={auditSession} />
+          )}
           {activeTab === 'owasp'      && <OWASPCrosswalk />}
           {activeTab === 'docs' && (
             <div style={{ padding: '2rem 0', color: '#8b949e',
