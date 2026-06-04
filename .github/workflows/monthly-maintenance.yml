@@ -212,7 +212,7 @@ jobs:
             STATUS="findings"
           fi
           SCAN_SUMMARY="${CVE_COUNT} CVEs found · status: ${STATUS}"
-          DEP_COUNT=$(cat /tmp/dep_updates.txt 2>/dev/null | grep -c "^" || echo 0)
+          DEP_COUNT=$(wc -l < /tmp/dep_updates.txt 2>/dev/null || echo 0)
           if [ "$DEP_COUNT" -gt 0 ]; then
             SCAN_SUMMARY="${SCAN_SUMMARY} · ${DEP_COUNT} dep updates"
           fi
