@@ -193,8 +193,14 @@ export default function ComplianceReport({ preselectedSession }: Props) {
           )}
 
           {report.entries.length > 0 && (() => {
+            // Compliance entries use audit_id; sigchain entries use
+            // entry_hash. Try both so the chain verification works
+            // regardless of which endpoint populated the entries.
+            const getEntryId = (e: Record<string, unknown>): string =>
+              ((e.entry_hash ?? e.audit_id ?? '') as string)
+
             const links: boolean[] = report.entries.slice(1).map((e, i) =>
-              e.prior_hash === report.entries[i].entry_hash
+              e.prior_hash === getEntryId(report.entries[i])
             )
             const allValid = links.every(Boolean)
             const breakAt  = links.indexOf(false)
@@ -238,7 +244,7 @@ export default function ComplianceReport({ preselectedSession }: Props) {
                         <div className="mono muted"
                              style={{ fontSize: '0.72rem', wordBreak: 'break-all',
                                       marginTop: '0.15rem' }}>
-                          {entry.entry_hash.slice(0, 20)}…
+                          {getEntryId(entry).slice(0, 20)}…
                         </div>
                       </div>
                     </div>
