@@ -196,8 +196,8 @@ export default function ComplianceReport({ preselectedSession }: Props) {
             // Compliance entries use audit_id; sigchain entries use
             // entry_hash. Try both so the chain verification works
             // regardless of which endpoint populated the entries.
-            const getEntryId = (e: Record<string, unknown>): string =>
-              ((e.entry_hash ?? e.audit_id ?? '') as string)
+            const getEntryId = (e: SignedEntry & { audit_id?: string }): string =>
+              (e.entry_hash || e.audit_id || '')
 
             const links: boolean[] = report.entries.slice(1).map((e, i) =>
               e.prior_hash === getEntryId(report.entries[i])
