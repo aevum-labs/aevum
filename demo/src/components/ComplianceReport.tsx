@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { fetchCompliance, fetchSessions } from '../api'
 import type { ComplianceReport as Report, SignedEntry } from '../types'
 
+interface Props {
+  preselectedSession?: string | null
+}
+
 const fmt = (ts: string) => {
   try { return new Date(ts).toLocaleString() } catch { return ts }
 }
@@ -21,7 +25,7 @@ function EntryRow({ entry }: { entry: SignedEntry }) {
   )
 }
 
-export default function ComplianceReport() {
+export default function ComplianceReport({ preselectedSession }: Props) {
   const [sessions, setSessions]               = useState<string[]>([])
   const [sessionId, setSessionId]             = useState('')
   const [report, setReport]                   = useState<Report | null>(null)
@@ -41,6 +45,18 @@ export default function ComplianceReport() {
       )
       .finally(() => setSessionsLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (!preselectedSession) return
+    if (sessionsLoading) return
+    setSessionId(preselectedSession)
+    setLoading(true); setError(null); setReport(null)
+    fetchCompliance(preselectedSession)
+      .then(setReport)
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselectedSession, sessionsLoading])
 
   async function handleGenerate() {
     if (!sessionId) return
@@ -173,6 +189,97 @@ export default function ComplianceReport() {
               </div>
             </div>
           )}
+
+          {report.entries.length > 0 && (() => {
+            const links: boolean[] = report.entries.slice(1).map((e, i) =>
+              e.prior_hash === report.entries[i].entry_hash
+            )
+            const allValid = links.every(Boolean)
+            const breakAt  = links.indexOf(false)
+
+            return (
+              <div className="card">
+                <p style={{ fontWeight: 600, marginBottom: '1rem' }}>
+                  Chain Verification
+                </p>
+
+                {report.entries.map((entry, i) => (
+                  <div key={entry.entry_hash}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.75rem',
+                      padding: '0.6rem 0',
+                    }}>
+                      <span style={{
+                        flexShrink: 0,
+                        width: '1.5rem',
+                        height: '1.5rem',
+                        borderRadius: '50%',
+                        background: 'var(--accent-dim, rgba(167,139,250,0.15))',
+                        color: 'var(--accent)',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        {i + 1}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                          {entry.event_type}
+                        </div>
+                        <div className="muted" style={{ fontSize: '0.78rem' }}>
+                          {entry.principal}
+                        </div>
+                        <div className="mono muted"
+                             style={{ fontSize: '0.72rem', wordBreak: 'break-all',
+                                      marginTop: '0.15rem' }}>
+                          {entry.entry_hash.slice(0, 20)}…
+                        </div>
+                      </div>
+                    </div>
+
+                    {i < report.entries.length - 1 && (
+                      <div style={{
+                        borderLeft: `2px solid ${links[i]
+                          ? 'var(--accent)'
+                          : 'var(--danger, #f85149)'}`,
+                        padding: '0.25rem 0 0.25rem 0.75rem',
+                        marginLeft: '0.69rem',
+                      }}>
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          color: links[i]
+                            ? 'var(--accent)'
+                            : 'var(--danger, #f85149)',
+                        }}>
+                          {links[i] ? '↓ prior hash verified ✓' : '↓ hash mismatch ✗'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                <div style={{
+                  marginTop: '0.75rem',
+                  paddingTop: '0.75rem',
+                  borderTop: '1px solid var(--border)',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: allValid
+                    ? 'var(--accent)'
+                    : 'var(--danger, #f85149)',
+                }}>
+                  {allValid
+                    ? `✓ Chain intact — ${report.entries.length} of ${report.entries.length} links verified`
+                    : `✗ Chain broken at entry ${breakAt + 2}`}
+                </div>
+              </div>
+            )
+          })()}
         </>
       )}
     </section>

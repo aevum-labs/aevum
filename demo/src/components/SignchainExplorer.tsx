@@ -4,6 +4,10 @@ import type { SignedEntry } from '../types'
 
 type EntryDetail = SignedEntry
 
+interface Props {
+  onAuditSession?: (sessionId: string) => void
+}
+
 function truncate(hash: string, n = 16): string {
   return hash.slice(0, n) + '…'
 }
@@ -17,7 +21,7 @@ function fmtTime(ts: string): string {
   } catch { return ts }
 }
 
-export default function SignchainExplorer() {
+export default function SignchainExplorer({ onAuditSession }: Props) {
   const [entries, setEntries]             = useState<SignedEntry[]>([])
   const [count, setCount]                 = useState(0)
   const [loading, setLoading]             = useState(true)
@@ -175,8 +179,29 @@ export default function SignchainExplorer() {
                                   <td className="muted" style={{ fontSize: '0.78rem' }}>
                                     Session
                                   </td>
-                                  <td className="mono muted" style={{ fontSize: '0.75rem' }}>
-                                    {detail.episode_id}
+                                  <td style={{ display: 'flex', alignItems: 'center',
+                                               gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <span className="mono muted" style={{ fontSize: '0.75rem' }}>
+                                      {detail.episode_id}
+                                    </span>
+                                    {onAuditSession && detail.episode_id && (
+                                      <button
+                                        onClick={() => onAuditSession(detail.episode_id)}
+                                        style={{
+                                          background: 'none',
+                                          border: '1px solid var(--accent)',
+                                          borderRadius: '4px',
+                                          color: 'var(--accent)',
+                                          fontSize: '0.72rem',
+                                          fontWeight: 600,
+                                          padding: '0.15em 0.5em',
+                                          cursor: 'pointer',
+                                          whiteSpace: 'nowrap',
+                                        }}
+                                      >
+                                        Audit →
+                                      </button>
+                                    )}
                                   </td>
                                 </tr>
                                 <tr>
