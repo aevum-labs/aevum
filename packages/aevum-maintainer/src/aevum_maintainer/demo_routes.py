@@ -196,10 +196,10 @@ def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
         request: Request,
         engine: Annotated[Engine, Depends(get_engine)],
     ) -> dict[str, Any]:
-        """Return a single scrubbed sigchain entry by its payload hash."""
+        """Return a single scrubbed sigchain entry by its chain hash."""
         entries = engine.get_ledger_entries()
         for e in entries:
-            if e.get("payload_hash", "") == entry_hash:
+            if _compute_chain_hash(e) == entry_hash:
                 return _scrub_entry(_event_to_signed(e))
         raise HTTPException(status_code=404, detail=f"Entry {entry_hash!r} not found")
 
