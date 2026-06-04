@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchCompliance, fetchSessions } from '../api'
-import type { ComplianceReport as Report, SignedEntry } from '../types'
+import type { SessionInfo, ComplianceReport as Report, SignedEntry } from '../types'
 
 interface Props {
   preselectedSession?: string | null
@@ -26,7 +26,7 @@ function EntryRow({ entry }: { entry: SignedEntry }) {
 }
 
 export default function ComplianceReport({ preselectedSession }: Props) {
-  const [sessions, setSessions]               = useState<string[]>([])
+  const [sessions, setSessions]               = useState<SessionInfo[]>([])
   const [sessionId, setSessionId]             = useState('')
   const [report, setReport]                   = useState<Report | null>(null)
   const [loading, setLoading]                 = useState(false)
@@ -36,9 +36,8 @@ export default function ComplianceReport({ preselectedSession }: Props) {
   useEffect(() => {
     fetchSessions()
       .then((d) => {
-        const ids = d.sessions.map((s) => s.episode_id)
-        setSessions(ids)
-        if (ids.length > 0) setSessionId(ids[0])
+        setSessions(d.sessions)
+        if (d.sessions.length > 0) setSessionId(d.sessions[0].session_id)
       })
       .catch((e: unknown) =>
         setError(e instanceof Error ? e.message : String(e))
@@ -111,7 +110,10 @@ export default function ComplianceReport({ preselectedSession }: Props) {
                     <option value="">No sessions available</option>
                   )}
                   {sessions.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s.session_id} value={s.session_id}>
+                      {s.label} ({s.entry_count}{' '}
+                      {s.entry_count === 1 ? 'entry' : 'entries'})
+                    </option>
                   ))}
                 </select>
               )}

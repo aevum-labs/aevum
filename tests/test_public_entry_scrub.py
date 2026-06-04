@@ -57,3 +57,13 @@ def test_whitelist_only() -> None:
 def test_deterministic() -> None:
     raw = _raw(payload={"k": "v"})
     assert _scrub_entry(raw)["payload_hash"] == _scrub_entry(raw)["payload_hash"]
+
+
+def test_payload_summary_extracted() -> None:
+    r = _scrub_entry(_raw(payload={"secret": "x", "summary": "2 CVEs found · status: findings"}))
+    assert r["payload_summary"] == "2 CVEs found · status: findings"
+
+
+def test_payload_summary_empty_when_absent() -> None:
+    r = _scrub_entry(_raw(payload={"secret": "x"}))
+    assert r["payload_summary"] == ""

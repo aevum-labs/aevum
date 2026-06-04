@@ -11,14 +11,22 @@ export interface SignedEntry {
   event_type: string
   principal: string
   payload_hash: string
+  payload_summary: string
   timestamp: string
   episode_id: string
   rekor_anchor: RekorAnchor | null
 }
 
 export interface SessionInfo {
-  episode_id: string
+  session_id: string
   first_seen: string
+  entry_count: number
+  label: string
+  session_type: 'maintenance' | 'system'
+}
+
+export interface SessionsResponse {
+  sessions: SessionInfo[]
 }
 
 export interface ComplianceReport {

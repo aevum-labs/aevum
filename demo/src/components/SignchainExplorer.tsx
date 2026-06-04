@@ -213,6 +213,17 @@ export default function SignchainExplorer({ onAuditSession }: Props) {
                                     {detail.payload_hash}
                                   </td>
                                 </tr>
+                                {(detail.payload_summary || '') !== '' && (
+                                  <tr>
+                                    <td className="muted"
+                                        style={{ paddingRight: '0.75rem', fontSize: '0.78rem' }}>
+                                      Summary
+                                    </td>
+                                    <td style={{ fontSize: '0.82rem', color: 'var(--text)' }}>
+                                      {detail.payload_summary}
+                                    </td>
+                                  </tr>
+                                )}
                                 {detail.rekor_anchor && (
                                   <tr>
                                     <td className="muted" style={{ fontSize: '0.78rem' }}>
