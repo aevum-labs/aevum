@@ -170,7 +170,7 @@ def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
                 dt = datetime.datetime.fromisoformat(
                     first_seen.replace("Z", "+00:00")
                 )
-                date_str = dt.strftime("%b %-d, %Y")
+                date_str = f"{dt.strftime('%b')} {dt.day}, {dt.year}"
             except Exception:
                 date_str = first_seen[:10]
 
