@@ -185,7 +185,7 @@ jobs:
         continue-on-error: true
         env:
           MAINTENANCE_INGEST_TOKEN: ${{ secrets.MAINTENANCE_INGEST_TOKEN }}
-          DEMO_API_URL: https://demo.aevum.build
+          DEMO_API_URL: https://aevum-demo.fly.dev
         run: |
           # Skip silently if token not configured yet
           if [ -z "$MAINTENANCE_INGEST_TOKEN" ]; then

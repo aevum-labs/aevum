@@ -13,7 +13,10 @@ permissions:
   issues: write
 
 env:
-  DEMO_API_URL: https://demo.aevum.build
+  # demo.aevum.build resolves to a stale HF Space that predates the sandbox
+  # routes — use the Fly.io app directly until DNS is updated to point the
+  # custom domain at aevum-demo.fly.dev.
+  DEMO_API_URL: https://aevum-demo.fly.dev
 
 jobs:
   smoke-test:
