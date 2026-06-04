@@ -2,13 +2,20 @@
 """Smoke tests for sandbox routes — POST /sandbox/scan,
 /sandbox/consent, /sandbox/execute, GET /sandbox/sigchain."""
 
-import os
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from fastapi.testclient import TestClient
 
+if TYPE_CHECKING:
+    from aevum.core.engine import Engine
+    from pytest import MonkeyPatch
+
+
 @pytest.fixture
-def app_bundle(monkeypatch):
+def app_bundle(monkeypatch: MonkeyPatch) -> tuple[TestClient, Engine]:
     """Returns (TestClient, Engine) so tests can inspect production state directly."""
     monkeypatch.setenv("AEVUM_DB_PATH", ":memory:")
     import aevum_maintainer.sandbox as sb_module
@@ -20,73 +27,73 @@ def app_bundle(monkeypatch):
 
 
 @pytest.fixture
-def client(app_bundle):
+def client(app_bundle: tuple[TestClient, Engine]) -> TestClient:
     return app_bundle[0]
 
 
 ACTOR = "demo-agent"
-HEADERS = {"X-Demo-Actor": ACTOR}
+HEADERS: dict[str, str] = {"X-Demo-Actor": ACTOR}
 
 
-def test_sandbox_scan_returns_200(client):
+def test_sandbox_scan_returns_200(client: TestClient) -> None:
     res = client.post(
         "/sandbox/scan",
         json={"host_id": "host-42", "scan_type": "diagnostic"},
         headers=HEADERS,
     )
     assert res.status_code == 200, res.text
-    data = res.json()
+    data: dict[str, Any] = res.json()
     assert "task_id" in data
 
 
-def test_sandbox_consent_returns_200(client):
+def test_sandbox_consent_returns_200(client: TestClient) -> None:
     scan = client.post(
         "/sandbox/scan",
         json={"host_id": "host-42", "scan_type": "diagnostic"},
         headers=HEADERS,
     )
-    task_id = scan.json()["task_id"]
+    task_id: str = scan.json()["task_id"]
     res = client.post(
         "/sandbox/consent",
         json={"task_id": task_id, "decision": "approve"},
         headers=HEADERS,
     )
     assert res.status_code == 200, res.text
-    data = res.json()
+    data: dict[str, Any] = res.json()
     assert "consent_token" in data
 
 
-def test_sandbox_execute_returns_200(client):
+def test_sandbox_execute_returns_200(client: TestClient) -> None:
     scan = client.post(
         "/sandbox/scan",
         json={"host_id": "host-42", "scan_type": "diagnostic"},
         headers=HEADERS,
     )
-    task_id = scan.json()["task_id"]
+    task_id: str = scan.json()["task_id"]
     consent = client.post(
         "/sandbox/consent",
         json={"task_id": task_id, "decision": "approve"},
         headers=HEADERS,
     )
-    token = consent.json()["consent_token"]
+    token: str = consent.json()["consent_token"]
     res = client.post(
         "/sandbox/execute",
         json={"task_id": task_id, "consent_token": token},
         headers=HEADERS,
     )
     assert res.status_code == 200, res.text
-    data = res.json()
+    data: dict[str, Any] = res.json()
     assert "sigchain_head" in data
 
 
-def test_sandbox_sigchain_returns_200(client):
+def test_sandbox_sigchain_returns_200(client: TestClient) -> None:
     res = client.get("/sandbox/sigchain", headers=HEADERS)
     assert res.status_code == 200, res.text
-    data = res.json()
+    data: dict[str, Any] = res.json()
     assert "entries" in data or "head_hash" in data
 
 
-def test_sandbox_reset_clears_session(client):
+def test_sandbox_reset_clears_session(client: TestClient) -> None:
     client.post(
         "/sandbox/scan",
         json={"host_id": "host-42", "scan_type": "diagnostic"},
@@ -94,11 +101,13 @@ def test_sandbox_reset_clears_session(client):
     )
     res = client.post("/sandbox/reset", headers=HEADERS)
     assert res.status_code == 200, res.text
-    data = res.json()
+    data: dict[str, Any] = res.json()
     assert data.get("reset") is True
 
 
-def test_sandbox_isolated_from_production(app_bundle):
+def test_sandbox_isolated_from_production(
+    app_bundle: tuple[TestClient, Engine],
+) -> None:
     """A7: sandbox actions must not appear in production sigchain."""
     tc, engine = app_bundle
     tc.post(
@@ -106,7 +115,6 @@ def test_sandbox_isolated_from_production(app_bundle):
         json={"host_id": "host-42", "scan_type": "diagnostic"},
         headers=HEADERS,
     )
-    # Verify via engine directly — avoids calling rate-limited HTTP endpoints
     prod_hashes = {e.get("payload_hash", "") for e in engine.get_ledger_entries()}
     sandbox_sig = tc.get("/sandbox/sigchain", headers=HEADERS)
     assert sandbox_sig.status_code == 200
@@ -115,11 +123,10 @@ def test_sandbox_isolated_from_production(app_bundle):
         for e in sandbox_sig.json().get("entries", [])
     ]
     for h in sandbox_hashes:
-        assert h not in prod_hashes, \
-            "Sandbox entry leaked into production sigchain"
+        assert h not in prod_hashes, "Sandbox entry leaked into production sigchain"
 
 
-def test_sandbox_consent_not_found(client):
+def test_sandbox_consent_not_found(client: TestClient) -> None:
     res = client.post(
         "/sandbox/consent",
         json={"task_id": "tsk_nonexistent", "decision": "approve"},
@@ -128,13 +135,13 @@ def test_sandbox_consent_not_found(client):
     assert res.status_code == 404
 
 
-def test_sandbox_execute_without_consent_rejected(client):
+def test_sandbox_execute_without_consent_rejected(client: TestClient) -> None:
     scan = client.post(
         "/sandbox/scan",
         json={"host_id": "host-42", "scan_type": "diagnostic"},
         headers=HEADERS,
     )
-    task_id = scan.json()["task_id"]
+    task_id: str = scan.json()["task_id"]
     res = client.post(
         "/sandbox/execute",
         json={"task_id": task_id, "consent_token": "bad_token"},
