@@ -1,14 +1,3 @@
----
-title: Aevum Demo
-emoji: 🔐
-colorFrom: gray
-colorTo: gray
-sdk: docker
-pinned: false
-license: apache-2.0
-short_description: Live playground for the Aevum governed context kernel
----
-
 # Aevum — Live Playground
 
 Interactive API explorer for the five Aevum functions: `ingest`, `query`,
