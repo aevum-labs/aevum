@@ -43,7 +43,7 @@ from starlette.responses import Response
 from aevum_maintainer import mcp_tools
 from aevum_maintainer.a2a_tasks import issue_a2a_task
 from aevum_maintainer.compliance_pack import _safe_version, build_pack_payload
-from aevum_maintainer.demo_routes import limiter, make_demo_router
+from aevum_maintainer.demo_routes import limiter, make_demo_router, sandbox_router
 
 logger = logging.getLogger(__name__)
 
@@ -598,6 +598,8 @@ def create_app(engine: Engine | None = None) -> FastAPI:
 
     # Public read-only demo routes (rate-limited, payload-scrubbed).
     app.include_router(make_demo_router(get_engine))
+    # Sandbox routes — module-level router, A7 isolated from production sigchain.
+    app.include_router(sandbox_router)
 
     # Catch-all SPA route — MUST be last so all /v1/, /health, /static routes
     # registered above take priority.  Serves the React app from the Docker
