@@ -1,11 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2024-2026 Aevum Labs contributors
 """
-Public read-only demo routes for the aevum-maintainer server.
+Public read-only demo routes and sandbox routes for the aevum-maintainer server.
 
-Every endpoint scrubs raw ledger entries through PublicSigchainEntry before
+Every /v1/ endpoint scrubs raw ledger entries through PublicSigchainEntry before
 returning them to browsers.  The raw payload field is never exposed; only its
 SHA3-256 hash reaches the client.
+
+Sandbox routes (A7: isolated from production sigchain):
+  POST /sandbox/scan
+  POST /sandbox/consent
+  POST /sandbox/execute
+  GET  /sandbox/sigchain
+  POST /sandbox/reset
 
 Rate limits (per-IP, Fly proxy-aware):
   /v1/sigchain/recent      60/minute
@@ -13,6 +20,7 @@ Rate limits (per-IP, Fly proxy-aware):
   /v1/sigchain/{hash}      30/minute
   /v1/sessions             20/minute
   /v1/compliance/{session} 20/minute
+  /sandbox/scan            20/minute
 """
 
 import datetime
@@ -26,6 +34,19 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+
+from aevum_maintainer.sandbox import (
+    ConsentRequest,
+    ConsentResult,
+    ExecuteRequest,
+    ExecuteResult,
+    ScanRequest,
+    ScanResult,
+    SigchainEntry,
+    SigchainResult,
+    get_sandbox,
+    reset_sandbox,
+)
 
 
 def _real_ip(request: Request) -> str:
@@ -103,6 +124,13 @@ def _event_to_signed(d: dict[str, Any]) -> dict[str, Any]:
 
 def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
     """Return a configured APIRouter.  Called once inside create_app()."""
+    # Purge any stale rate-limit rules from previous factory invocations.
+    # slowapi stores rules by function module+name; each factory call
+    # accumulates another copy unless we clear first.
+    _prefix = f"{__name__}."
+    for _k in [k for k in limiter._route_limits if k.startswith(_prefix)]:
+        del limiter._route_limits[_k]
+
     router = APIRouter()
 
     @router.get("/v1/sigchain/recent", tags=["public"])
@@ -214,3 +242,125 @@ def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
         }
 
     return router
+
+
+# ---------------------------------------------------------------------------
+# Sandbox routes — module-level router, registered ONCE at import time.
+# A7: isolated from production sigchain. Never touches the engine.
+#
+# IMPORTANT: These routes MUST be defined at module level (not inside
+# make_demo_router) so that @limiter.limit is applied exactly once.
+# Defining rate-limited routes inside a factory causes slowapi to
+# accumulate duplicate rules on every factory invocation, making every
+# request count N times against the same limit bucket.
+# ---------------------------------------------------------------------------
+
+sandbox_router = APIRouter()
+
+
+def _sandbox_actor(request: Request) -> str:
+    raw = request.headers.get("X-Demo-Actor", "demo-agent").strip()
+    _allowed = frozenset({"demo-agent", "intruder-agent", "demo-human"})
+    return raw if raw in _allowed else "demo-agent"
+
+
+@sandbox_router.post(
+    "/sandbox/scan",
+    tags=["sandbox"],
+    summary="Trigger a governed diagnostic scan",
+    response_model=ScanResult,
+)
+@limiter.limit("20/minute")
+async def sandbox_scan(
+    payload: ScanRequest,
+    request: Request,
+) -> ScanResult:
+    sb = get_sandbox(_sandbox_actor(request))
+    task = sb.create_task(payload.host_id, payload.scan_type)
+    chain = sb.sigchain()
+    return ScanResult(
+        task_id=task.task_id,
+        host_id=task.host_id,
+        finding=task.finding,
+        severity=task.severity,  # type: ignore[arg-type]
+        proposed_action=task.proposed_action,
+        barriers_evaluated=chain[-1]["barrier_evaluations"],
+        receipt_hash=chain[-1]["sigchain_entry_hash"],
+    )
+
+
+@sandbox_router.post(
+    "/sandbox/consent",
+    tags=["sandbox"],
+    summary="Approve or deny the proposed remediation",
+    response_model=ConsentResult,
+)
+async def sandbox_consent(
+    payload: ConsentRequest,
+    request: Request,
+) -> ConsentResult:
+    try:
+        task = get_sandbox(_sandbox_actor(request)).consent(
+            payload.task_id, payload.decision
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Task not found") from None
+    return ConsentResult(
+        task_id=task.task_id,
+        decision=payload.decision,
+        consent_token=task.consent_token or "",
+        valid_for_seconds=900,
+    )
+
+
+@sandbox_router.post(
+    "/sandbox/execute",
+    tags=["sandbox"],
+    summary="Execute the approved task under the Aevum kernel",
+    response_model=ExecuteResult,
+)
+async def sandbox_execute(
+    payload: ExecuteRequest,
+    request: Request,
+) -> ExecuteResult:
+    sb = get_sandbox(_sandbox_actor(request))
+    try:
+        task = sb.execute(payload.task_id, payload.consent_token)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Task not found") from None
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    chain = sb.sigchain()
+    return ExecuteResult(
+        task_id=task.task_id,
+        outcome=f"Executed: {task.proposed_action}",
+        sigchain_head=chain[-1]["sigchain_entry_hash"],
+        rekor_entry="pending (dev mode)",
+        receipt_hash=task.receipt_hash or "",
+    )
+
+
+@sandbox_router.get(
+    "/sandbox/sigchain",
+    tags=["sandbox"],
+    summary="Inspect the cryptographic audit trail",
+    response_model=SigchainResult,
+)
+async def sandbox_sigchain(request: Request) -> SigchainResult:
+    chain = get_sandbox(_sandbox_actor(request)).sigchain()
+    head = chain[-1]["sigchain_entry_hash"] if chain else "0" * 64
+    return SigchainResult(
+        head_hash=head,
+        entry_count=len(chain),
+        entries=[SigchainEntry(**e) for e in chain],
+    )
+
+
+@sandbox_router.post(
+    "/sandbox/reset",
+    tags=["sandbox"],
+    summary="Reset sandbox session",
+)
+async def sandbox_reset(request: Request) -> dict[str, Any]:
+    reset_sandbox(_sandbox_actor(request))
+    return {"reset": True, "message": "Sandbox session cleared and re-seeded."}
