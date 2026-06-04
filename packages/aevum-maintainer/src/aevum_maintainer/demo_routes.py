@@ -100,6 +100,35 @@ def _scrub_entry(raw: dict[str, Any]) -> dict[str, Any]:
     ).model_dump()
 
 
+def _compute_chain_hash(d: dict[str, Any]) -> str:
+    """Replicate AuditEvent.hash_event_for_chain() from a raw ledger dict.
+
+    The stored prior_hash of entry N+1 equals hash_event_for_chain(entry N).
+    Using this as entry_hash lets the frontend verify the chain by checking
+    entry[i+1].prior_hash == entry[i].entry_hash.
+    """
+    fields = {
+        "event_id": d.get("event_id", ""),
+        "episode_id": d.get("episode_id", ""),
+        "sequence": d.get("sequence", 0),
+        "event_type": d.get("event_type", ""),
+        "schema_version": d.get("schema_version", ""),
+        "valid_from": d.get("valid_from", ""),
+        "valid_to": d.get("valid_to"),
+        "system_time": d.get("system_time", 0),
+        "causation_id": d.get("causation_id"),
+        "correlation_id": d.get("correlation_id"),
+        "actor": d.get("actor", ""),
+        "trace_id": d.get("trace_id"),
+        "span_id": d.get("span_id"),
+        "payload_hash": d.get("payload_hash", ""),
+        "prior_hash": d.get("prior_hash", ""),
+        "signer_key_id": d.get("signer_key_id", ""),
+    }
+    canonical = json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha3_256(canonical).hexdigest()
+
+
 def _event_to_signed(d: dict[str, Any]) -> dict[str, Any]:
     """Map an engine ledger entry dict to SignedEntry field format."""
     payload = d.get("payload", {})
@@ -109,7 +138,7 @@ def _event_to_signed(d: dict[str, Any]) -> dict[str, Any]:
         or d.get("event_type", "").split(".")[0]
     )
     return {
-        "entry_hash": d.get("payload_hash", ""),
+        "entry_hash": _compute_chain_hash(d),
         "prior_hash": d.get("prior_hash", "genesis"),
         "action": d.get("event_type", ""),
         "resource": resource or "",
