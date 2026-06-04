@@ -113,6 +113,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Ensure the label exists (idempotent — ignored if already present)
+          gh label create "demo-outage" \
+            --color "d73a4a" \
+            --description "Demo API outage detected by smoke test" \
+            2>/dev/null || true
+
           # Determine which step failed
           if [ "$HEALTH_FAILED" = "true" ]; then
             STEP="health check"
