@@ -21,6 +21,7 @@ import hmac
 import json
 import logging
 import os
+import sqlite3
 import time
 import uuid
 from pathlib import Path
@@ -198,10 +199,96 @@ def _try_anchor_sigchain(engine: Engine, audit_id: str) -> None:
         logger.warning("Rekor anchor failed — continuing (anchor is advisory)")
 
 
+class _MaintenanceStore:
+    """SQLite-backed log of maintenance ingest entries.
+
+    Persists the raw (session_id, action, principal, payload) tuples written
+    by the monthly-maintenance workflow so they can be replayed into the
+    in-memory engine after a server restart or redeploy.
+
+    db_path=":memory:" is dev/test mode — data is process-local and is NOT
+    persisted to disk. Production deployments set AEVUM_DB_PATH to a path on
+    the Fly.io persistent volume (/data/aevum_maintainer.db).
+    """
+
+    _CREATE = """
+        CREATE TABLE IF NOT EXISTS maintenance_entries (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id  TEXT    NOT NULL,
+            action      TEXT    NOT NULL,
+            principal   TEXT    NOT NULL,
+            payload     TEXT    NOT NULL,
+            ingested_at TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """
+
+    def __init__(self, db_path: str) -> None:
+        self._db_path = db_path
+        conn = self._connect()
+        conn.execute(self._CREATE)
+        conn.commit()
+        conn.close()
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self._db_path, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def add(self, *, session_id: str, action: str, principal: str, payload: dict[str, Any]) -> None:
+        conn = self._connect()
+        sql = (
+            "INSERT INTO maintenance_entries"
+            " (session_id, action, principal, payload) VALUES (?,?,?,?)"
+        )
+        conn.execute(sql, (session_id, action, principal, json.dumps(payload)))
+        conn.commit()
+        conn.close()
+
+    def all(self) -> list[dict[str, Any]]:
+        conn = self._connect()
+        rows = conn.execute(
+            "SELECT session_id, action, principal, payload FROM maintenance_entries ORDER BY id"
+        ).fetchall()
+        conn.close()
+        return [
+            {
+                "session_id": r["session_id"],
+                "action": r["action"],
+                "principal": r["principal"],
+                "payload": json.loads(r["payload"]),
+            }
+            for r in rows
+        ]
+
+
 def create_app(engine: Engine | None = None) -> FastAPI:
     """Create the maintainer FastAPI application."""
     _engine = engine or Engine()
     app = FastAPI(title="aevum-maintainer", version="0.4.0")
+
+    # Initialise SQLite persistence for maintenance entries.
+    # AEVUM_DB_PATH is set by fly.toml to /data/aevum_maintainer.db (Fly volume).
+    # When engine is injected by tests, skip persistence to keep tests isolated.
+    _db_path = os.environ.get("AEVUM_DB_PATH") if engine is None else None
+    _store: _MaintenanceStore | None = (
+        _MaintenanceStore(_db_path) if _db_path else None
+    )
+    if _store:
+        _log = logging.getLogger(__name__)
+        replayed = 0
+        for entry in _store.all():
+            try:
+                _engine.commit(
+                    event_type=entry["action"],
+                    payload=entry["payload"],
+                    actor=entry["principal"],
+                    episode_id=entry["session_id"],
+                )
+                replayed += 1
+            except Exception as exc:
+                _log.warning("Skipping persisted entry during replay: %s", exc)
+        if replayed:
+            _log.info("Replayed %d maintenance entries from %s", replayed, _db_path)
 
     # Register slowapi rate limiting.
     app.state.limiter = limiter
@@ -577,9 +664,10 @@ def create_app(engine: Engine | None = None) -> FastAPI:
                         detail=f"Entry missing required field: {field!r}",
                     )
 
+            payload_dict = raw["payload"] if isinstance(raw["payload"], dict) else {}
             envelope = engine.commit(
                 event_type=raw["action"],
-                payload=raw["payload"] if isinstance(raw["payload"], dict) else {},
+                payload=payload_dict,
                 actor=raw["principal"],
                 episode_id=body.session_id,
             )
@@ -589,6 +677,13 @@ def create_app(engine: Engine | None = None) -> FastAPI:
                     detail=f"Sigchain integrity error: {envelope.data}",
                 )
             written.append(envelope.audit_id)
+            if _store:
+                _store.add(
+                    session_id=body.session_id,
+                    action=raw["action"],
+                    principal=raw["principal"],
+                    payload=payload_dict,
+                )
 
         return {
             "accepted": len(written),
