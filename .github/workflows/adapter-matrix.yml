@@ -138,10 +138,7 @@ jobs:
         if: matrix.install-extra == 'maf'
         run: |
           uv sync --frozen --python ${{ matrix.python }}
-          # agent-framework (all versions) transitively requires agent-framework-azure-ai-search==0.0.0a1
-          # (a pre-release) which in turn requires azure-search-documents pre-release.
-          # --prerelease=allow is required; this is an upstream packaging issue in agent-framework.
-          uv pip install --python ${{ matrix.python }} "agent-framework>=1.0.0" --prerelease=allow
+          uv pip install --python ${{ matrix.python }} "agent-framework-core>=1.0.0"
 
       - name: Run MAF adapter snapshot tests
         if: matrix.install-extra == 'maf'
