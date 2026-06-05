@@ -214,7 +214,7 @@ def _verify_receipt_file(receipt_path: Path) -> None:
             typer.style(f"Session {session_id[:12]}... TAMPERED", fg=typer.colors.RED),
             err=True,
         )
-        typer.echo(f"  Merkle root mismatch:", err=True)
+        typer.echo("  Merkle root mismatch:", err=True)
         typer.echo(f"  Stored:     {stored_root[:16]}...", err=True)
         typer.echo(f"  Recomputed: {recomputed_root[:16]}...", err=True)
         raise typer.Exit(code=1)
@@ -268,7 +268,7 @@ def receipt(
 
         receipt_doc = {
             "session_id": record.session_id,
-            "exported_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "exported_at": dt.datetime.now(dt.UTC).isoformat(),
             "entry_count": len(entries),
             "merkle_root": record.merkle_root,
             "entries": entries,
