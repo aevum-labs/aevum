@@ -40,10 +40,12 @@ _OTEL_LATEST_ONLY: bool = "gen_ai_latest_experimental" in _OTEL_SEMCONV_OPT_IN
 _OTEL_GENAI_KEYS: frozenset[str] = frozenset({
     "gen_ai.request.model",
     "gen_ai.response.model",
-    "gen_ai.system",
-    "gen_ai.provider.name",
+    "gen_ai.system",              # kept for backward compat
+    "gen_ai.provider.name",       # OTel GenAI semconv v1.38+
     "gen_ai.conversation.id",
     "gen_ai.operation.name",
+    "gen_ai.agent.name",          # agent identity
+    "gen_ai.agent.id",            # agent identity
 })
 
 # Named graph URIs (Frozen Invariant 10)
