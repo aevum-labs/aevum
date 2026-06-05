@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { fetchCompliance, fetchSessions } from '../api'
-import type { SessionInfo, ComplianceReport as Report, SignedEntry } from '../types'
+import { fetchCompliance, fetchReplay, fetchSessions } from '../api'
+import type { SessionInfo, ComplianceReport as Report, ReplayResult, SignedEntry } from '../types'
 
 interface Props {
   preselectedSession?: string | null
@@ -32,6 +32,9 @@ export default function ComplianceReport({ preselectedSession }: Props) {
   const [loading, setLoading]                 = useState(false)
   const [sessionsLoading, setSessionsLoading] = useState(true)
   const [error, setError]                     = useState<string | null>(null)
+  const [replayResult, setReplayResult]       = useState<ReplayResult | null>(null)
+  const [replayLoading, setReplayLoading]     = useState(false)
+  const [replayError, setReplayError]         = useState<string | null>(null)
 
   useEffect(() => {
     fetchSessions()
@@ -49,6 +52,7 @@ export default function ComplianceReport({ preselectedSession }: Props) {
     if (!preselectedSession) return
     if (sessionsLoading) return
     setSessionId(preselectedSession)
+    setReplayResult(null)
     setLoading(true); setError(null); setReport(null)
     fetchCompliance(preselectedSession)
       .then(setReport)
@@ -59,12 +63,27 @@ export default function ComplianceReport({ preselectedSession }: Props) {
 
   async function handleGenerate() {
     if (!sessionId) return
+    setReplayResult(null)
+    setReplayError(null)
     setLoading(true); setError(null); setReport(null)
     try { setReport(await fetchCompliance(sessionId)) }
     catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
     finally { setLoading(false) }
+  }
+
+  async function handleReplay() {
+    if (!sessionId) return
+    setReplayLoading(true)
+    setReplayError(null)
+    try {
+      setReplayResult(await fetchReplay(sessionId))
+    } catch (e) {
+      setReplayError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setReplayLoading(false)
+    }
   }
 
   function handleDownload() {
@@ -119,17 +138,28 @@ export default function ComplianceReport({ preselectedSession }: Props) {
               )}
             </div>
           </div>
-          <button
-            className="primary"
-            onClick={() => void handleGenerate()}
-            disabled={loading || !sessionId || sessionsLoading}
-            style={{ alignSelf: 'flex-end' }}
-          >
-            {loading ? 'Generating…' : 'Generate Report'}
-          </button>
+          <div style={{ display: 'flex', alignSelf: 'flex-end', gap: '0.5rem' }}>
+            <button
+              className="primary"
+              onClick={() => void handleGenerate()}
+              disabled={loading || !sessionId || sessionsLoading}
+            >
+              {loading ? 'Generating…' : 'Generate Report'}
+            </button>
+            <button
+              onClick={() => void handleReplay()}
+              disabled={replayLoading || !sessionId || sessionsLoading}
+              className="secondary"
+            >
+              {replayLoading ? 'Replaying…' : 'Replay →'}
+            </button>
+          </div>
         </div>
         {error && (
           <p className="error-msg" style={{ marginTop: '0.5rem' }}>{error}</p>
+        )}
+        {replayError && (
+          <p className="error-msg" style={{ marginTop: '0.5rem' }}>{replayError}</p>
         )}
       </div>
 
@@ -290,6 +320,133 @@ export default function ComplianceReport({ preselectedSession }: Props) {
           })()}
         </>
       )}
+
+      {replayResult && (() => {
+        const entries  = replayResult.entries
+        const allValid = replayResult.chain_valid
+        const breakAt  = replayResult.break_at ?? -1
+
+        return (
+          <div className="card">
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+            }}>
+              <p style={{ fontWeight: 600 }}>Session Replay</p>
+              <span style={{
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                letterSpacing: '0.05em',
+                padding: '0.2em 0.6em',
+                borderRadius: '4px',
+                background: 'rgba(88,166,255,0.12)',
+                color: '#58a6ff',
+                border: '1px solid rgba(88,166,255,0.25)',
+                textTransform: 'uppercase',
+              }}>
+                Server-verified
+              </span>
+            </div>
+
+            <p className="muted" style={{ fontSize: '0.82rem', marginBottom: '1rem' }}>
+              Cryptographic reconstruction of every action in this session.
+              Verified by the server against the stored sigchain — not computed in the browser.
+            </p>
+
+            {entries.length === 0 ? (
+              <p className="muted" style={{ fontSize: '0.875rem' }}>
+                No entries found for this session.
+              </p>
+            ) : (
+              <>
+                {entries.map((entry, i) => {
+                  const isLinkValid = i === 0 ? true : !(!allValid && breakAt === i)
+                  const hasConnector = i < entries.length - 1
+
+                  return (
+                    <div key={entry.entry_hash || String(i)}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.75rem',
+                        padding: '0.5rem 0',
+                      }}>
+                        <span style={{
+                          flexShrink: 0,
+                          width: '1.5rem',
+                          height: '1.5rem',
+                          borderRadius: '50%',
+                          background: 'var(--accent-dim,rgba(167,139,250,.15))',
+                          color: 'var(--accent)',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          {i + 1}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                            {entry.action}
+                          </div>
+                          <div className="muted" style={{ fontSize: '0.78rem' }}>
+                            {entry.principal}
+                          </div>
+                          <div className="mono muted"
+                               style={{ fontSize: '0.72rem', wordBreak: 'break-all',
+                                        marginTop: '0.15rem' }}>
+                            {(entry.entry_hash ?? '').slice(0, 20)}…
+                          </div>
+                        </div>
+                      </div>
+
+                      {hasConnector && (
+                        <div style={{
+                          borderLeft: `2px solid ${isLinkValid
+                            ? 'var(--accent)'
+                            : 'var(--danger,#f85149)'}`,
+                          marginLeft: '0.69rem',
+                          padding: '0.2rem 0 0.2rem 0.75rem',
+                        }}>
+                          <span style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            color: isLinkValid
+                              ? 'var(--accent)'
+                              : 'var(--danger,#f85149)',
+                          }}>
+                            {isLinkValid ? '↓ prior hash verified ✓' : '↓ hash mismatch ✗'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                <div style={{
+                  marginTop: '0.75rem',
+                  paddingTop: '0.75rem',
+                  borderTop: '1px solid var(--border)',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  color: allValid
+                    ? 'var(--accent)'
+                    : 'var(--danger,#f85149)',
+                }}>
+                  {allValid
+                    ? `✓ Chain intact — ${entries.length} of ${entries.length} links verified`
+                    : `✗ Chain broken at entry ${breakAt + 1}`}
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })()}
     </section>
   )
 }
