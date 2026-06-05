@@ -28,8 +28,32 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from aevum.core.audit.event import AuditEvent
+    from opentelemetry.trace import Span
 
 _logger = logging.getLogger("aevum.otel")
+
+
+def _set_genai_provider(span: Span, provider_name: str) -> None:
+    """Emit gen_ai provider attributes with migration compatibility.
+
+    Always emits gen_ai.provider.name (OTel GenAI semconv v1.38+).
+    Also emits gen_ai.system for backends not yet on v1.38+ unless
+    OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental is set.
+
+    Reference: opentelemetry.io/docs/specs/semconv/gen-ai/
+    Migration: traceloop/openllmetry#3515
+    """
+    opt_in = os.environ.get("OTEL_SEMCONV_STABILITY_OPT_IN", "").lower()
+    span.set_attribute("gen_ai.provider.name", provider_name)
+    if "gen_ai_latest_experimental" not in opt_in:
+        span.set_attribute("gen_ai.system", provider_name)
+
+
+def _make_span_name(operation: str, model: str) -> str:
+    # Span name format: "{operation} {model}" per OTel GenAI semconv
+    # https://opentelemetry.io/docs/specs/semconv/gen-ai/
+    return f"{operation} {model}"
+
 
 _MANIFEST: dict[str, Any] = {
     "name": "aevum-otel-bridge",
@@ -158,6 +182,7 @@ class AevumOTelBridge:
                 # Always-safe: audit reference only
                 span.set_attribute(_ATTR_AUDIT_ID, event.audit_id())
                 span.set_attribute(_ATTR_SEQUENCE, event.sequence)
+                _set_genai_provider(span, "aevum")
 
                 if event.episode_id:
                     span.set_attribute(_ATTR_EPISODE_ID, event.episode_id)
@@ -166,6 +191,8 @@ class AevumOTelBridge:
                     # Opt-in: richer attributes
                     span.set_attribute(_ATTR_EVENT_TYPE, event.event_type)
                     span.set_attribute(_ATTR_ACTOR, event.actor)
+                    if agent_name := getattr(event, "actor", None):
+                        span.set_attribute("gen_ai.agent.name", str(agent_name))
 
                 span.set_status(StatusCode.OK)
         except Exception as exc:  # noqa: BLE001
