@@ -94,7 +94,7 @@ cryptography, minimum-necessary policies, and a Security Risk Analysis.
 
 **Summary:** Aevum maps to the logging, monitoring, and accountability
 functions of NIST AI RMF. It does not address risk identification, bias
-measurement, or adversarial testing. Colorado SB 24-205 and Texas TRAIGA
+measurement, or adversarial testing. Colorado SB 26-189 and Texas TRAIGA
 both reference NIST AI RMF safe harbor — Aevum supports the evidence
 generation portion of that argument but does not by itself constitute
 substantial compliance.
@@ -126,7 +126,7 @@ substantial compliance.
 ### EU AI Act (Regulation 2024/1689)
 
 Applies to high-risk AI systems under Annex III.
-Obligations applicable August 2, 2026 (Annex III).
+Obligations applicable 2 December 2027 (Annex III) per Digital Omnibus.
 
 | Article | Requirement | Coverage | Notes |
 |---|---|---|---|
