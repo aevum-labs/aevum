@@ -87,18 +87,40 @@ def init(
 
 @app.command()
 def verify(
-    session_id: Annotated[str, typer.Argument(help="Session ID to verify")],
+    receipt_or_session: Annotated[
+        str,
+        typer.Argument(
+            help=(
+                "Session ID to verify (queries local DB), "
+                "or path to a receipt JSON file (no DB required)."
+            )
+        ),
+    ],
     state_dir: Annotated[
         Path,
         typer.Option("--state-dir", "-s"),
     ] = _DEFAULT_STATE,
 ) -> None:
     """
-    Verify a session's Merkle root and signatures.
+    Verify a session or receipt file.
 
-    Re-reads the stored session events from SQLite, recomputes the
-    Merkle root, and compares it to the signed root in the sigchain.
+    Session mode:   aevum verify <session_id>
+      Re-reads stored events, recomputes Merkle root. Requires local DB.
+
+    Receipt mode:   aevum verify receipt.json
+      Reads a self-contained receipt file (produced by `aevum receipt`).
+      Verifies hash chain without accessing a local DB.
+
+    Exit 0 = VERIFIED. Exit 1 = TAMPERED or not found.
     """
+    receipt_path = Path(receipt_or_session)
+    if receipt_path.exists() and receipt_path.suffix == ".json":
+        _verify_receipt_file(receipt_path)
+    else:
+        _verify_session(receipt_or_session, state_dir)
+
+
+def _verify_session(session_id: str, state_dir: Path) -> None:
     db_path = state_dir / "aevum.db"
     if not db_path.exists():
         typer.echo(f"Database not found: {db_path}", err=True)
@@ -125,6 +147,134 @@ def verify(
                 f"  First divergence: event #{result.first_divergence}", err=True
             )
             raise typer.Exit(code=1)
+
+    except ValueError as exc:
+        typer.echo(f"Session not found: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+
+def _compute_merkle_from_entries(entries: list[dict[str, Any]]) -> str:
+    """Replicates SessionRecord.compute_merkle_root() over receipt entry dicts."""
+    if not entries:
+        return hashlib.sha256(b"").hexdigest()
+    sorted_entries = sorted(entries, key=lambda e: e["sequence"])
+    leaves = [
+        hashlib.sha256((e["input_hash"] + e["output_hash"]).encode("ascii")).hexdigest()
+        for e in sorted_entries
+    ]
+    current = leaves
+    while len(current) > 1:
+        next_level: list[str] = []
+        for i in range(0, len(current), 2):
+            left = current[i]
+            right = current[i + 1] if i + 1 < len(current) else left
+            next_level.append(hashlib.sha256((left + right).encode("ascii")).hexdigest())
+        current = next_level
+    return current[0]
+
+
+def _verify_receipt_file(receipt_path: Path) -> None:
+    """Verify a receipt JSON file without database access."""
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        typer.echo(f"Cannot read receipt file: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    required = {"session_id", "entry_count", "entries", "exported_at", "merkle_root"}
+    missing = required - set(receipt.keys())
+    if missing:
+        typer.echo(f"Invalid receipt: missing fields {sorted(missing)}", err=True)
+        raise typer.Exit(code=1)
+
+    session_id = receipt["session_id"]
+    entries = receipt["entries"]
+    entry_count = receipt["entry_count"]
+    stored_root = receipt["merkle_root"]
+
+    if len(entries) != entry_count:
+        typer.echo(
+            typer.style(f"Session {session_id[:12]}... TAMPERED", fg=typer.colors.RED),
+            err=True,
+        )
+        typer.echo(
+            f"  Entry count mismatch: expected {entry_count}, found {len(entries)}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        recomputed_root = _compute_merkle_from_entries(entries)
+    except (KeyError, TypeError) as exc:
+        typer.echo(f"Invalid receipt entries: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    if recomputed_root != stored_root:
+        typer.echo(
+            typer.style(f"Session {session_id[:12]}... TAMPERED", fg=typer.colors.RED),
+            err=True,
+        )
+        typer.echo("  Merkle root mismatch:", err=True)
+        typer.echo(f"  Stored:     {stored_root[:16]}...", err=True)
+        typer.echo(f"  Recomputed: {recomputed_root[:16]}...", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(typer.style(f"Session {session_id[:12]}... VERIFIED", fg=typer.colors.GREEN))
+    typer.echo(f"  Merkle root: {recomputed_root[:16]}...")
+    typer.echo(f"  Entries:     {len(entries)}")
+    typer.echo(f"  Exported at: {receipt.get('exported_at', 'unknown')}")
+
+
+@app.command()
+def receipt(
+    session_id: Annotated[str, typer.Argument(help="Session ID to export as a receipt")],
+    state_dir: Annotated[
+        Path,
+        typer.Option("--state-dir", "-s"),
+    ] = _DEFAULT_STATE,
+) -> None:
+    """
+    Export a self-contained JSON receipt for a session.
+
+    Prints JSON to stdout — redirect to save:
+      aevum receipt <session_id> > proof.json
+
+    Verify the receipt offline (no DB required):
+      aevum verify proof.json
+    """
+    import datetime as dt
+
+    db_path = state_dir / "aevum.db"
+    if not db_path.exists():
+        typer.echo(f"Database not found: {db_path}", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        from aevum.core.replay import ReplayEngine
+        engine = ReplayEngine(db_path)
+        record = engine.load_session_record(session_id)
+
+        entries = [
+            {
+                "sequence": ev.sequence,
+                "event_type": ev.event_type.value,
+                "input_hash": ev.input_hash,
+                "output_hash": ev.output_hash,
+                "occurred_at": ev.occurred_at.isoformat(),
+                "latency_ms": ev.latency_ms,
+            }
+            for ev in record.events
+        ]
+
+        receipt_doc = {
+            "session_id": record.session_id,
+            "exported_at": dt.datetime.now(dt.UTC).isoformat(),
+            "entry_count": len(entries),
+            "merkle_root": record.merkle_root,
+            "entries": entries,
+        }
+
+        typer.echo(json.dumps(receipt_doc, indent=2))
 
     except ValueError as exc:
         typer.echo(f"Session not found: {exc}", err=True)
