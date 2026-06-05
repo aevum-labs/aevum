@@ -1,7 +1,7 @@
 // Reference example only. Legal review required before production use.
 // California CCPA/CPRA Automated Decision-Making Technology (ADMT) regulations
 // (effective 1 Jan 2026 for risk assessments)
-// Colorado AI Act SB 24-205 (effective 30 June 2026)
+// Colorado AI Act SB 26-189 (signed May 14, 2026; effective January 1, 2027)
 // Both require: risk management documentation, impact assessments, consumer notice
 
 // Deployers must combine this with Cedar policies governing their specific
@@ -31,5 +31,5 @@ when {
     resource.consumer_admt_opt_out == true
 };
 
-// Both acts: documentation must be retained 5 years
+// Both acts: documentation must be retained (Colorado SB 26-189: 3 years; CCPA/CPRA ADMT: 5 years)
 // Enforced via retention config — not a Cedar policy.
