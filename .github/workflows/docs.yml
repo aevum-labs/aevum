@@ -63,3 +63,42 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4
+
+      - name: Ingest docs.published to production sigchain
+        if: success()
+        continue-on-error: true
+        env:
+          MAINTENANCE_INGEST_TOKEN: ${{ secrets.MAINTENANCE_INGEST_TOKEN }}
+          DEMO_API_URL: https://demo.aevum.build
+        run: |
+          if [ -z "$MAINTENANCE_INGEST_TOKEN" ]; then
+            echo "MAINTENANCE_INGEST_TOKEN not set — skipping ingest"
+            exit 0
+          fi
+
+          RUN_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+
+          curl -sf \
+            -X POST "${DEMO_API_URL}/v1/maintenance/ingest" \
+            -H "Authorization: Bearer ${MAINTENANCE_INGEST_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"session_id\": \"docs-${{ github.run_id }}\",
+              \"entries\": [
+                {
+                  \"action\":    \"docs.published\",
+                  \"resource\":  \"aevum.build\",
+                  \"principal\": \"github_actions\",
+                  \"payload\": {
+                    \"run_id\":  \"${{ github.run_id }}\",
+                    \"commit\":  \"${SHORT_SHA}\",
+                    \"ref\":     \"${{ github.ref_name }}\",
+                    \"summary\": \"Documentation published at commit ${SHORT_SHA}\"
+                  }
+                }
+              ]
+            }" \
+            && echo "✅ docs.published ingested to production sigchain" \
+            || echo "⚠️  Ingest failed (non-blocking)"
