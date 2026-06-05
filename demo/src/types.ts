@@ -34,3 +34,23 @@ export interface ComplianceReport {
   entry_count: number
   entries: SignedEntry[]
 }
+
+export interface ReplayEntry {
+  entry_hash:       string
+  prior_hash:       string | null
+  action:           string
+  principal:        string
+  timestamp:        string
+  session_id:       string
+  payload_hash?:    string
+  payload_summary?: string
+}
+
+export interface ReplayResult {
+  session_id:  string
+  entry_count: number
+  chain_valid: boolean
+  entries:     ReplayEntry[]
+  head_hash:   string | null
+  break_at?:   number
+}

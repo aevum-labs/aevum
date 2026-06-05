@@ -1,4 +1,4 @@
-import type { SignedEntry, SessionsResponse, ComplianceReport } from './types'
+import type { SignedEntry, SessionsResponse, ComplianceReport, ReplayResult } from './types'
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
 
@@ -100,6 +100,12 @@ export async function fetchSessions(): Promise<SessionsResponse> {
 export async function fetchCompliance(session_id: string): Promise<ComplianceReport> {
   const res = await fetch(`${API_BASE}/v1/compliance/${encodeURIComponent(session_id)}`)
   if (!res.ok) throw new Error(`compliance failed: ${res.status}`)
+  return res.json()
+}
+
+export async function fetchReplay(sessionId: string): Promise<ReplayResult> {
+  const res = await fetch(`${API_BASE}/v1/replay/${encodeURIComponent(sessionId)}?principal=research_agent`)
+  if (!res.ok) throw new Error(`replay failed: ${res.status}`)
   return res.json()
 }
 

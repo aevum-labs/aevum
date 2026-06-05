@@ -161,3 +161,42 @@ def test_ingest_does_not_affect_sandbox(
         assert aid not in sandbox_ids, (
             f"Production audit_id {aid!r} appeared in isolated sandbox engine (A7 violation)"
         )
+
+
+# ── GET /v1/replay/{session_id} ──────────────────────────────
+
+
+def test_replay_returns_session_entries(ingest_client: TestClient) -> None:
+    _ingest(
+        ingest_client,
+        [_entry("maintenance.scan"), _entry("maintenance.audit")],
+        session_id="maint-replay-test",
+    )
+    res = ingest_client.get("/v1/replay/maint-replay-test")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["session_id"] == "maint-replay-test"
+    assert data["entry_count"] == 2
+    assert isinstance(data["chain_valid"], bool)
+    assert isinstance(data["entries"], list)
+    assert len(data["entries"]) == 2
+    assert "head_hash" in data
+
+
+def test_replay_entry_fields(ingest_client: TestClient) -> None:
+    _ingest(ingest_client, [_entry("maintenance.scan")], session_id="maint-fields-test")
+    data = ingest_client.get("/v1/replay/maint-fields-test").json()
+    entry = data["entries"][0]
+    assert "entry_hash" in entry
+    assert "prior_hash" in entry
+    assert "action" in entry
+    assert "principal" in entry
+    assert "timestamp" in entry
+    assert "session_id" in entry
+    assert entry["action"] == "maintenance.scan"
+    assert entry["session_id"] == "maint-fields-test"
+
+
+def test_replay_unknown_session_returns_404(ingest_client: TestClient) -> None:
+    res = ingest_client.get("/v1/replay/no-such-session-xyz")
+    assert res.status_code == 404

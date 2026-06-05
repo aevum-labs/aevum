@@ -270,6 +270,63 @@ def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
             "entries": scrubbed,
         }
 
+    @router.get("/v1/replay/{session_id}", tags=["public"])
+    @limiter.limit("20/minute")
+    async def session_replay(
+        session_id: str,
+        request: Request,
+        engine: Annotated[Engine, Depends(get_engine)],
+    ) -> dict[str, Any]:
+        """Server-verified chain reconstruction for a session (audit-grade proof)."""
+        entries = engine.get_ledger_entries()
+        session_entries = [e for e in entries if e.get("episode_id", "") == session_id]
+        if not session_entries:
+            raise HTTPException(
+                status_code=404, detail=f"Session {session_id!r} not found"
+            )
+
+        raw = [_event_to_signed(e) for e in session_entries]
+
+        # Server-side chain verification: entry[i+1].prior_hash must equal entry[i].entry_hash
+        chain_valid = True
+        break_at: int | None = None
+        for i in range(1, len(raw)):
+            if raw[i]["prior_hash"] != raw[i - 1]["entry_hash"]:
+                chain_valid = False
+                break_at = i
+                break
+
+        scrubbed = []
+        for e in raw:
+            payload = e.get("payload") or {}
+            payload_bytes = json.dumps(
+                payload, sort_keys=True, ensure_ascii=False
+            ).encode()
+            entry: dict[str, Any] = {
+                "entry_hash": e["entry_hash"],
+                "prior_hash": e["prior_hash"],
+                "action": e["action"],
+                "principal": e["principal"],
+                "timestamp": e["timestamp"],
+                "session_id": e["session_id"],
+                "payload_hash": hashlib.sha3_256(payload_bytes).hexdigest(),
+                "payload_summary": payload.get("summary", "") if isinstance(payload, dict) else "",
+            }
+            scrubbed.append(entry)
+
+        head_hash = f"sha3-256:{raw[-1]['entry_hash']}" if raw else None
+
+        result: dict[str, Any] = {
+            "session_id": session_id,
+            "entry_count": len(scrubbed),
+            "chain_valid": chain_valid,
+            "entries": scrubbed,
+            "head_hash": head_hash,
+        }
+        if break_at is not None:
+            result["break_at"] = break_at
+        return result
+
     return router
 
 
