@@ -33,8 +33,6 @@ export default function ComplianceReport({ preselectedSession }: Props) {
   const [sessionsLoading, setSessionsLoading] = useState(true)
   const [error, setError]                     = useState<string | null>(null)
   const [replayResult, setReplayResult]       = useState<ReplayResult | null>(null)
-  const [replayLoading, setReplayLoading]     = useState(false)
-  const [replayError, setReplayError]         = useState<string | null>(null)
 
   useEffect(() => {
     fetchSessions()
@@ -64,25 +62,20 @@ export default function ComplianceReport({ preselectedSession }: Props) {
   async function handleGenerate() {
     if (!sessionId) return
     setReplayResult(null)
-    setReplayError(null)
     setLoading(true); setError(null); setReport(null)
-    try { setReport(await fetchCompliance(sessionId)) }
-    catch (e) {
+    try {
+      setReport(await fetchCompliance(sessionId))
+    } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+      setLoading(false)
+      return
     }
-    finally { setLoading(false) }
-  }
-
-  async function handleReplay() {
-    if (!sessionId) return
-    setReplayLoading(true)
-    setReplayError(null)
+    setLoading(false)
+    // Auto-trigger server-verified replay — non-blocking
     try {
       setReplayResult(await fetchReplay(sessionId))
-    } catch (e) {
-      setReplayError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setReplayLoading(false)
+    } catch {
+      setReplayResult(null)
     }
   }
 
@@ -146,20 +139,10 @@ export default function ComplianceReport({ preselectedSession }: Props) {
             >
               {loading ? 'Generating…' : 'Generate Report'}
             </button>
-            <button
-              onClick={() => void handleReplay()}
-              disabled={replayLoading || !sessionId || sessionsLoading}
-              className="secondary"
-            >
-              {replayLoading ? 'Replaying…' : 'Replay →'}
-            </button>
           </div>
         </div>
         {error && (
           <p className="error-msg" style={{ marginTop: '0.5rem' }}>{error}</p>
-        )}
-        {replayError && (
-          <p className="error-msg" style={{ marginTop: '0.5rem' }}>{replayError}</p>
         )}
       </div>
 
@@ -222,102 +205,6 @@ export default function ComplianceReport({ preselectedSession }: Props) {
             </div>
           )}
 
-          {report.entries.length > 0 && (() => {
-            // Compliance entries use audit_id; sigchain entries use
-            // entry_hash. Try both so the chain verification works
-            // regardless of which endpoint populated the entries.
-            const getEntryId = (e: SignedEntry & { audit_id?: string }): string =>
-              (e.entry_hash || e.audit_id || '')
-
-            const links: boolean[] = report.entries.slice(1).map((e, i) =>
-              e.prior_hash === getEntryId(report.entries[i])
-            )
-            const allValid = links.every(Boolean)
-            const breakAt  = links.indexOf(false)
-
-            return (
-              <div className="card">
-                <p style={{ fontWeight: 600, marginBottom: '1rem' }}>
-                  Chain Verification
-                </p>
-
-                {report.entries.map((entry, i) => (
-                  <div key={entry.entry_hash}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '0.75rem',
-                      padding: '0.6rem 0',
-                    }}>
-                      <span style={{
-                        flexShrink: 0,
-                        width: '1.5rem',
-                        height: '1.5rem',
-                        borderRadius: '50%',
-                        background: 'var(--accent-dim, rgba(167,139,250,0.15))',
-                        color: 'var(--accent)',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        {i + 1}
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                          {entry.event_type}
-                        </div>
-                        <div className="muted" style={{ fontSize: '0.78rem' }}>
-                          {entry.principal}
-                        </div>
-                        <div className="mono muted"
-                             style={{ fontSize: '0.72rem', wordBreak: 'break-all',
-                                      marginTop: '0.15rem' }}>
-                          {getEntryId(entry).slice(0, 20)}…
-                        </div>
-                      </div>
-                    </div>
-
-                    {i < report.entries.length - 1 && (
-                      <div style={{
-                        borderLeft: `2px solid ${links[i]
-                          ? 'var(--accent)'
-                          : 'var(--danger, #f85149)'}`,
-                        padding: '0.25rem 0 0.25rem 0.75rem',
-                        marginLeft: '0.69rem',
-                      }}>
-                        <span style={{
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          color: links[i]
-                            ? 'var(--accent)'
-                            : 'var(--danger, #f85149)',
-                        }}>
-                          {links[i] ? '↓ prior hash verified ✓' : '↓ hash mismatch ✗'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                <div style={{
-                  marginTop: '0.75rem',
-                  paddingTop: '0.75rem',
-                  borderTop: '1px solid var(--border)',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: allValid
-                    ? 'var(--accent)'
-                    : 'var(--danger, #f85149)',
-                }}>
-                  {allValid
-                    ? `✓ Chain intact — ${report.entries.length} of ${report.entries.length} links verified`
-                    : `✗ Chain broken at entry ${breakAt + 2}`}
-                </div>
-              </div>
-            )
-          })()}
         </>
       )}
 
@@ -353,8 +240,9 @@ export default function ComplianceReport({ preselectedSession }: Props) {
             </div>
 
             <p className="muted" style={{ fontSize: '0.82rem', marginBottom: '1rem' }}>
-              Cryptographic reconstruction of every action in this session.
-              Verified by the server against the stored sigchain — not computed in the browser.
+              Cryptographic reconstruction of every action in this session,
+              generated automatically when the report is created. Verified
+              by the server against the stored sigchain.
             </p>
 
             {entries.length === 0 ? (
@@ -397,6 +285,17 @@ export default function ComplianceReport({ preselectedSession }: Props) {
                           <div className="muted" style={{ fontSize: '0.78rem' }}>
                             {entry.principal}
                           </div>
+                          {(entry.payload_summary || '').trim() !== '' && (
+                            <div style={{
+                              fontSize: '0.75rem',
+                              color: 'var(--text-muted, #8b949e)',
+                              fontStyle: 'italic',
+                              marginTop: '0.1rem',
+                              lineHeight: 1.3,
+                            }}>
+                              {entry.payload_summary}
+                            </div>
+                          )}
                           <div className="mono muted"
                                style={{ fontSize: '0.72rem', wordBreak: 'break-all',
                                         marginTop: '0.15rem' }}>

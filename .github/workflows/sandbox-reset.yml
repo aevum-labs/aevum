@@ -1,0 +1,24 @@
+name: Sandbox Reset
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # midnight UTC
+  workflow_dispatch:
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /sandbox/reset
+        run: |
+          RESET_PATH="/sandbox/reset"
+          API_URL="${DEMO_API_URL:-https://demo.aevum.build}"
+          echo "Resetting sandbox at ${API_URL}${RESET_PATH}"
+          curl -sf -X POST "${API_URL}${RESET_PATH}" \
+            -H "Content-Type: application/json" \
+            -H "X-Demo-Actor: workflow-reset" \
+            --retry 3 --retry-delay 5 \
+            && echo "Reset OK" \
+            || echo "Reset failed"
+        env:
+          DEMO_API_URL: ${{ vars.DEMO_API_URL }}
