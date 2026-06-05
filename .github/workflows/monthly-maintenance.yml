@@ -238,6 +238,29 @@ jobs:
               \"session_id\": \"${SESSION_ID}\",
               \"entries\": [
                 {
+                  \"action\": \"security.audit\",
+                  \"resource\": \"aevum-labs/aevum\",
+                  \"principal\": \"github_actions\",
+                  \"payload\": {
+                    \"run_id\":   \"${{ github.run_id }}\",
+                    \"run_date\": \"${RUN_DATE}\",
+                    \"cve_count\": ${CVE_COUNT},
+                    \"scanner\":  \"pip-audit\",
+                    \"status\":   \"${STATUS}\",
+                    \"summary\":  \"${CVE_COUNT} CVEs found via pip-audit · ${STATUS}\"
+                  }
+                },
+                {
+                  \"action\": \"dependency.freshness\",
+                  \"resource\": \"aevum-labs/aevum\",
+                  \"principal\": \"github_actions\",
+                  \"payload\": {
+                    \"run_id\":      \"${{ github.run_id }}\",
+                    \"dep_updates\": ${DEP_COUNT},
+                    \"summary\":     \"${DEP_COUNT} dependency updates available\"
+                  }
+                },
+                {
                   \"action\": \"maintenance.scan\",
                   \"resource\": \"aevum-labs/aevum\",
                   \"principal\": \"github_actions\",
@@ -251,5 +274,5 @@ jobs:
                 }
               ]
             }" \
-            && echo "Ingest: 2 entries written to production sigchain" \
+            && echo "Ingest: 4 entries written to production sigchain" \
             || echo "Ingest failed — sigchain not updated (non-blocking)"

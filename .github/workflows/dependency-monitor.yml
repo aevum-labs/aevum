@@ -22,3 +22,53 @@ jobs:
         run: python3 scripts/dependency_monitor.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ingest dependency scan to production sigchain
+        if: always()
+        continue-on-error: true
+        env:
+          MAINTENANCE_INGEST_TOKEN: ${{ secrets.MAINTENANCE_INGEST_TOKEN }}
+          DEMO_API_URL: https://demo.aevum.build
+        run: |
+          if [ -z "$MAINTENANCE_INGEST_TOKEN" ]; then
+            echo "MAINTENANCE_INGEST_TOKEN not set — skipping ingest"
+            exit 0
+          fi
+
+          RUN_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          BUMP_COUNT=$(cat /tmp/major_bumps.txt 2>/dev/null \
+            | wc -l | tr -d ' ') 2>/dev/null || BUMP_COUNT=0
+
+          if [ "$BUMP_COUNT" -gt 0 ]; then
+            SUMMARY="${BUMP_COUNT} major version bump(s) detected"
+            STATUS="findings"
+          else
+            SUMMARY="All dependencies within expected version ranges"
+            STATUS="clean"
+          fi
+
+          curl -sf \
+            -X POST "${DEMO_API_URL}/v1/maintenance/ingest" \
+            -H "Authorization: Bearer ${MAINTENANCE_INGEST_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"session_id\": \"dep-monitor-${{ github.run_id }}\",
+              \"entries\": [
+                {
+                  \"action\":    \"dependency.scan\",
+                  \"resource\":  \"aevum-labs/aevum\",
+                  \"principal\": \"github_actions\",
+                  \"payload\": {
+                    \"run_id\":     \"${{ github.run_id }}\",
+                    \"run_date\":   \"${RUN_DATE}\",
+                    \"bump_count\": ${BUMP_COUNT},
+                    \"status\":     \"${STATUS}\",
+                    \"trigger\":    \"${{ github.event_name }}\",
+                    \"summary\":    \"${SUMMARY}\"
+                  }
+                }
+              ]
+            }" \
+            && echo "✅ dependency.scan ingested to production sigchain" \
+            || echo "⚠️  Ingest failed (non-blocking)"

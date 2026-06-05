@@ -1,0 +1,113 @@
+name: Replay Verify
+
+# Weekly sigchain integrity check. Verifies that the episodic ledger's
+# cryptographic chain holds and that all recorded events replay correctly.
+# Opens a crisis issue if verification fails; ingests replay.verified on success.
+
+on:
+  schedule:
+    - cron: '0 6 * * 6'  # Weekly, Saturday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify:
+    name: Weekly replay chain integrity check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081  # v5
+        with:
+          version: "latest"
+
+      - name: Install workspace
+        run: uv sync --frozen --all-packages --dev --quiet
+
+      - name: Run replay verification
+        id: verify
+        run: |
+          echo "## Replay Verification — $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_STEP_SUMMARY
+
+          uv run pytest \
+            packages/aevum-core/tests/test_sigchain.py \
+            packages/aevum-core/tests/test_phase4_replay.py \
+            -v --tb=short 2>&1 | tee /tmp/replay_verify.txt
+
+          RESULT=${PIPESTATUS[0]}
+          if [ "$RESULT" -eq 0 ]; then
+            echo "chain_valid=true" >> "$GITHUB_OUTPUT"
+            echo "OK: All replay verification checks PASSED" | tee -a $GITHUB_STEP_SUMMARY
+          else
+            echo "chain_valid=false" >> "$GITHUB_OUTPUT"
+            echo "FAILED: Replay verification detected chain integrity issues" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Open crisis issue on failure
+        if: failure()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[CRISIS] Replay verification failed — run ${context.runId}`,
+              body: [
+                '## Replay Verification Failure',
+                '',
+                `**Run ID:** ${context.runId}`,
+                `**Triggered by:** ${context.eventName}`,
+                `**Date:** ${new Date().toISOString()}`,
+                '',
+                'Weekly replay chain integrity verification failed.',
+                'Check the [workflow run](' + context.serverUrl + '/' +
+                  context.repo.owner + '/' + context.repo.repo +
+                  '/actions/runs/' + context.runId + ') for details.',
+                '',
+                '**Action required:** Investigate sigchain integrity before proceeding.',
+              ].join('\n'),
+              labels: ['crisis', 'sigchain'],
+            });
+
+      - name: Ingest replay.verified to production sigchain
+        if: success()
+        continue-on-error: true
+        env:
+          MAINTENANCE_INGEST_TOKEN: ${{ secrets.MAINTENANCE_INGEST_TOKEN }}
+          DEMO_API_URL: https://demo.aevum.build
+        run: |
+          if [ -z "$MAINTENANCE_INGEST_TOKEN" ]; then
+            echo "MAINTENANCE_INGEST_TOKEN not set — skipping ingest"
+            exit 0
+          fi
+
+          RUN_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          curl -sf \
+            -X POST "${DEMO_API_URL}/v1/maintenance/ingest" \
+            -H "Authorization: Bearer ${MAINTENANCE_INGEST_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"session_id\": \"replay-verify-${{ github.run_id }}\",
+              \"entries\": [
+                {
+                  \"action\":    \"replay.verified\",
+                  \"resource\":  \"aevum-labs/aevum\",
+                  \"principal\": \"github_actions\",
+                  \"payload\": {
+                    \"run_id\":    \"${{ github.run_id }}\",
+                    \"run_date\":  \"${RUN_DATE}\",
+                    \"trigger\":   \"${{ github.event_name }}\",
+                    \"summary\":   \"Weekly replay verification passed — chain integrity confirmed\"
+                  }
+                }
+              ]
+            }" \
+            && echo "✅ replay.verified ingested to production sigchain" \
+            || echo "⚠️  Ingest failed (non-blocking)"
