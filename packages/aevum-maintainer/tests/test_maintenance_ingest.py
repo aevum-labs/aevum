@@ -326,51 +326,27 @@ def test_sigchain_recent_includes_session_start(
     )
 
 
-def test_sigchain_recent_newest_first(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: pytest.TempPath,
+def test_sigchain_recent_chain_order_descending(
+    ingest_client: TestClient,
 ) -> None:
-    """Entries must be ordered newest timestamp first (descending).
+    """Entries must be ordered by chain sequence descending (most recently committed first).
 
-    Uses the restart simulation so we can inject known _occurred_at values
-    that are clearly different from the session.start valid_from timestamp.
+    Ingests scan then audit; feed must return audit first (higher sequence),
+    scan second, session.start last (sequence 1, committed at startup).
     """
-    from aevum_maintainer.server import _MaintenanceStore
-
-    db_file = str(tmp_path / "test_order.db")
-    store = _MaintenanceStore(db_file)
-    store.add(
-        session_id="order-test",
-        action="maintenance.scan",
-        principal="ci",
-        payload={"_occurred_at": "2020-01-01T00:00:00+00:00"},
+    _ingest(ingest_client, [_entry("maintenance.scan")], session_id="order-a")
+    _ingest(ingest_client, [_entry("maintenance.audit")], session_id="order-b")
+    data = ingest_client.get("/v1/sigchain/recent").json()
+    event_types = [e.get("event_type", "") for e in data.get("entries", [])]
+    audit_idx = event_types.index("maintenance.audit") if "maintenance.audit" in event_types else -1
+    scan_idx = event_types.index("maintenance.scan") if "maintenance.scan" in event_types else -1
+    start_idx = event_types.index("session.start") if "session.start" in event_types else -1
+    assert audit_idx != -1 and scan_idx != -1 and start_idx != -1, (
+        f"Expected all three event types; got {event_types}"
     )
-    store.add(
-        session_id="order-test",
-        action="maintenance.audit",
-        principal="ci",
-        payload={"_occurred_at": "2021-06-01T00:00:00+00:00"},
-    )
-
-    from aevum.core.engine import Engine
-    engine = Engine()
-    for entry in store.all():
-        engine.commit(
-            event_type=entry["action"],
-            payload=entry["payload"],
-            actor=entry["principal"],
-            episode_id=entry["session_id"],
-        )
-
-    monkeypatch.setenv("MAINTENANCE_INGEST_TOKEN", _TEST_TOKEN)
-    app = create_app(engine=engine)
-    client = TestClient(app)
-    data = client.get("/v1/sigchain/recent").json()
-    entries = data.get("entries", [])
-    timestamps = [e.get("timestamp", "") for e in entries if e.get("timestamp")]
-    assert len(timestamps) >= 2, f"Expected at least 2 entries, got {len(timestamps)}"
-    assert timestamps == sorted(timestamps, reverse=True), (
-        f"Entries must be newest-first; got timestamps: {timestamps}"
+    assert audit_idx < scan_idx < start_idx, (
+        f"Expected audit({audit_idx}) < scan({scan_idx}) < session.start({start_idx}); "
+        f"chain order must be descending (most recently committed first)"
     )
 
 

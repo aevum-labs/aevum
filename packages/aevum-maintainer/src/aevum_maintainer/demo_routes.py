@@ -173,8 +173,7 @@ def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
         entries = engine.get_ledger_entries()
         total = len(entries)
         recent_slice = entries[-n:] if total > n else entries
-        scrubbed = [_scrub_entry(_event_to_signed(e)) for e in recent_slice]
-        scrubbed.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
+        scrubbed = [_scrub_entry(_event_to_signed(e)) for e in reversed(recent_slice)]
         return {
             "count": total,
             "entries": scrubbed,
