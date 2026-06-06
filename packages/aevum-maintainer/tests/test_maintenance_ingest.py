@@ -264,3 +264,51 @@ def test_replayed_entries_preserve_original_timestamps(
         f"Expected original timestamp {original_ts!r}, got {ts!r} — "
         "replay is overwriting with current time"
     )
+
+
+# ── Sigchain timestamp consistency (S-12) ────────────────────────────────────
+
+
+def test_scrub_entry_uses_valid_from_not_occurred_at(
+    ingest_client: TestClient,
+) -> None:
+    """valid_from must be the display timestamp, not _occurred_at."""
+    _ingest(ingest_client, [{
+        "action": "maintenance.scan",
+        "resource": "test",
+        "principal": "ci",
+        "payload": {
+            "_occurred_at": "2020-01-01T00:00:00+00:00",
+            "summary": "test",
+        },
+    }])
+    data = ingest_client.get("/v1/sigchain/recent").json()
+    entries = data.get("entries", [])
+    assert entries, "Expected at least one entry"
+    assert entries[0].get("timestamp") != "2020-01-01T00:00:00+00:00", \
+        "Displayed timestamp must be valid_from, not _occurred_at"
+    ts = entries[0].get("timestamp", "")
+    assert "2026" in ts or "2025" in ts, \
+        f"Expected recent timestamp, got: {ts}"
+
+
+def test_session_start_filtered_from_sigchain_recent(
+    ingest_client: TestClient,
+) -> None:
+    """session.start entries must not appear in the public sigchain feed."""
+    data = ingest_client.get("/v1/sigchain/recent").json()
+    event_types = [
+        e.get("event_type", e.get("action", ""))
+        for e in data.get("entries", [])
+    ]
+    assert "session.start" not in event_types, \
+        "session.start is a system event and must be filtered from the public feed"
+
+
+def test_count_includes_system_events(ingest_client: TestClient) -> None:
+    """count field reflects total ledger size including filtered entries."""
+    data = ingest_client.get("/v1/sigchain/recent").json()
+    visible = len(data.get("entries", []))
+    total = data.get("count", 0)
+    assert total >= visible, \
+        "count must be >= len(entries) since system events are counted but filtered"
