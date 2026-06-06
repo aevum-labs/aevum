@@ -52,8 +52,8 @@ def test_server_with_engine_from_guide() -> None:
 def test_consent_grant_snippet_from_guide() -> None:
     """The consent grant snippet from the guide is importable and runnable."""
     pytest.importorskip("aevum.mcp")
-    from aevum.core.engine import Engine
     from aevum.core.consent.models import ConsentGrant
+    from aevum.core.engine import Engine
     from aevum.mcp import create_server
 
     engine = Engine()

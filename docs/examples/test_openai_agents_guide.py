@@ -25,8 +25,8 @@ def test_openai_agents_sdk_importable() -> None:
 
 def test_hooks_with_engine() -> None:
     """AevumAgentHooks accepts an Engine as kernel."""
-    from aevum.core.engine import Engine
     from aevum.core.adapters.openai_agents import AevumAgentHooks
+    from aevum.core.engine import Engine
 
     engine = Engine()
     hooks = AevumAgentHooks(kernel=engine)
@@ -54,8 +54,8 @@ def test_on_tool_start_cedar_permit() -> None:
 def test_full_example_from_guide() -> None:
     """The 'Full example' code block from the guide runs without error."""
     pytest.importorskip("cedarpy")
-    from aevum.core.engine import Engine
     from aevum.core.adapters.openai_agents import AevumAgentHooks
+    from aevum.core.engine import Engine
 
     engine = Engine()
     hooks = AevumAgentHooks(kernel=engine)
@@ -76,8 +76,8 @@ def test_full_example_from_guide() -> None:
 
 def test_engine_ledger_accessible() -> None:
     """Engine remains accessible for sigchain inspection after hooks init."""
-    from aevum.core.engine import Engine
     from aevum.core.adapters.openai_agents import AevumAgentHooks
+    from aevum.core.engine import Engine
 
     engine = Engine()
     hooks = AevumAgentHooks(kernel=engine)
