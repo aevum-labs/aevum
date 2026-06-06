@@ -143,6 +143,42 @@ class ReceiptEncoder:
         return cbor2.dumps(cose_sign1)
 
     @classmethod
+    def decode_and_verify(
+        cls,
+        cose_bytes: bytes,
+        verify_key: Any,  # nacl.signing.VerifyKey
+    ) -> AevumReceipt:
+        """
+        Decode and verify a COSE_Sign1 receipt produced by encode().
+
+        Returns AevumReceipt if the Ed25519 signature is valid.
+        Raises ValueError on structural errors.
+        Raises nacl.exceptions.BadSignatureError on invalid signature.
+        """
+        import hashlib
+
+        try:
+            cose = cbor2.loads(cose_bytes)
+        except Exception as exc:
+            raise ValueError(f"Cannot decode CBOR: {exc}") from exc
+
+        if not isinstance(cose, list) or len(cose) != 4:
+            raise ValueError(
+                f"Expected COSE_Sign1 4-element array, got: {type(cose).__name__}"
+            )
+
+        protected_bstr, _unprotected, payload_bstr, signature_bytes = cose
+
+        sig_structure = _build_sig_structure(protected_bstr, payload_bstr)
+        digest = hashlib.sha3_256(sig_structure).digest()
+
+        # nacl raises BadSignatureError on invalid signature
+        verify_key.verify(digest, bytes(signature_bytes))
+
+        receipt_data = cbor2.loads(payload_bstr)
+        return AevumReceipt.model_validate(receipt_data)
+
+    @classmethod
     def from_env(cls) -> ReceiptEncoder:
         """
         Construct from environment variables.
