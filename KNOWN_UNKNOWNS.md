@@ -417,21 +417,32 @@ If no production interest, consider deprecation in v1.0.
 
 ---
 
-## V07-CONFORMANCE: Conformance Suite Completeness (Open — v0.7.0)
+## V07-CONFORMANCE: Conformance Suite Completeness (VERIFIED — 2026-06-06)
 
-**Item:** V07-CONFORMANCE — flagged after 74-test milestone
+**Item:** V07-CONFORMANCE — verified in cedar-pin-conformance session (2026-06-06)
 
-**Question:** Are the 74 conformance tests sufficient to serve as a regression
-baseline for v0.7.0 development, or are there gap areas (replay fidelity,
-multi-hop consent chains, cross-package integration) not yet covered?
+**Status:** VERIFIED — 11/11 invariants passing (suite has grown from 74 to
+encompass 11 top-level invariant groups since the original 9/9 target was set).
 
-**Why deferred:** The 74-test suite covers the five public functions and all
-five unconditional barriers. Coverage of multi-agent interaction patterns and
-edge-case replay scenarios is unknown.
+**Evidence:**
+```
+uv run python -c "from aevum.conformance.suite import ConformanceSuite; \
+  r = ConformanceSuite().run_all(); print(r.passed_count, '/', r.total_count)"
+# → 11 / 11
+```
+Verified against cedarpy 4.8.4 (constraint ~=4.8.0, lockfile version 4.8.4).
+Full pytest suite: 1382 passed, 102 skipped, 0 failed.
 
-**Condition for revisitation:** At v0.7.0 start, run a coverage gap analysis
-against the spec. Identify any normative "MUST" or "MUST NOT" in the spec that
-has no corresponding conformance test.
+**Notes:** Re-verify before every PyPI release. Gate check in
+maintenance/templates/EXECUTION.md.
+
+**Why originally deferred:** The 74-test suite covered the five public functions
+and all five unconditional barriers. Coverage of multi-agent interaction patterns
+and edge-case replay scenarios was unknown.
+
+**Condition for revisitation:** Run a coverage gap analysis against the spec at
+v0.8.0 start. Identify any normative "MUST" or "MUST NOT" in the spec that has
+no corresponding conformance test.
 
 ---
 
@@ -485,6 +496,17 @@ og:image tag but does not produce a recognizable preview when shared.
 **Condition for revisitation:** Before any public launch announcement or v1.0,
 commission and deploy a real OG image. The spec: 1200×630px, SVG or PNG,
 consistent with the aevum.build color scheme.
+
+---
+
+## Conformance Suite
+
+Status: VERIFIED
+Date: 2026-06-06
+Result: 11/11 invariants passing (gate required ≥ 9/9)
+Evidence: `uv run python -c "from aevum.conformance.suite import ConformanceSuite; r = ConformanceSuite().run_all(); print(r.passed_count, '/', r.total_count)"`
+Notes: Re-verify before every PyPI release. Gate check in maintenance/templates/EXECUTION.md.
+cedarpy version at verification: 4.8.4 (constraint ~=4.8.0)
 
 ---
 

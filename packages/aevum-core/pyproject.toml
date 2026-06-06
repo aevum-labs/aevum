@@ -31,7 +31,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cedar = ["cedarpy>=4.8.1"]
+cedar = ["cedarpy~=4.8.0"]
 default = ["aevum-store-oxigraph"]
 server = [
     "aevum-server>=0.7.0",
