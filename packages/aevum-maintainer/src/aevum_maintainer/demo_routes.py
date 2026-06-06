@@ -90,7 +90,7 @@ def _scrub_entry(raw: dict[str, Any]) -> dict[str, Any]:
     return PublicSigchainEntry(
         entry_hash=raw["entry_hash"],
         prior_hash=raw.get("prior_hash", "genesis"),
-        timestamp=raw.get("timestamp", ""),
+        timestamp=payload.get("_occurred_at") or raw.get("timestamp", ""),
         event_type=raw["action"],
         principal=raw["principal"],
         episode_id=raw.get("session_id", ""),
@@ -151,12 +151,6 @@ def _event_to_signed(d: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-_SYSTEM_EVENT_TYPES: frozenset[str] = frozenset({
-    "session.start",
-    "session.end",
-})
-
-
 def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
     """Return a configured APIRouter.  Called once inside create_app()."""
     # Purge any stale rate-limit rules from previous factory invocations.
@@ -179,15 +173,10 @@ def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
         entries = engine.get_ledger_entries()
         total = len(entries)
         recent_slice = entries[-n:] if total > n else entries
-        recent = list(reversed(recent_slice))
-        scrubbed = [_scrub_entry(_event_to_signed(e)) for e in recent]
-        public_entries = [
-            e for e in scrubbed
-            if e.get("event_type") not in _SYSTEM_EVENT_TYPES
-        ]
+        scrubbed = [_scrub_entry(_event_to_signed(e)) for e in reversed(recent_slice)]
         return {
             "count": total,
-            "entries": public_entries,
+            "entries": scrubbed,
         }
 
     @router.get("/v1/sigchain/head", tags=["public"])
