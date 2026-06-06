@@ -269,46 +269,116 @@ def test_replayed_entries_preserve_original_timestamps(
 # ── Sigchain timestamp consistency (S-12) ────────────────────────────────────
 
 
-def test_scrub_entry_uses_valid_from_not_occurred_at(
-    ingest_client: TestClient,
+def test_scrub_entry_uses_occurred_at_after_restart(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pytest.TempPath,
 ) -> None:
-    """valid_from must be the display timestamp, not _occurred_at."""
-    _ingest(ingest_client, [{
-        "action": "maintenance.scan",
-        "resource": "test",
-        "principal": "ci",
-        "payload": {
-            "_occurred_at": "2020-01-01T00:00:00+00:00",
-            "summary": "test",
-        },
-    }])
-    data = ingest_client.get("/v1/sigchain/recent").json()
+    """After server restart, display timestamp is _occurred_at (original ingest time).
+
+    Simulates the restart scenario: entries stored in SQLite with an old _occurred_at
+    are replayed into a fresh engine. The public sigchain feed must show _occurred_at,
+    not the replay-time valid_from (which would make all timestamps identical).
+    """
+    from aevum_maintainer.server import _MaintenanceStore
+
+    db_file = str(tmp_path / "test_ts.db")
+    store = _MaintenanceStore(db_file)
+    original_ts = "2020-01-01T00:00:00+00:00"
+    store.add(
+        session_id="ts-restart-test",
+        action="maintenance.scan",
+        principal="ci",
+        payload={"_occurred_at": original_ts, "summary": "test"},
+    )
+
+    from aevum.core.engine import Engine
+    engine = Engine()
+    for entry in store.all():
+        engine.commit(
+            event_type=entry["action"],
+            payload=entry["payload"],
+            actor=entry["principal"],
+            episode_id=entry["session_id"],
+        )
+
+    monkeypatch.setenv("MAINTENANCE_INGEST_TOKEN", _TEST_TOKEN)
+    app = create_app(engine=engine)
+    client = TestClient(app)
+    data = client.get("/v1/sigchain/recent").json()
     entries = data.get("entries", [])
-    assert entries, "Expected at least one entry"
-    assert entries[0].get("timestamp") != "2020-01-01T00:00:00+00:00", \
-        "Displayed timestamp must be valid_from, not _occurred_at"
-    ts = entries[0].get("timestamp", "")
-    assert "2026" in ts or "2025" in ts, \
-        f"Expected recent timestamp, got: {ts}"
+    scan_entries = [e for e in entries if e.get("event_type") == "maintenance.scan"]
+    assert scan_entries, "Expected maintenance.scan entry in sigchain/recent"
+    assert scan_entries[0].get("timestamp") == original_ts, (
+        f"Display timestamp must be _occurred_at ({original_ts!r}), "
+        f"got {scan_entries[0].get('timestamp')!r} — "
+        "valid_from would make all restarted entries show identical timestamps"
+    )
 
 
-def test_session_start_filtered_from_sigchain_recent(
+def test_sigchain_recent_includes_session_start(
     ingest_client: TestClient,
 ) -> None:
-    """session.start entries must not appear in the public sigchain feed."""
+    """session.start must appear in the public sigchain feed."""
     data = ingest_client.get("/v1/sigchain/recent").json()
-    event_types = [
-        e.get("event_type", e.get("action", ""))
-        for e in data.get("entries", [])
-    ]
-    assert "session.start" not in event_types, \
-        "session.start is a system event and must be filtered from the public feed"
+    event_types = [e.get("event_type", "") for e in data.get("entries", [])]
+    assert "session.start" in event_types, (
+        "session.start must be visible in the public feed"
+    )
 
 
-def test_count_includes_system_events(ingest_client: TestClient) -> None:
-    """count field reflects total ledger size including filtered entries."""
+def test_sigchain_recent_newest_first(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pytest.TempPath,
+) -> None:
+    """Entries must be ordered newest timestamp first (descending).
+
+    Uses the restart simulation so we can inject known _occurred_at values
+    that are clearly different from the session.start valid_from timestamp.
+    """
+    from aevum_maintainer.server import _MaintenanceStore
+
+    db_file = str(tmp_path / "test_order.db")
+    store = _MaintenanceStore(db_file)
+    store.add(
+        session_id="order-test",
+        action="maintenance.scan",
+        principal="ci",
+        payload={"_occurred_at": "2020-01-01T00:00:00+00:00"},
+    )
+    store.add(
+        session_id="order-test",
+        action="maintenance.audit",
+        principal="ci",
+        payload={"_occurred_at": "2021-06-01T00:00:00+00:00"},
+    )
+
+    from aevum.core.engine import Engine
+    engine = Engine()
+    for entry in store.all():
+        engine.commit(
+            event_type=entry["action"],
+            payload=entry["payload"],
+            actor=entry["principal"],
+            episode_id=entry["session_id"],
+        )
+
+    monkeypatch.setenv("MAINTENANCE_INGEST_TOKEN", _TEST_TOKEN)
+    app = create_app(engine=engine)
+    client = TestClient(app)
+    data = client.get("/v1/sigchain/recent").json()
+    entries = data.get("entries", [])
+    timestamps = [e.get("timestamp", "") for e in entries if e.get("timestamp")]
+    assert len(timestamps) >= 2, f"Expected at least 2 entries, got {len(timestamps)}"
+    assert timestamps == sorted(timestamps, reverse=True), (
+        f"Entries must be newest-first; got timestamps: {timestamps}"
+    )
+
+
+def test_count_equals_total_ledger_size(ingest_client: TestClient) -> None:
+    """count field reflects total ledger size (all entries including session.start)."""
+    _ingest(ingest_client, [_entry("maintenance.scan")])
     data = ingest_client.get("/v1/sigchain/recent").json()
-    visible = len(data.get("entries", []))
     total = data.get("count", 0)
-    assert total >= visible, \
-        "count must be >= len(entries) since system events are counted but filtered"
+    visible = len(data.get("entries", []))
+    assert total >= visible, "count must be >= len(entries)"
+    assert total >= 2, "count must include at least session.start + the ingested entry"
