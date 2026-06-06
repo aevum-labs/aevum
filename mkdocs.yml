@@ -11,6 +11,7 @@ theme:
   logo: assets/logo.png
   favicon: assets/logo.png
   custom_dir: docs/overrides
+  font: false
   palette:
     - scheme: default
       primary: indigo
@@ -46,6 +47,7 @@ theme:
 plugins:
   - search
   - social:
+      enabled: !ENV [ENABLE_SOCIAL_CARDS, false]
       cards_layout_options:
         background_color: "#1a1a2e"
         color: "#ffffff"
