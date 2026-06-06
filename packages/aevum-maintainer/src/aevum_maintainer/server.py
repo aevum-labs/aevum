@@ -34,9 +34,10 @@ from aevum.core.consent.models import ConsentGrant
 from aevum.core.engine import Engine
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from scalar_fastapi import get_scalar_api_reference
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.responses import Response
@@ -695,6 +696,13 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     app.include_router(make_demo_router(get_engine))
     # Sandbox routes — module-level router, A7 isolated from production sigchain.
     app.include_router(sandbox_router)
+
+    @app.get("/scalar", include_in_schema=False)
+    async def scalar_ui() -> HTMLResponse:
+        return get_scalar_api_reference(
+            openapi_url="/openapi.json",
+            title="Aevum API Explorer",
+        )
 
     # Catch-all SPA route — MUST be last so all /v1/, /health, /static routes
     # registered above take priority.  Serves the React app from the Docker
