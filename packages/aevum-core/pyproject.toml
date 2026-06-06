@@ -1,13 +1,13 @@
 [project]
 name = "aevum-core"
-version = "0.7.1"
+version = "0.7.2"
 description = "Aevum — the sealed movement. Replay-first, policy-governed context kernel."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 keywords = ["ai", "governance", "provenance", "audit", "context", "replay"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.11",

@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aevum-agent"
-version = "0.7.1"
+version = "0.7.2"
 description = "Aevum — A2A v1.0 agent protocol interceptor and governance layer."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 keywords = ["aevum", "agents", "a2a", "governance", "audit"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.11",

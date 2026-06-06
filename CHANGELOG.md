@@ -8,6 +8,40 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-06-05
+
+### Added
+
+- COSE_Sign1 receipt format with RFC 3161 TST (TTC mode) and SCITT-compatible protected headers (iss, sub, iat)
+- Three-tier SQLite WAL receipt store (crash-protected / operational / long-term) — Session 2
+- Docker MCP Gateway interceptor shim (aevum-mcp-intercept) with exit 0/1 barrier semantics
+- Scalar API Explorer properly mounted in FastAPI server at api.demo.aevum.build/scalar
+- Session Replay view in Compliance tab (server-verified chain reconstruction)
+- Chain Verification visual in Compliance tab
+- Session labels (readable dates + type) in Compliance dropdown
+- Payload summaries in Sigchain entry detail view
+- `aevum verify <receipt.json>` and `aevum receipt <session_id>` CLI commands
+- OTel gen_ai.provider.name dual-emit (backward compat with gen_ai.system via OTEL_SEMCONV_STABILITY_OPT_IN)
+- Integration guides: OpenAI Agents + MCP with tested examples
+- Production sigchain diversity: docs.published, replay.verified, dependency.scan, security.audit event types
+
+### Changed
+
+- EU AI Act Annex III deadline updated: August 2, 2026 → December 2, 2027 (Digital Omnibus provisional agreement May 7, 2026)
+- Colorado SB 24-205 replaced by SB 26-189 (signed May 14, 2026; effective January 1, 2027) across all docs and Cedar policy comments
+- cedarpy pinned to ~=4.8.0 (was >=4.8.1)
+- PyJWT bumped to >=2.13.0
+
+### Fixed
+
+- Sandbox routes ported to aevum-maintainer (was only in aevum-demo — caused 405 on all POST /sandbox/* calls)
+- Chain verification field compatibility: entry_hash vs audit_id
+- release.yml GitHub Release creation is now idempotent
+
+### Conformance
+
+- Conformance suite: 11/11
+
 ### Changed (demo consolidation — single Fly.io app)
 
 - **`demo/Dockerfile`** — Two-stage build: Node 20 builds React SPA, Python 3.12 serves API + static files.
