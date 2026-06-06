@@ -46,7 +46,11 @@ def test_health_endpoint_ok(client: TestClient) -> None:
     data = resp.json()
     assert data["status"] == "ok"
     assert "version" in data
-    assert data["version"] == "0.4.0"
+    # Version is read from package metadata at runtime; must be a semver string.
+    import re
+    assert re.match(r"^\d+\.\d+\.\d+", data["version"]), (
+        f"Expected semver version, got {data['version']!r}"
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -24,8 +24,15 @@ import os
 import sqlite3
 import time
 import uuid
+from importlib.metadata import PackageNotFoundError as _PNF
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import Annotated, Any
+
+try:
+    _MAINTAINER_VERSION = _pkg_version("aevum-maintainer")
+except _PNF:
+    _MAINTAINER_VERSION = "0.0.0.dev"
 
 import httpx
 import jwt
@@ -265,7 +272,7 @@ class _MaintenanceStore:
 def create_app(engine: Engine | None = None) -> FastAPI:
     """Create the maintainer FastAPI application."""
     _engine = engine or Engine()
-    app = FastAPI(title="aevum-maintainer", version="0.4.0")
+    app = FastAPI(title="Aevum Maintainer", version=_MAINTAINER_VERSION)
 
     # Initialise SQLite persistence for maintenance entries.
     # AEVUM_DB_PATH is set by fly.toml to /data/aevum_maintainer.db (Fly volume).
@@ -665,7 +672,8 @@ def create_app(engine: Engine | None = None) -> FastAPI:
                         detail=f"Entry missing required field: {field!r}",
                     )
 
-            payload_dict = raw["payload"] if isinstance(raw["payload"], dict) else {}
+            payload_dict = dict(raw["payload"]) if isinstance(raw["payload"], dict) else {}
+            payload_dict["_occurred_at"] = datetime.datetime.now(datetime.UTC).isoformat()
             envelope = engine.commit(
                 event_type=raw["action"],
                 payload=payload_dict,

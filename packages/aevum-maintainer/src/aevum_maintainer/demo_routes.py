@@ -90,7 +90,7 @@ def _scrub_entry(raw: dict[str, Any]) -> dict[str, Any]:
     return PublicSigchainEntry(
         entry_hash=raw["entry_hash"],
         prior_hash=raw.get("prior_hash", "genesis"),
-        timestamp=raw["timestamp"],
+        timestamp=payload.get("_occurred_at") or raw.get("timestamp", ""),
         event_type=raw["action"],
         principal=raw["principal"],
         episode_id=raw.get("session_id", ""),
@@ -307,7 +307,7 @@ def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
                 "prior_hash": e["prior_hash"],
                 "action": e["action"],
                 "principal": e["principal"],
-                "timestamp": e["timestamp"],
+                "timestamp": payload.get("_occurred_at") or e.get("timestamp", ""),
                 "session_id": e["session_id"],
                 "payload_hash": hashlib.sha3_256(payload_bytes).hexdigest(),
                 "payload_summary": payload.get("summary", "") if isinstance(payload, dict) else "",
