@@ -130,7 +130,7 @@ export default function SignchainExplorer({ onAuditSession }: Props) {
                       onClick={() => void toggleRow(entry.entry_hash)}
                       style={{ cursor: 'pointer' }}
                     >
-                      <td className="muted" style={{ fontSize: '0.8rem' }}>{i}</td>
+                      <td className="muted" style={{ fontSize: '0.8rem' }}>{count - i}</td>
                       <td style={{ fontWeight: 500, fontSize: '0.875rem' }}>
                         {entry.event_type}
                       </td>

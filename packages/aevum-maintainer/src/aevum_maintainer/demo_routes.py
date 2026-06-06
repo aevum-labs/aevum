@@ -171,9 +171,11 @@ def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
     ) -> dict[str, Any]:
         """Return the N most-recent scrubbed sigchain entries (default 20)."""
         entries = engine.get_ledger_entries()
-        recent = entries[-n:] if len(entries) > n else entries
+        total = len(entries)
+        recent_slice = entries[-n:] if total > n else entries
+        recent = list(reversed(recent_slice))
         return {
-            "count": len(recent),
+            "count": total,
             "entries": [_scrub_entry(_event_to_signed(e)) for e in recent],
         }
 
@@ -438,7 +440,7 @@ async def sandbox_sigchain(request: Request) -> SigchainResult:
     return SigchainResult(
         head_hash=head,
         entry_count=len(chain),
-        entries=[SigchainEntry(**e) for e in chain],
+        entries=[SigchainEntry(**e) for e in reversed(chain)],
     )
 
 
