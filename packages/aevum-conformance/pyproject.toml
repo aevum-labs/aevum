@@ -1,12 +1,12 @@
 [project]
 name = "aevum-conformance"
-version = "0.7.1"
+version = "0.7.2"
 description = "Aevum conformance test suite — 9 behavioral invariants."
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 keywords = ["ai", "governance", "conformance", "audit"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.11",
