@@ -19,7 +19,7 @@ dependencies = [
 
 [project.scripts]
 aevum-mcp = "aevum.mcp.__main__:main"
-aevum-mcp-intercept = "aevum.mcp.interceptor:main"
+aevum-mcp-intercept = "aevum.mcp._intercept:main"
 
 [project.urls]
 Homepage = "https://aevum.build"
