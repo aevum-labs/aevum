@@ -114,7 +114,9 @@ def verify(
     Exit 0 = VERIFIED. Exit 1 = TAMPERED or not found.
     """
     receipt_path = Path(receipt_or_session)
-    if receipt_path.exists() and receipt_path.suffix == ".json":
+    if receipt_path.exists() and receipt_path.suffix in (".cbor", ".cose"):
+        _verify_cose_receipt(receipt_path)
+    elif receipt_path.exists() and receipt_path.suffix == ".json":
         _verify_receipt_file(receipt_path)
     else:
         _verify_session(receipt_or_session, state_dir)
@@ -171,6 +173,87 @@ def _compute_merkle_from_entries(entries: list[dict[str, Any]]) -> str:
             next_level.append(hashlib.sha256((left + right).encode("ascii")).hexdigest())
         current = next_level
     return current[0]
+
+
+def _verify_cose_receipt(receipt_path: Path) -> None:
+    """Verify a COSE_Sign1 receipt file (.cbor / .cose) via the verify command."""
+    try:
+        import cbor2
+        import nacl.exceptions
+        import nacl.signing
+        from aevum.core.receipt import AevumReceipt
+    except ImportError as exc:
+        typer.echo(f"Missing dependency: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    try:
+        raw = receipt_path.read_bytes()
+        cose = cbor2.loads(raw)
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"INVALID: cannot read or decode {receipt_path}: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    if not isinstance(cose, list) or len(cose) != 4:
+        typer.echo("INVALID: not a 4-element COSE_Sign1 array", err=True)
+        raise typer.Exit(code=1)
+
+    protected_bstr, unprotected, payload_bstr, signature_bytes = cose
+
+    try:
+        protected = cbor2.loads(protected_bstr)
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"INVALID: cannot decode protected header: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    alg = protected.get(1)
+    if alg != -8:
+        typer.echo(
+            f"UNSUPPORTED ALGORITHM: alg={alg!r} (expected -8 for EdDSA/Ed25519)", err=True
+        )
+        raise typer.Exit(code=2)
+
+    try:
+        receipt = AevumReceipt.model_validate(cbor2.loads(payload_bstr))
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"INVALID: cannot decode receipt payload: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    sig_structure = cbor2.dumps(["Signature1", protected_bstr, b"", payload_bstr])
+    digest = hashlib.sha3_256(sig_structure).digest()
+
+    pub_key_bytes: bytes | None = None
+    ed25519_pub_path = _DEFAULT_STATE / "ed25519.pub"
+    if ed25519_pub_path.exists():
+        pub_key_bytes = ed25519_pub_path.read_bytes()
+
+    if pub_key_bytes is None:
+        typer.echo(
+            typer.style("STRUCTURE VALID (signature not checked)", fg=typer.colors.YELLOW)
+        )
+        typer.echo("  Set ~/.aevum/ed25519.pub to verify the Ed25519 signature.")
+        typer.echo(f"  Action:    {receipt.action}")
+        typer.echo(f"  Principal: {receipt.principal}")
+        typer.echo(f"  At:        {receipt.occurred_at}")
+        return
+
+    try:
+        verify_key = nacl.signing.VerifyKey(pub_key_bytes)
+        verify_key.verify(digest, bytes(signature_bytes))
+    except nacl.exceptions.BadSignatureError:
+        typer.echo(typer.style("TAMPERED", fg=typer.colors.RED), err=True)
+        raise typer.Exit(code=1) from None
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"SIGNATURE INVALID: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    typer.echo(
+        typer.style(
+            f"Session {receipt.agent_id[:12]}... VERIFIED", fg=typer.colors.GREEN
+        )
+    )
+    typer.echo(f"  Action:    {receipt.action}")
+    typer.echo(f"  Principal: {receipt.principal}")
+    typer.echo(f"  At:        {receipt.occurred_at}")
 
 
 def _verify_receipt_file(receipt_path: Path) -> None:

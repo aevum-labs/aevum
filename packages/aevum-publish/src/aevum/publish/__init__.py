@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """
-aevum.publish — Rekor v2 transparency log complication.
+aevum.publish — Rekor v2 transparency log complication + COSE_Sign1 receipt format.
 
 Submits chain checkpoints to an external transparency log, enabling
 adversarial-resistant chain verification. Without external witnessing,
@@ -24,9 +24,32 @@ Usage:
     engine.install_complication(comp)
     engine.approve_complication("aevum-publish")
     comp.on_approved(engine)  # must be called explicitly — Engine does not auto-call
+
+COSE_Sign1 receipt format:
+    from aevum.publish import AevumReceipt, ReceiptEncoder
+    from aevum.core.audit.signer import InProcessSigner
+    signer = InProcessSigner()
+    encoder = ReceiptEncoder(signer=signer, dev_mode=True)
+    receipt = AevumReceipt.from_sigchain_event(event)
+    cose_bytes = encoder.encode(receipt)
 """
 
+from aevum.publish.backends import (
+    NullBackend,
+    RekorV2Backend,
+    ScittTsBackend,
+    TransparencyBackend,
+)
 from aevum.publish.complication import PublishComplication
+from aevum.publish.receipt import AevumReceipt, ReceiptEncoder
 
-__version__ = "0.4.0"
-__all__ = ["PublishComplication"]
+__version__ = "0.7.1"
+__all__ = [
+    "PublishComplication",
+    "AevumReceipt",
+    "ReceiptEncoder",
+    "TransparencyBackend",
+    "NullBackend",
+    "RekorV2Backend",
+    "ScittTsBackend",
+]
