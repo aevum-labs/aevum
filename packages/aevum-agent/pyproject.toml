@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 license = "Apache-2.0"
 keywords = ["aevum", "agents", "a2a", "governance", "audit"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.11",
