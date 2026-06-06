@@ -200,3 +200,67 @@ def test_replay_entry_fields(ingest_client: TestClient) -> None:
 def test_replay_unknown_session_returns_404(ingest_client: TestClient) -> None:
     res = ingest_client.get("/v1/replay/no-such-session-xyz")
     assert res.status_code == 404
+
+
+# ── Timestamp preservation ────────────────────────────────────
+
+
+def test_ingest_embeds_occurred_at_in_payload(
+    ingest_client: TestClient,
+) -> None:
+    """_occurred_at is embedded so replayed entries carry the original ingest time."""
+    res = _ingest(ingest_client, [_entry("maintenance.scan")], session_id="ts-test-001")
+    assert res.status_code == 201
+    chain = ingest_client.get("/v1/replay/ts-test-001").json()
+    entry = chain["entries"][0]
+    ts = entry.get("timestamp", "")
+    assert ts, "timestamp must be non-empty"
+    # Must be ISO 8601 with timezone offset (not a naive datetime).
+    assert "T" in ts, f"expected ISO 8601 timestamp, got {ts!r}"
+    assert "+" in ts or ts.endswith("Z"), (
+        f"timestamp must carry UTC offset, got {ts!r}"
+    )
+
+
+def test_replayed_entries_preserve_original_timestamps(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pytest.TempPathFactory,
+) -> None:
+    """Entries replayed after a server restart show original ingest time, not replay time."""
+    from aevum.core.engine import Engine
+    from aevum_maintainer.server import _MaintenanceStore
+
+    # Use a real file so _connect() returns the same DB each call.
+    db_file = str(tmp_path / "test_replay.db")
+    store = _MaintenanceStore(db_file)
+    original_ts = "2026-06-01T10:00:00+00:00"
+    store.add(
+        session_id="replay-ts-session",
+        action="maintenance.scan",
+        principal="github_actions",
+        payload={"cve_count": 0, "_occurred_at": original_ts},
+    )
+
+    # Simulate server restart: replay stored entries into a fresh engine.
+    engine = Engine()
+    for entry in store.all():
+        engine.commit(
+            event_type=entry["action"],
+            payload=entry["payload"],
+            actor=entry["principal"],
+            episode_id=entry["session_id"],
+        )
+
+    from aevum_maintainer.server import create_app
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setenv("MAINTENANCE_INGEST_TOKEN", _TEST_TOKEN)
+    app = create_app(engine=engine)
+    client = TestClient(app)
+    chain = client.get("/v1/replay/replay-ts-session").json()
+    assert chain["entry_count"] >= 1, "Expected replayed entry in chain"
+    ts = chain["entries"][0].get("timestamp", "")
+    assert ts == original_ts, (
+        f"Expected original timestamp {original_ts!r}, got {ts!r} — "
+        "replay is overwriting with current time"
+    )
