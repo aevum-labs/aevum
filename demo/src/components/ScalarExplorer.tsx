@@ -37,7 +37,7 @@ export function ScalarExplorer() {
           The API Explorer is best experienced on a larger screen.
         </p>
         <a
-          href={`${apiUrl}/scalar`}
+          href="https://api.demo.aevum.build/scalar"
           target="_blank"
           rel="noopener noreferrer"
           className="scalar-launch-btn"
