@@ -53,6 +53,10 @@ ignore = ["ANN401"]
 "demo/sandbox_state.py" = ["ANN"]
 
 [tool.mypy]
+# "Source file found twice" warnings are a known artifact
+# of editable installs in a uv workspace with namespace
+# packages. They do not affect pip-installed users.
+# Run: uv run mypy --package <pkg> to reproduce.
 strict = true
 python_version = "3.11"
 

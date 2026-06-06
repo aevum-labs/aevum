@@ -177,6 +177,14 @@ schemes.
 | `aevum-conformance` | `pip install aevum-conformance` | Machine-verifiable conformance suite |
 | `aevum-agent` | `pip install aevum-agent` | A2A protocol integration |
 
+## Maintainer
+
+Aevum is actively maintained by
+[@bnyhil](https://github.com/bnyhil) under the
+[aevum-labs](https://github.com/aevum-labs) GitHub
+organization. This is a solo open-source research project
+— not a commercial product or formal legal entity.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
