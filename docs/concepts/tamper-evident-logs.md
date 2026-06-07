@@ -1,6 +1,6 @@
 ---
 title: "Tamper-Evident Audit Logs for AI Agents"
-description: "How Aevum builds a cryptographically chained, tamper-evident audit log for every AI agent action — with offline verification and Rekor anchoring."
+description: "How Aevum builds cryptographically chained, post-quantum signed audit logs that make tampering mathematically detectable — and what EU AI Act Article 12 actually requires."
 ---
 
 # What "Tamper-Evident" Actually Means for AI Agent Logs
@@ -23,7 +23,7 @@ Aevum implements all three properties in its episodic ledger. It is important no
 
 **Hash-chained:** each `AuditEvent` includes `prior_hash` — the SHA3-256 digest of the preceding event's canonical representation. `engine.verify_sigchain()` recomputes the full chain from the genesis entry and returns `False` if any hash does not match. Any modification to any field in any entry — including metadata fields like timestamps, actor identifiers, or event types — produces a hash mismatch that is detected on the next verification pass.
 
-**Ed25519 signed:** each event is signed with the kernel's Ed25519 private key before being appended to the ledger. The public key is available for external verification.
+**Ed25519 + ML-DSA-65 dual signed (post-quantum):** each event is signed with both the kernel's Ed25519 key (classical) and ML-DSA-65 (NIST FIPS 204, post-quantum). Both signatures must verify — an AND gate, not an OR gate. This means the audit trail remains verifiable even if one signature scheme is later broken. Public keys for both algorithms are available for external verification.
 
 ```python
 from aevum.core import Engine
