@@ -7,4 +7,4 @@ Provides the compliance pack generator and a governed HTTP endpoint
 for triggering compliance pack generation as an audited Aevum operation.
 """
 
-__version__ = "0.7.3"
+__version__ = "0.7.4"

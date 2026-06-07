@@ -8,6 +8,15 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+## [0.7.4] — 2026-06-07
+
+### Fixed
+- `demo.aevum.build` now serves the React/Vite frontend instead of the
+  legacy FastAPI `_LANDING_HTML` placeholder. Multi-stage Docker build
+  compiles the React app at image build time; FastAPI mounts it as
+  StaticFiles and serves `index.html` for all non-API routes.
+- `deploy-api.yml` trigger paths updated to include `demo/**`.
+
 ## [0.7.3] — 2026-06-07
 
 ### Security

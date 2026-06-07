@@ -25,7 +25,7 @@ See NON-GOALS.md for the full normative list.
 
 ## Current State
 
-v0.7.3 — production-ready foundation. Thirteen packages on PyPI. Five
+v0.7.4 — production-ready foundation. Thirteen packages on PyPI. Five
 unconditional barriers enforced. Ed25519 + ML-DSA-65 dual signing.
 COSE_Sign1 receipts with RFC 3161 timestamps. Cedar ABAC + OPA policy
 engines. Adapters: OpenAI Agents, LangGraph, CrewAI, LangChain, A2A,
