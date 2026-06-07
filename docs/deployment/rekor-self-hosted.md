@@ -114,11 +114,8 @@ After a checkpoint is submitted, inspect the local sigchain for the
 `transparency.checkpoint` event:
 
 ```python
-entries = engine.get_ledger_entries()
-cp = next(e for e in entries if e["event_type"] == "transparency.checkpoint")
-print(cp["payload"]["rekor_log_index"])       # log index in your private Rekor
-print(cp["payload"]["rekor_server"])           # your private Rekor URL
-print(cp["payload"].get("inclusion_proof"))   # Merkle inclusion proof
+# Use engine.replay(audit_id=..., actor="auditor") to retrieve the checkpoint entry
+# See docs/learn/quickstart.md for current examples
 ```
 
 ## Production hardening

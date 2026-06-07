@@ -62,6 +62,11 @@ consent grant that authorized the operation.
 **When to use:** EU AI Act Article 12 high-risk deployments (Annex III standalone enforcement December 2, 2027), SOC 2 PI1.2, production enterprise deployments where
 non-compliance must be architecturally impossible rather than auditable.
 
+> **Note (June 2026):** A provisional EU AI Act Omnibus agreement
+> (May 2026) proposes deferring Annex III obligations to December 2, 2027,
+> pending Official Journal publication. August 2, 2026 remains the current
+> legal deadline until that publication occurs.
+
 **Compatible gateways:** agentgateway (Linux Foundation / Solo.io),
 Kong AI Gateway, LiteLLM Proxy, Portkey, AWS Bedrock AgentCore Gateway.
 

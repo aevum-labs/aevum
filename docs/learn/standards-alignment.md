@@ -61,7 +61,8 @@ The episodic ledger exports a parallel IETF-format chain:
 
 ```python
 # Build IETF AAT records from AuditEvent fields (custom adapter)
-events = engine.get_ledger_events()
+# See docs/learn/quickstart.md for current examples
+events = []  # use engine.replay() for current API
 records = [
     {
         "agent_id": e.actor,                  # → actor

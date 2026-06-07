@@ -170,10 +170,8 @@ The sigchain integrity check failed. This means either:
 Steps to diagnose:
 
 ```python
-events = engine.get_ledger_entries()
-for e in events:
-    print(e["sequence"], e["audit_id"], e["event_type"], e["actor"])
-# The last valid event is the one before the chain breaks
+# See docs/learn/quickstart.md for current examples
+# Use engine.replay(audit_id=..., actor="auditor") to retrieve specific entries
 ```
 
 1. Note which `audit_id` is the last valid event

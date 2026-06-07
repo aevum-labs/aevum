@@ -60,10 +60,8 @@ for i in range(5):
 intact = engine.verify_sigchain()
 print(f"Chain intact: {intact}")  # True
 
-# Inspect the ledger — each entry includes prior_hash
-entries = engine.get_ledger_entries()
-for entry in entries[-3:]:  # last three entries
-    print(f"event: {entry['event_type']:25} hash: {entry.get('hash', 'N/A')[:16]}...")
+# Inspect the ledger via replay — see docs/learn/quickstart.md for current examples
+# See docs/learn/quickstart.md for current examples
 ```
 
 ## What verify_sigchain() actually checks

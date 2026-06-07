@@ -198,14 +198,6 @@ engine.verify_sigchain() -> bool
 Verifies the full sigchain integrity: hash chain, Ed25519 signatures,
 and payload hashes. Returns `True` if intact, `False` if any event fails.
 
-### get_ledger_entries()
-
-```python
-engine.get_ledger_entries() -> list[dict]
-```
-
-Returns all events in the sigchain as a list of dicts, ordered by sequence.
-
 ### ledger_count()
 
 ```python

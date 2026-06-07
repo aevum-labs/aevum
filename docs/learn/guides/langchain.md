@@ -16,7 +16,7 @@ A LangChain chain that:
 1. Reads user context from Aevum (consent-verified)
 2. Passes context to an LLM prompt
 3. Records the LLM decision back into Aevum (signed, chained)
-4. Enables deterministic replay of the exact decision for any past run
+4. Enables verifiable decision records of the exact decision for any past run
 
 ---
 

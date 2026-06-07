@@ -225,7 +225,7 @@ Run through this before any deployment:
 
 ## What dev mode never changes
 
-These five absolute barriers are always active regardless of `AEVUM_DEV`:
+These five unconditional barriers are always active regardless of `AEVUM_DEV`:
 
 1. **Crisis detection** — ingested content is always screened
 2. **Classification ceiling** — results above actor clearance are always redacted
