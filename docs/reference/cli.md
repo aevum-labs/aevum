@@ -383,3 +383,4 @@ aevum complication resume <name>
 | `VAULT_TOKEN` | Vault authentication token |
 | `AEVUM_VAULT_KEY_NAME` | Vault Transit key name |
 | `AEVUM_REKOR_URL` | Rekor transparency log URL (default: from `AEVUM_REKOR_URL` env) |
+| `AEVUM_TSA_URL` | RFC 3161 timestamp authority URL. If set, replaces the default TSA list (`timestamp.sigstore.dev`, `timestamp.digicert.com`) with a single entry. Useful for private or on-premises TSA deployments. |

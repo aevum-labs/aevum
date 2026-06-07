@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import os
 
 import httpx
 from rfc3161_client import TimestampRequestBuilder, decode_timestamp_response
@@ -51,6 +52,19 @@ DEFAULT_TSA_URLS: list[str] = [
     SIGSTORE_TSA_URL,
     DIGICERT_TSA_URL,
 ]
+
+
+def _get_tsa_urls() -> list[str]:
+    """Return TSA URL list, respecting AEVUM_TSA_URL env-var override.
+
+    If AEVUM_TSA_URL is set, it replaces the default multi-URL list with
+    a single entry pointing to the configured TSA. This allows operators to
+    route timestamps to a private or on-premises TSA without code changes.
+    """
+    env_url = os.environ.get("AEVUM_TSA_URL")
+    if env_url:
+        return [env_url]
+    return DEFAULT_TSA_URLS
 
 TSA_TIMEOUT_SECONDS = 10.0
 TSA_CONTENT_TYPE = "application/timestamp-query"
@@ -102,7 +116,7 @@ class TSAClient:
         timeout: float = TSA_TIMEOUT_SECONDS,
         enabled: bool = True,
     ) -> None:
-        self._tsa_urls = tsa_urls or DEFAULT_TSA_URLS
+        self._tsa_urls = tsa_urls or _get_tsa_urls()
         self._timeout = timeout
         self._enabled = enabled
 
