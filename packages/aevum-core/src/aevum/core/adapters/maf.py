@@ -14,7 +14,7 @@ Convenience factory:
 NOTE: Requires agent-framework>=1.0.0. Install with:
     pip install 'aevum-core[maf]'
 
-Verified against agent-framework 1.6.0. MAF dispatches by isinstance — inheritance from
+Verified against agent-framework 1.8.0. MAF dispatches by isinstance — inheritance from
 AgentMiddleware / FunctionMiddleware / ChatMiddleware is required (not duck typing).
 All process() methods are async (MAF contract).
 
@@ -92,7 +92,7 @@ class AevumAgentMiddleware(_AgentMiddlewareBase):  # type: ignore[misc, unused-i
         Intercept the agent run. Records start and end events around call_next.
 
         CRITICAL: 'context' and 'call_next' are the exact MAF parameter names.
-        Verified against agent-framework 1.6.0 AgentMiddleware.process().
+        Verified against agent-framework 1.8.0 AgentMiddleware.process().
         """
         agent_name = getattr(getattr(context, "agent", None), "name", "agent")
         logger.debug("aevum.maf.agent_start agent=%s", agent_name)
@@ -101,7 +101,13 @@ class AevumAgentMiddleware(_AgentMiddlewareBase):  # type: ignore[misc, unused-i
                 self._kernel.record_event(
                     action="agent.start",
                     actor=f"maf::{agent_name}",
-                    payload={"agent": agent_name},
+                    payload={
+                        "agent": agent_name,
+                        "handoff_type": "ACTIVATION",
+                        "acted_on_behalf_of": getattr(context, "acted_on_behalf_of", None),
+                        "maf_agent_id": context.agent_id if hasattr(context, "agent_id") else None,
+                        "maf_middleware_type": "agent",
+                    },
                 )
             except Exception as _e:  # noqa: BLE001
                 logger.warning("kernel record_event (agent.start) failed: %s", _e)
@@ -112,7 +118,13 @@ class AevumAgentMiddleware(_AgentMiddlewareBase):  # type: ignore[misc, unused-i
                 self._kernel.record_event(
                     action="agent.end",
                     actor=f"maf::{agent_name}",
-                    payload={"agent": agent_name},
+                    payload={
+                        "agent": agent_name,
+                        "handoff_type": "ACTIVATION",
+                        "acted_on_behalf_of": getattr(context, "acted_on_behalf_of", None),
+                        "maf_agent_id": context.agent_id if hasattr(context, "agent_id") else None,
+                        "maf_middleware_type": "agent",
+                    },
                 )
             except Exception as _e:  # noqa: BLE001
                 logger.warning("kernel record_event (agent.end) failed: %s", _e)
@@ -138,7 +150,7 @@ class AevumFunctionMiddleware(_FunctionMiddlewareBase):  # type: ignore[misc, un
         Intercept the function invocation. Cedar-gates before calling call_next.
 
         CRITICAL: 'context' and 'call_next' are the exact MAF parameter names.
-        Verified against agent-framework 1.6.0 FunctionMiddleware.process().
+        Verified against agent-framework 1.8.0 FunctionMiddleware.process().
 
         Deny path: sets context.result = {aevum_denied: True, ...} then raises
         MiddlewareTermination to halt the function without calling call_next.
@@ -150,6 +162,9 @@ class AevumFunctionMiddleware(_FunctionMiddlewareBase):  # type: ignore[misc, un
                 "aevum_denied": True,
                 "tool_name": tool_name,
             }
+            # KNOWN LIMITATION: Terminating FunctionMiddleware mid-loop leaves chat history
+            # without a tool result, which may break subsequent runs. Callers must handle
+            # this via require_per_service_call_history_persistence=True or manual repair.
             context.result = deny_response
             raise MiddlewareTermination()
         self._record_tool_start(tool_name)
@@ -181,7 +196,13 @@ class AevumFunctionMiddleware(_FunctionMiddlewareBase):  # type: ignore[misc, un
                 self._kernel.record_event(
                     action="tool.start",
                     actor=f"maf::{tool_name}",
-                    payload={"tool": tool_name},
+                    payload={
+                        "tool": tool_name,
+                        "handoff_type": "ACTIVATION",
+                        "acted_on_behalf_of": None,
+                        "maf_agent_id": None,
+                        "maf_middleware_type": "function",
+                    },
                 )
             except Exception as _e:  # noqa: BLE001
                 logger.warning("kernel record_event (tool.start) failed: %s", _e)
@@ -193,7 +214,14 @@ class AevumFunctionMiddleware(_FunctionMiddlewareBase):  # type: ignore[misc, un
                 self._kernel.record_event(
                     action="tool.end",
                     actor=f"maf::{tool_name}",
-                    payload={"tool": tool_name, "success": context.result is not None},
+                    payload={
+                        "tool": tool_name,
+                        "success": context.result is not None,
+                        "handoff_type": "ACTIVATION",
+                        "acted_on_behalf_of": getattr(context, "acted_on_behalf_of", None),
+                        "maf_agent_id": context.agent_id if hasattr(context, "agent_id") else None,
+                        "maf_middleware_type": "function",
+                    },
                 )
             except Exception as _e:  # noqa: BLE001
                 logger.warning("kernel record_event (tool.end) failed: %s", _e)
@@ -218,7 +246,7 @@ class AevumChatMiddleware(_ChatMiddlewareBase):  # type: ignore[misc, unused-ign
         Intercept the LLM call. Records start/end events around call_next.
 
         CRITICAL: 'context' and 'call_next' are the exact MAF parameter names.
-        Verified against agent-framework 1.6.0 ChatMiddleware.process().
+        Verified against agent-framework 1.8.0 ChatMiddleware.process().
         """
         logger.debug("aevum.maf.llm_start")
         await call_next()
@@ -228,7 +256,12 @@ class AevumChatMiddleware(_ChatMiddlewareBase):  # type: ignore[misc, unused-ign
                 self._kernel.record_event(
                     action="llm.call",
                     actor="maf::chat",
-                    payload={},
+                    payload={
+                        "handoff_type": "ACTIVATION",
+                        "acted_on_behalf_of": getattr(context, "acted_on_behalf_of", None),
+                        "maf_agent_id": context.agent_id if hasattr(context, "agent_id") else None,
+                        "maf_middleware_type": "chat",
+                    },
                 )
             except Exception as _e:  # noqa: BLE001
                 logger.warning("kernel record_event (llm.call) failed: %s", _e)
