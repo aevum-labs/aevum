@@ -18,6 +18,6 @@ Example MCP host config (Claude Desktop: ~/.claude/claude_desktop_config.json):
 
 from aevum.mcp.server import create_server
 
-__version__ = "0.7.3"
+__version__ = "0.7.4"
 
 __all__ = ["create_server"]
