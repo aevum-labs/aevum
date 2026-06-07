@@ -19,7 +19,7 @@ dependencies = [
     "pydantic>=2.0,<3.0",
     "cryptography>=42.0",
     "httpx>=0.27.0",
-    "PyNaCl>=1.5.0",
+    "PyNaCl>=1.6.2",  # CVE-2025-69277 — key-recovery side-channel, fixed 1.6.2
     "liboqs-python>=0.14.0",
     "rfc3161-client>=1.0.6",  # CVE-2026-33753 — TSA impersonation, fixed 1.0.6
     "pyyaml>=6.0",
@@ -50,7 +50,7 @@ postgres = [
     "aevum-store-postgres>=0.7.0",
 ]
 langgraph = [
-    "langgraph-checkpoint>=4.1.0",
+    "langgraph-checkpoint>=4.1.0",  # CVE-2025-64439 (7.4) RCE via JsonPlusSerializer — fixed 3.0, already satisfied
 ]
 crewai = [
     "crewai>=0.80.0",
@@ -62,13 +62,13 @@ adk = [
     "google-adk>=2.2,<3",
 ]
 maf = [
-    "agent-framework-core>=1.0.0",
+    "agent-framework-core>=1.0.0,<2",  # <2 cap prevents breaking API changes from 2.x
 ]
 anthropic = [
     "anthropic>=0.50.0",
 ]
 langchain = [
-    "langchain-core>=0.2.0",
+    "langchain-core>=1.2.22",  # CVE-2025-68664 (9.3) dumps() RCE, CVE-2026-34070 (7.5) path traversal — do not lower
 ]
 benchmark = [
     "pytest-benchmark>=4.0.0",
