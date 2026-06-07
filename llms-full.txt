@@ -1,8 +1,8 @@
 # Aevum — Full Reference for LLM Agents
 > Aevum is an open-source AI governance and context kernel — Apache 2.0.
 > It gives AI agents a cryptographically chained audit trail (sigchain),
-> consent-checked memory, policy-governed ABAC, and deterministic replay
-> of any past decision.
+> consent-checked memory, policy-governed ABAC, and verifiable decision records
+> with cryptographic audit trails.
 
 ## Architecture
 
@@ -28,7 +28,7 @@ past decision.
 | aevum-core | aevum.core | commit | REMEMBER |
 | aevum-core | aevum.core | replay | (new) |
 
-### Five Absolute Barriers (hardcoded, never configurable)
+### Five Unconditional Barriers (hardcoded, never configurable)
 
 1. Crisis detection — keyword-matching content screen; halts session on match
 2. Classification ceiling — redacts results above actor clearance

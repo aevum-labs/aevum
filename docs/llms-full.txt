@@ -5,25 +5,27 @@
 Aevum is an open-source AI governance and context kernel. It is a Python library
 (Apache 2.0) that runs from a Raspberry Pi to Kubernetes without changing a line of code.
 Its purpose: give AI agents a signed audit trail, consent-checked data access, and
-deterministic replay of past decisions. It does not generate, evaluate, or control
+verifiable decision records with cryptographic audit trails. It does not generate, evaluate, or control
 LLM output — it governs the agent's memory and action record.
-## The four CRE functions (RELATE / NAVIGATE / GOVERN / REMEMBER)
-Every operation in Aevum maps to exactly one of these four functions. No exceptions.
+## The five CRE functions (RELATE / NAVIGATE / GOVERN / REMEMBER / replay)
+Every operation in Aevum maps to exactly one of these five functions. No exceptions.
 **RELATE** — Protocol verb: `ingest()`
 Ingests input, verifies provenance, establishes weighted relationships. Never generates
 synthetic inputs or modifies inputs before recording. Output: weighted edges + RELATE
 audit event.
-**NAVIGATE** — Protocol verb: `navigate()`
-Traverses the relationship graph for a declared purpose. Requires a consent_id that is
-verified against the consent ledger before traversal begins. Never presents context as
+**NAVIGATE** — Protocol verb: `query()`
+Traverses the relationship graph for a declared purpose. Consent is a precondition
+checked by the kernel before traversal begins. Never presents context as
 complete — uncertainty markers are mandatory output.
-**GOVERN** — Protocol verb: `checkpoint()`
+**GOVERN** — Protocol verb: `review()`
 Presents navigated context to an authorized human at a consequential moment. Receives
 their decision. Records it with full provenance. The veto is a first-class output.
 **REMEMBER** — Protocol verb: `commit()`
 Commits the full record to the append-only sigchain with cryptographic integrity.
 Every loop pass produces a COMMIT. Without exception.
-## The five absolute barriers
+**replay** — Reconstructs any past decision faithfully from the episodic ledger for
+cryptographic audit. Returns the original payload with provenance intact.
+## The five unconditional barriers
 These cannot be disabled by configuration, policy, or emergency override:
 1. **Crisis** — halts processing on crisis-pattern content before graph write
 2. **Classification ceiling** — enforces data classification limits per Cedar policy
@@ -52,14 +54,15 @@ engine.ingest(
     subject_id="user-1",
     actor="my-agent",
 )
-context = engine.navigate(
-    seed_concepts=["disk_full"],
+context = engine.query(
     purpose="demo",
-    consent_id="demo-grant",
+    subject_ids=["user-1"],
+    actor="my-agent",
 )
 engine.commit(actor="my-agent", action="review", resource="host-42")
 intact = engine.verify_sigchain()  # True
-print(f"Chain intact: {intact}, entries: {len(engine.get_ledger_entries())}")
+print(f"Chain intact: {intact}")
+# See docs/learn/quickstart.md for current examples
 ```
 ## Sigchain technical detail
 - Every entry: `event_type`, `actor`, `payload`, `prior_hash`, `sequence`, `timestamp`
