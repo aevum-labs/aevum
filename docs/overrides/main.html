@@ -32,33 +32,63 @@
   <meta name="twitter:description"
         content="{{ page.meta.description | default(config.site_description) }}">
 
-  {# Schema.org — SoftwareApplication on the homepage, TechArticle on all other pages #}
+  {# Schema.org — @graph on the homepage (SoftwareApplication + Organization), TechArticle on all other pages #}
   {% if page.url == "." or page.url == "" %}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Aevum",
-    "description": "{{ config.site_description }}",
-    "url": "{{ config.site_url }}",
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "Linux, macOS, Windows",
-    "programmingLanguage": "Python",
-    "license": "https://opensource.org/licenses/Apache-2.0",
-    "codeRepository": "https://github.com/aevum-labs/aevum",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-  }
-  </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "Aevum Labs",
-    "url": "https://aevum.build",
-    "logo": "https://aevum.build/assets/og-image.png",
-    "sameAs": [
-      "https://github.com/aevum-labs/aevum",
-      "https://pypi.org/project/aevum-core/"
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://aevum.build/#software",
+        "name": "Aevum",
+        "alternateName": "aevum-core",
+        "description": "Open-source AI agent governance kernel. Cryptographic audit trails, consent-checked data access, and verifiable decision records for AI agent pipelines.",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "AI Governance",
+        "operatingSystem": "Linux, macOS, Windows",
+        "programmingLanguage": "Python",
+        "softwareVersion": "0.7.3",
+        "url": "https://aevum.build",
+        "downloadUrl": "https://pypi.org/project/aevum-core/",
+        "codeRepository": "https://github.com/aevum-labs/aevum",
+        "license": "https://opensource.org/licenses/Apache-2.0",
+        "keywords": [
+          "AI governance",
+          "AI agent audit trail",
+          "cryptographic audit log",
+          "consent-checked retrieval",
+          "EU AI Act compliance",
+          "post-quantum signing",
+          "Cedar ABAC",
+          "ML-DSA-65",
+          "Ed25519"
+        ],
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "maintainer": {
+          "@id": "https://aevum.build/#organization"
+        }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://aevum.build/#organization",
+        "name": "Aevum Labs",
+        "description": "Maintainers of the Aevum open-source AI agent governance kernel.",
+        "url": "https://aevum.build",
+        "logo": "https://aevum.build/assets/og-image.png",
+        "foundingDate": "2026",
+        "knowsAbout": [
+          "AI agent governance",
+          "cryptographic audit trails",
+          "EU AI Act compliance",
+          "Cedar policy engine",
+          "post-quantum cryptography"
+        ],
+        "sameAs": [
+          "https://github.com/aevum-labs",
+          "https://pypi.org/project/aevum-core/"
+        ]
+      }
     ]
   }
   </script>
