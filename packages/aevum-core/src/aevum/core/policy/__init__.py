@@ -40,7 +40,7 @@ class PolicyEngine(Protocol):
 
 class NullPolicyEngine:
     """
-    Permissive fallback. Permits everything above the absolute barriers.
+    Permissive fallback. Permits everything above the unconditional barriers.
     Used when no policy engine is configured or Cedar is not installed.
     Logs a WARNING at first use so operators know they are running without ABAC.
     """
