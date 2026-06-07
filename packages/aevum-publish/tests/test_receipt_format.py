@@ -127,6 +127,15 @@ def test_decode_rejects_non_cose_array() -> None:
         ReceiptEncoder.decode_and_verify(garbage, vk)
 
 
+def test_cose_rejects_wrong_alg() -> None:
+    """Verifier must reject any alg other than EdDSA (-8)."""
+    _, vk = _make_encoder()
+    bad_protected = cbor2.dumps({1: -7})  # alg = ES256
+    bad_cose = cbor2.dumps([bad_protected, {}, b"payload", b"fakesig"])
+    with pytest.raises(ValueError, match="EdDSA"):
+        ReceiptEncoder.decode_and_verify(bad_cose, vk)
+
+
 # ── AevumReceipt CBOR serialisation ──────────────────────────
 
 

@@ -169,6 +169,18 @@ class ReceiptEncoder:
 
         protected_bstr, _unprotected, payload_bstr, signature_bytes = cose
 
+        try:
+            protected = cbor2.loads(protected_bstr)
+        except Exception as exc:
+            raise ValueError(f"Cannot decode COSE protected header: {exc}") from exc
+
+        alg = protected.get(1) if isinstance(protected, dict) else None
+        if alg != _COSE_ALG_EDDSA:
+            raise ValueError(
+                f"COSE_Sign1 algorithm rejected: expected EdDSA (-8), got {alg!r}. "
+                "Aevum only accepts Ed25519 receipts."
+            )
+
         sig_structure = _build_sig_structure(protected_bstr, payload_bstr)
         digest = hashlib.sha3_256(sig_structure).digest()
 
