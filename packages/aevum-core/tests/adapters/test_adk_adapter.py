@@ -17,7 +17,7 @@ Upstream changes that would break this adapter:
   - Callback parameter names change (ADK dispatches by keyword — name = contract)
   - before_tool_callback return type changes (dict → something else for deny)
   - Callbacks become sync (currently async)
-Re-evaluate when: google-adk releases a >=2.0 stable version with breaking changes.
+Re-evaluate when: google-adk releases a >=3.0 version with breaking changes.
 
 IMPORTANT: All callback tests are async because ADK BasePlugin callbacks are
 async def. pytest-asyncio (asyncio_mode=auto) handles this automatically.
@@ -26,7 +26,9 @@ Notable difference from openai_agents adapter:
   - before_tool_callback RETURNS a dict on deny (does not raise PermissionError)
     This is the ADK plugin contract for blocking tool execution.
   - Actual parameter names: 'tool_args' (not 'args'), 'result' (not 'tool_response')
-    Verified against google-adk 1.10.0 BasePlugin source.
+    Verified against google-adk 2.2.0 BasePlugin source.
+  - AevumADKPlugin inherits from BasePlugin (ADK 2.x requirement); falls back to
+    a compatible stub when google-adk is not installed.
 """
 from __future__ import annotations
 
@@ -147,7 +149,7 @@ def test_callback_parameter_names_match_adk_spec() -> None:
     This test verifies every callback uses the exact parameter names defined
     in google.adk.plugins.BasePlugin — wrong names cause TypeError at runtime.
 
-    Verified against google-adk 1.10.0:
+    Verified against google-adk 2.2.0:
       before_tool_callback: tool, tool_args, tool_context
       after_tool_callback:  tool, tool_args, tool_context, result
       before_model_callback: callback_context, llm_request
@@ -260,26 +262,26 @@ async def test_after_tool_callback_does_not_raise_when_kernel_raises() -> None:
 
 async def test_record_tool_start_does_not_raise_when_kernel_none() -> None:
     plugin = AevumADKPlugin(kernel=None)
-    plugin._record_tool_start("my_tool", {"a": 1})
+    plugin._record_tool_start("my_tool", {"a": 1}, None)
 
 
 async def test_record_tool_start_does_not_raise_when_kernel_raises() -> None:
     kernel = MagicMock()
     kernel.record_event.side_effect = RuntimeError("boom")
     plugin = AevumADKPlugin(kernel=kernel)
-    plugin._record_tool_start("my_tool", {})
+    plugin._record_tool_start("my_tool", {}, None)
 
 
 async def test_record_tool_end_does_not_raise_when_kernel_none() -> None:
     plugin = AevumADKPlugin(kernel=None)
-    plugin._record_tool_end("my_tool", {}, {"result": "ok"})
+    plugin._record_tool_end("my_tool", {}, None, {"result": "ok"})
 
 
 async def test_record_tool_end_does_not_raise_when_kernel_raises() -> None:
     kernel = MagicMock()
     kernel.record_event.side_effect = RuntimeError("boom")
     plugin = AevumADKPlugin(kernel=kernel)
-    plugin._record_tool_end("my_tool", {}, None)
+    plugin._record_tool_end("my_tool", {}, None, None)
 
 
 def test_is_permitted_returns_true_on_cedar_exception() -> None:
@@ -352,3 +354,122 @@ async def test_tool_name_falls_back_to_str_when_no_name_attr() -> None:
             tool_context=MagicMock(),
         )
     assert result is None
+
+
+# ── ADK 2.x BasePlugin API tests ─────────────────────────────────────────────
+
+
+def test_plugin_name_attribute_is_aevum() -> None:
+    """BasePlugin sets name= in __init__; verify AevumADKPlugin passes it correctly."""
+    plugin = AevumADKPlugin(kernel=None)
+    assert plugin.name == "aevum"
+
+
+async def test_wrong_kwarg_name_raises_type_error() -> None:
+    """
+    ADK dispatches callbacks by keyword — wrong parameter name causes TypeError.
+    This test guards against callers using 'args' (old 1.x name) instead of 'tool_args'.
+    """
+    plugin = AevumADKPlugin(kernel=None)
+    mock_tool = MagicMock()
+    mock_tool.name = "test_tool"
+    with pytest.raises(TypeError):
+        await plugin.before_tool_callback(
+            tool=mock_tool,
+            args={"query": "test"},  # wrong: should be tool_args
+            tool_context=MagicMock(),
+        )
+
+
+# ── DSSAD handoff field tests ─────────────────────────────────────────────────
+
+
+async def test_after_tool_callback_emits_dssad_fields_to_kernel() -> None:
+    """
+    after_tool_callback must include DSSAD handoff fields (handoff_type,
+    acted_on_behalf_of, adk_agent_name, adk_tool_name) in every kernel receipt.
+    """
+    kernel = MagicMock()
+    plugin = AevumADKPlugin(kernel=kernel)
+    mock_tool = MagicMock()
+    mock_tool.name = "search_tool"
+
+    await plugin.after_tool_callback(
+        tool=mock_tool,
+        tool_args={},
+        tool_context=MagicMock(),
+        result={"output": "found"},
+    )
+
+    assert kernel.record_event.called
+    payload = kernel.record_event.call_args[1]["payload"]
+    assert payload["handoff_type"] == "ACTIVATION"
+    assert "acted_on_behalf_of" in payload
+    assert "adk_tool_name" in payload
+    assert payload["adk_tool_name"] == "search_tool"
+
+
+async def test_after_model_callback_emits_dssad_fields_to_kernel() -> None:
+    """after_model_callback must include DSSAD handoff fields in every kernel receipt."""
+    kernel = MagicMock()
+    plugin = AevumADKPlugin(kernel=kernel)
+
+    await plugin.after_model_callback(
+        callback_context=MagicMock(),
+        llm_response=MagicMock(),
+    )
+
+    assert kernel.record_event.called
+    payload = kernel.record_event.call_args[1]["payload"]
+    assert payload["handoff_type"] == "ACTIVATION"
+    assert "acted_on_behalf_of" in payload
+    assert "adk_agent_name" in payload
+
+
+async def test_dssad_adk_agent_name_from_tool_context() -> None:
+    """adk_agent_name must be populated from tool_context.agent_name when present."""
+    kernel = MagicMock()
+    plugin = AevumADKPlugin(kernel=kernel)
+    mock_tool = MagicMock()
+    mock_tool.name = "t"
+    mock_ctx = MagicMock()
+    mock_ctx.agent_name = "my-adk-agent"
+
+    await plugin.after_tool_callback(
+        tool=mock_tool,
+        tool_args={},
+        tool_context=mock_ctx,
+        result=None,
+    )
+
+    payload = kernel.record_event.call_args[1]["payload"]
+    assert payload["adk_agent_name"] == "my-adk-agent"
+
+
+# ── after_agent_callback tests ────────────────────────────────────────────────
+
+
+async def test_after_agent_callback_returns_none() -> None:
+    """after_agent_callback must return None (ambient capture, non-blocking)."""
+    plugin = AevumADKPlugin(kernel=None)
+    result = await plugin.after_agent_callback(
+        callback_context=MagicMock(),
+        llm_response=MagicMock(),
+    )
+    assert result is None
+
+
+async def test_after_agent_callback_emits_snapshot_receipt() -> None:
+    """after_agent_callback must emit a snapshot receipt with snapshot_hash."""
+    kernel = MagicMock()
+    plugin = AevumADKPlugin(kernel=kernel)
+
+    await plugin.after_agent_callback(
+        callback_context=MagicMock(),
+        llm_response=MagicMock(),
+    )
+
+    assert kernel.record_event.called
+    payload = kernel.record_event.call_args[1]["payload"]
+    assert "snapshot_hash" in payload
+    assert payload["handoff_type"] == "ACTIVATION"
