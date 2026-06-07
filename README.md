@@ -74,7 +74,7 @@ Crisis keyword in data? Blocked before the graph write. No exceptions.
 
 ## Adapter matrix
 
-Six adapters ship with CI coverage across Python 3.11–3.13:
+Eight adapters ship with CI coverage across Python 3.11–3.13:
 
 | Adapter | Install | Import path |
 |---|---|---|
@@ -84,6 +84,8 @@ Six adapters ship with CI coverage across Python 3.11–3.13:
 | OpenAI Agents | `aevum-core[openai-agents]` | `aevum.core.adapters.openai_agents.AevumAgentHooks` |
 | CrewAI | `aevum-core[crewai]` | `aevum.core.adapters.crewai.AevumCrewHooks` |
 | MCP | `aevum-core[mcp]` | `aevum.mcp.traceparent` |
+| Google ADK | `aevum-core[adk]` | `aevum.core.adapters.adk.AevumADKCallback` |
+| Microsoft Agent Framework | `aevum-core[maf]` | `aevum.core.adapters.maf.AevumMAFMiddleware` |
 
 ```python
 # LangGraph drop-in — every superstep dual-signed and chained
@@ -124,7 +126,7 @@ pip install "aevum-core[all]"              # everything
 
 All five are consent-checked, barrier-enforced, and ledger-recorded.
 
-## The five absolute barriers
+## The five unconditional barriers
 
 These are Cedar `forbid` policies. Cedar semantics: forbid always overrides
 permit. No configuration, no override, no escape hatch.
