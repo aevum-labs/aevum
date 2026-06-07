@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 _POLICY_DIR = Path(__file__).parent.parent / "policies"
 
+_MAX_POLICY_BYTES = 1_000_000   # 1 MB — Cedar has no built-in size limit
+_MAX_REQUEST_BYTES = 100_000    # 100 KB per authorization request
+
 
 class PolicyError(Exception):
     """Raised when policy evaluation itself fails (not a deny — an engine error)."""
@@ -31,7 +34,19 @@ class CedarPolicyEngine:
                 "cedarpy is not installed. "
                 "Run: pip install 'aevum-core[cedar]'"
             )
+        policy_bytes = policy_text.encode()
+        if len(policy_bytes) > _MAX_POLICY_BYTES:
+            raise PolicyError(
+                f"Cedar policy set exceeds {_MAX_POLICY_BYTES // 1_000_000} MB limit "
+                f"({len(policy_bytes)} bytes). Failing closed."
+            )
         self._policy_text = policy_text
+        errors = self.validate()
+        if errors:
+            raise PolicyError(
+                f"Cedar policy validation failed at load: {errors}. "
+                "Failing closed — no authorization will be granted."
+            )
 
     @classmethod
     def default(cls) -> CedarPolicyEngine:
