@@ -100,7 +100,7 @@ jobs:
         if: matrix.install-extra == 'adk'
         run: |
           uv sync --frozen --python ${{ matrix.python }}
-          uv pip install --python ${{ matrix.python }} "google-adk>=1.7.0"
+          uv pip install --python ${{ matrix.python }} "google-adk>=2.2,<3"
 
       - name: Run policy protocol tests
         if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\",\"anthropic\",\"langchain\",\"adk\",\"maf\"]'), matrix.install-extra)"

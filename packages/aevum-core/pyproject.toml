@@ -59,7 +59,7 @@ openai-agents = [
     "openai-agents>=0.0.12",
 ]
 adk = [
-    "google-adk>=1.7.0",
+    "google-adk>=2.2,<3",
 ]
 maf = [
     "agent-framework-core>=1.0.0",

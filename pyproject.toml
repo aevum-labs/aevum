@@ -96,3 +96,7 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "aevum.core.adapters.maf"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["google.adk.*"]
+ignore_missing_imports = true
