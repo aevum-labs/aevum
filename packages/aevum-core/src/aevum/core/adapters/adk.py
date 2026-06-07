@@ -53,7 +53,7 @@ except ImportError:
             self.name = name
 
 
-class AevumADKPlugin(_BasePlugin):
+class AevumADKPlugin(_BasePlugin):  # type: ignore[misc]
     """
     Aevum governance plugin for Google Agent Development Kit (ADK).
 
