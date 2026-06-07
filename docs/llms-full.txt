@@ -32,6 +32,18 @@ These cannot be disabled by configuration, policy, or emergency override:
 3. **Consent** — requires valid, unexpired consent for every context traversal
 4. **Audit immutability** — prevents modification of any sigchain entry after commit
 5. **Provenance** — records verified principal identity on every entry
+## Adapters (eight supported)
+| Adapter | Class | Framework version |
+|---------|-------|-------------------|
+| OpenAI Agents SDK | `AevumAgentHooks` | openai-agents >=0.0.9 |
+| LangChain | `AevumLangChainCallback` | langchain-core >=1.2.22 |
+| LangGraph | `AevumCheckpointer` | langgraph-checkpoint >=4.1.0 |
+| CrewAI | `AevumCrewAIHooks` | crewai >=0.80 |
+| A2A (Agent-to-Agent) | `AevumA2AAdapter` | a2a-sdk v1.0 |
+| MCP | `AevumMCPInterceptor` | fastmcp >=2.0 |
+| Google ADK | `AevumADKPlugin` | google-adk >=2.2,<3 (BasePlugin 2.x API) |
+| Microsoft Agent Framework | `AevumMAFMiddleware` | agent-framework >=1.8,<2 |
+
 ## Quickstart (10 lines)
 ```python
 from aevum.core import Engine

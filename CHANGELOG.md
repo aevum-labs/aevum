@@ -8,6 +8,46 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+## [0.7.3] — 2026-06-07
+
+### Security
+
+- `langchain-core` floor raised to `>=1.2.22` — clears CVE-2025-68664 (CVSS 9.3, deserialization RCE) and CVE-2026-34070 (CVSS 7.5, path traversal). Prior floor `>=0.2.0` admitted vulnerable versions.
+- `langgraph-checkpoint >=4.1.0` CVE comment added — confirms floor already excludes CVE-2025-64439 (CVSS 7.4, RCE via JsonPlusSerializer).
+- `pynacl` floor raised to `>=1.6.2` — clears CVE-2025-69277 (key-recovery side-channel).
+- `agent-framework-core <2` upper cap added — prevents unvetted 2.x breaking changes from entering the dependency graph.
+- COSE_Sign1 verifier (`aevum-publish`): `decode_and_verify()` now enforces `alg=-8` (EdDSA) from the protected header only; previously the guard existed only in the CLI path (`app.py`).
+- Cedar policy engine: `validate()` now called at load time; errors propagate instead of silently falling through. Input size bounds added (1 MB policy, 100 KB request).
+- SQLite WAL receipt store: DB file created with `0o600` permissions, parent directory with `0o700`. All SQL queries confirmed parameterized. WAL checkpoint/rotation documented as TODO(v0.8.0).
+- TSA client: `AEVUM_TSA_URL` environment variable override added. Documented in `docs/reference/cli.md`.
+- `LANGGRAPH_STRICT_MSGPACK=true` mitigation documented in `docs/guides/langgraph.md` with CVE-2025-64439 context.
+
+### Fixed
+
+- `SandboxTask.severity` type annotation tightened from `str` to `Literal["low", "medium", "high", "critical"]` — resolves a hidden type mismatch caught during `# type: ignore` audit.
+- 14 `__version__` strings in source files updated from `<=0.6.0` to `0.7.3`.
+- Terminology corrected in source and docs: `absolute barriers` → `unconditional barriers`; `deterministic replay` → `verifiable decision records`.
+- `get_ledger_entries()` references removed from public-facing docs; replaced with `engine.query()` (the NAVIGATE function).
+
+### Documentation
+
+- `CLAUDE.md` Current State block updated to reflect v0.7.3.
+- `README.md` adapter matrix updated to 8 adapters (adds Google ADK, Microsoft Agent Framework). "Five absolute barriers" corrected to "five unconditional barriers."
+- `llms.txt` and `llms-full.txt` (root and `docs/`) updated: adds Google ADK and Microsoft Agent Framework adapter entries; aligns five-function names.
+- Colorado compliance copy updated from SB 24-205 (repealed) to SB 26-189 (signed May 14, 2026; effective Jan 1, 2027; ADMT notice framework; penalties up to $20,000/violation).
+- EU AI Act Annex III date hedged as provisional (AI Omnibus, pending Official Journal publication; Aug 2, 2026 remains operative until then).
+- Skipped test categories documented in `docs/contributing/test-coverage.md` (90 optional-dep guards, 12 integration tests, 0 unclear).
+
+### SEO / Discoverability
+
+- Schema.org JSON-LD restructured to `@graph` with `@id` references, `softwareVersion`, `keywords[9]`, `maintainer`, `sameAs` links to GitHub org and PyPI. Disambiguates from collision namespace (aveumai.com, kwailapt/aevum, aevum.technology, Aevum-Bond).
+- `/concepts/tamper-evident-logs/` page meta description and signing section updated: now references dual Ed25519 + ML-DSA-65 (NIST FIPS 204) signing and EU AI Act Article 12.
+
+### Adapters
+
+- Google ADK adapter: upgraded from 1.x duck-typing stub to `BasePlugin` 2.x API (google-adk >=2.2,<3). All four callbacks async with keyword-only parameters. DSSAD handoff fields on every receipt. Known limitation: ADK issue #2809 (sub-agent AgentTool coverage gap).
+- Microsoft Agent Framework adapter: confirmed against agent-framework 1.8.0. DSSAD fields added to all five `record_event` payload sites. `MiddlewareTermination` history-gap known limitation documented.
+
 ## [0.7.2] — 2026-06-05
 
 ### Added

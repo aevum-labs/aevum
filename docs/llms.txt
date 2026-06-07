@@ -9,6 +9,8 @@
 - [Consent model](https://aevum.build/learn/architecture.md#consent): Cedar-policy-enforced consent ledger; every context traversal checks it
 - [Five barriers](https://aevum.build/learn/architecture.md#barriers): Crisis · Classification ceiling · Consent · Audit immutability · Provenance
 - [MCP server](https://aevum.build/api/mcp.md): Expose Aevum as an MCP tool server for Cursor, Claude Code, Windsurf, Cline
+## Adapters (eight supported)
+- OpenAI Agents SDK (`AevumAgentHooks`), LangChain (`AevumLangChainCallback`), LangGraph (`AevumCheckpointer`), CrewAI (`AevumCrewAIHooks`), A2A (`AevumA2AAdapter`), MCP (`AevumMCPInterceptor`), Google ADK (`AevumADKPlugin` — BasePlugin 2.x), Microsoft Agent Framework (`AevumMAFMiddleware` — MAF 1.8.x)
 ## Quickstart
 - [Installation](https://aevum.build/docs/quickstart.md): `pip install aevum-core` — single dependency, runs on Raspberry Pi to Kubernetes
 - [10-line demo](https://aevum.build/docs/quickstart.md#demo): Sign an action, commit, verify chain integrity

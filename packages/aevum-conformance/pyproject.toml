@@ -1,6 +1,6 @@
 [project]
 name = "aevum-conformance"
-version = "0.7.2"
+version = "0.7.3"
 description = "Aevum conformance test suite — 9 behavioral invariants."
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }

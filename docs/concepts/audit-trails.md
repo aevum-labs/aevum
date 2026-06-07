@@ -35,9 +35,9 @@ This guide covers the technical implementation of 12(1) and 12(2). For high-risk
 | Clause | What it requires technically | Aevum primitive |
 |--------|------------------------------|-----------------|
 | Article 12(1) | Automatic recording — fires on every operation without manual intervention | Every engine call appends to the episodic ledger unconditionally |
-| Article 12(2)(a) | Logs must enable identification of situations presenting risk or triggering a substantial modification | Every `AuditEvent` records `event_type`, `actor`, `timestamp`, and `status` — anomalous patterns are detectable via `get_ledger_entries()` |
+| Article 12(2)(a) | Logs must enable identification of situations presenting risk or triggering a substantial modification | Every `AuditEvent` records `event_type`, `actor`, `timestamp`, and `status` — anomalous patterns are detectable via `engine.query()` |
 | Article 12(2)(b) | Logs must facilitate post-market monitoring by market surveillance authorities | The sigchain provides a complete, tamper-evident, replayable record accessible to authorised auditors via `replay` |
-| Article 12(2)(c) | Logs must support monitoring of deployer obligations under Article 26(5) | `get_ledger_entries()` gives deployers a full operational record; `verify_sigchain()` confirms integrity |
+| Article 12(2)(c) | Logs must support monitoring of deployer obligations under Article 26(5) | `engine.query()` gives deployers a full operational record; `verify_sigchain()` confirms integrity |
 | Article 26(6) | Minimum 6-month log retention | Ledger is append-only; entries are never deleted |
 
 ## What Article 12 does not specify — and what that means
@@ -132,7 +132,7 @@ chain_intact = engine.verify_sigchain()
 print(f"Sigchain intact: {chain_intact}")  # True
 ```
 
-Each section of the example maps to a specific regulatory requirement. The `add_consent_grant` call at the top satisfies Barrier 3 (consent as precondition for any write) and simultaneously creates a ledger entry that can be replayed later under `regulatory-audit` purpose. The `ingest` call's `provenance` argument provides Article 12(2)(b) compliance: `source_id` identifies the reference database (`fhir-r4-endpoint-prod`) and `chain_of_custody` records every system the data passed through before reaching the kernel. The `data` payload is stored verbatim, satisfying 12(2)(c). The `get_ledger_entries()` call with a date filter demonstrates 6-month retention query — the ledger never deletes entries, so the filter is a view over the complete record. The `replay` call at the end provides verifiable retrieval: the same `audit_id` will return the same heart-rate reading regardless of what the production FHIR endpoint contains today.
+Each section of the example maps to a specific regulatory requirement. The `add_consent_grant` call at the top satisfies Barrier 3 (consent as precondition for any write) and simultaneously creates a ledger entry that can be replayed later under `regulatory-audit` purpose. The `ingest` call's `provenance` argument provides Article 12(2)(b) compliance: `source_id` identifies the reference database (`fhir-r4-endpoint-prod`) and `chain_of_custody` records every system the data passed through before reaching the kernel. The `data` payload is stored verbatim, satisfying 12(2)(c). The episodic ledger is append-only and never deletes entries — `engine.query()` with a date filter provides the 6-month retention view over the complete record. The `replay` call at the end provides verifiable retrieval: the same `audit_id` will return the same heart-rate reading regardless of what the production FHIR endpoint contains today.
 
 ## What Aevum does not cover
 

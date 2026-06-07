@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Phase 2 — CedarPolicyEngine and five absolute barrier tests."""
+"""Phase 2 — CedarPolicyEngine and five unconditional barrier tests."""
 from pathlib import Path
 
 import pytest

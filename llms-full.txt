@@ -36,6 +36,19 @@ past decision.
 4. Audit immutability — ledger deletion and overwrite are forbidden
 5. Provenance — no ingestion without source_id chain of custody
 
+## Adapters (eight supported)
+
+| Adapter | Class | Version |
+|---------|-------|---------|
+| OpenAI Agents SDK | `AevumAgentHooks` | openai-agents >=0.0.9 |
+| LangChain | `AevumLangChainCallback` | langchain-core >=1.2.22 |
+| LangGraph | `AevumCheckpointer` | langgraph-checkpoint >=4.1.0 |
+| CrewAI | `AevumCrewAIHooks` | crewai >=0.80 |
+| A2A (Agent-to-Agent) | `AevumA2AAdapter` | a2a-sdk v1.0 |
+| MCP | `AevumMCPInterceptor` | fastmcp >=2.0 |
+| Google ADK | `AevumADKPlugin` | google-adk >=2.2,<3 (BasePlugin 2.x API) |
+| Microsoft Agent Framework | `AevumMAFMiddleware` | agent-framework >=1.8,<2 |
+
 ## Developer Mode (AEVUM_DEV=1)
 
 `AEVUM_DEV=1` activates zero-config mode for local development:

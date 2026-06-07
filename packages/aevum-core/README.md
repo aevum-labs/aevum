@@ -1,6 +1,6 @@
 # aevum-core
 
-The Aevum context kernel — five governed functions, cryptographic sigchain, consent ledger, and absolute barriers.
+The Aevum context kernel — five governed functions, cryptographic sigchain, consent ledger, and unconditional barriers.
 
 ```bash
 pip install aevum-core

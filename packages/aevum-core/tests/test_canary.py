@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """
-Canary tests — fail if any absolute barrier is removed or softened.
+Canary tests — fail if any unconditional barrier is removed or softened.
 Spec Section 09.4. These must pass on every commit to aevum-core.
 """
 
