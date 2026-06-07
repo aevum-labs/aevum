@@ -101,7 +101,7 @@ class SandboxTask:
     task_id: str
     host_id: str
     finding: str
-    severity: str
+    severity: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
     proposed_action: str
     status: str = "pending_consent"
     consent_token: str | None = None

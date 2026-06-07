@@ -56,7 +56,7 @@ class SessionEvent:
     inputs/outputs. Storing hashes (not plaintext) preserves privacy
     while enabling tamper detection and replay verification.
 
-    For deterministic replay, the full inputs must be stored elsewhere
+    For verifiable decision records, the full inputs must be stored elsewhere
     (e.g. encrypted with the subject's DEK in the consent store).
     The sigchain stores only hashes.
     """

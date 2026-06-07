@@ -370,7 +370,7 @@ async def sandbox_scan(
         task_id=task.task_id,
         host_id=task.host_id,
         finding=task.finding,
-        severity=task.severity,  # type: ignore[arg-type]
+        severity=task.severity,
         proposed_action=task.proposed_action,
         barriers_evaluated=chain[-1]["barrier_evaluations"],
         receipt_hash=chain[-1]["sigchain_entry_hash"],
