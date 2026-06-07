@@ -19,6 +19,7 @@
 ## Integration guides
 - [Pure Python guide](https://aevum.build/learn/guides/pure-python/): End-to-end without AEVUM_DEV — consent grants, ingest, query, replay, verify
 - [LangChain guide](https://aevum.build/learn/guides/langchain/): Governed context + LLM invocation + auditable commit
+- Eight adapters: OpenAI Agents SDK, LangChain, LangGraph, CrewAI, A2A, MCP, Google ADK (BasePlugin 2.x), Microsoft Agent Framework (MAF 1.8.x)
 
 ## API reference
 - [Python SDK](https://aevum.build/reference/api/): Engine, ConsentGrant, Sigchain, verify_sigchain()

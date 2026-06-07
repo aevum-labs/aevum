@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for all five absolute barriers."""
+"""Tests for all five unconditional barriers."""
 
 from __future__ import annotations
 

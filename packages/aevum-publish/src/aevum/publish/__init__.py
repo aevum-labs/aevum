@@ -43,7 +43,7 @@ from aevum.publish.backends import (
 from aevum.publish.complication import PublishComplication
 from aevum.publish.receipt import AevumReceipt, ReceiptEncoder
 
-__version__ = "0.7.1"
+__version__ = "0.7.3"
 __all__ = [
     "PublishComplication",
     "AevumReceipt",

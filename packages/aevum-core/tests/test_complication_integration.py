@@ -191,7 +191,7 @@ def test_webhook_fires_on_review_approve() -> None:
 
 # Existing tests still pass (regression)
 def test_existing_canary_barriers_unaffected() -> None:
-    """Complication installation must not affect absolute barrier behaviour."""
+    """Complication installation must not affect unconditional barrier behaviour."""
     engine = Engine()
     result = engine.ingest(
         data={"content": "I want to kill myself"},

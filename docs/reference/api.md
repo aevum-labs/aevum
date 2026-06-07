@@ -33,7 +33,6 @@ policy bridge, complication registry, and the five governed functions.
         - register_webhook
         - deregister_webhook
         - create_review
-        - get_ledger_entries
         - ledger_count
 
 ## OutputEnvelope

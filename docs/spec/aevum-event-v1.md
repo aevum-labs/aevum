@@ -3,8 +3,7 @@
 The machine-readable JSON Schema is at
 [`spec/aevum-event-v1.json`](aevum-event-v1.json).
 
-The schema defines the structure of every AuditEvent as returned by
-`Engine.get_ledger_entries()`. See the
+The schema defines the structure of every AuditEvent produced by the episodic ledger. See the
 [Signing Specification](aevum-signing-v1.md) for verification procedures.
 
 ## Field summary
