@@ -70,7 +70,7 @@ AevumCheckpointer creates three tables on first use:
 
 ## LANGGRAPH_STRICT_MSGPACK
 
-In production, set:
+**Required** — set to `true` in all production deployments:
 
 ```bash
 export LANGGRAPH_STRICT_MSGPACK=true
@@ -80,6 +80,11 @@ This causes LangGraph to reject non-serializable state values at checkpoint
 time rather than silently coercing them. Without this flag, state that cannot
 round-trip through msgpack may be stored in a lossy form, making replay
 unreliable.
+
+This flag also mitigates CVE-2025-64439 (CVSS 7.4) — RCE via
+`JsonPlusSerializer` json-fallback constructor deserialization, fixed in
+`langgraph-checkpoint>=3.0`. Enabling strict-mode msgpack prevents the unsafe
+object construction path even if older serializer code is reached transitively.
 
 ## Version pinning
 

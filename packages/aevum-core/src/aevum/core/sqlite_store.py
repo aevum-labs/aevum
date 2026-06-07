@@ -20,6 +20,7 @@ Recommended: daily. Failure to run it will cause unbounded operational-tier grow
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import time
 
@@ -74,9 +75,13 @@ class SqliteReceiptStore:
     """
 
     def __init__(self, db_path: str | None = None) -> None:
-        import os
         self._db_path = db_path or os.environ.get("AEVUM_RECEIPT_DB", ":memory:")
+        if self._db_path != ":memory:":
+            db_dir = os.path.dirname(os.path.abspath(self._db_path))
+            os.makedirs(db_dir, mode=0o700, exist_ok=True)
         self._conn = self._connect()
+        if self._db_path != ":memory:":
+            os.chmod(self._db_path, 0o600)
         self._create_schema()
 
     def _connect(self) -> sqlite3.Connection:
@@ -237,6 +242,10 @@ class SqliteReceiptStore:
         )
         self._conn.commit()
         return cur.rowcount
+
+    # TODO(v0.8.0): Add WAL checkpoint and secure-delete on rotation.
+    # Current risk: -wal/-shm sidecars persist after process exit.
+    # See: security model in docs/security.md
 
     # ── Store info ────────────────────────────────────────────────────────────
 
