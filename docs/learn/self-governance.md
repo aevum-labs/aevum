@@ -56,7 +56,7 @@ Each principal has exactly the permissions Cedar grants it — no more:
 | `execution_agent` (Claude Code) | `execute(approved_task)` — consent receipt required |
 | `maintainer` | All actions including constitutional operations |
 
-### The five absolute barriers
+### The five unconditional barriers
 
 These are compiled-in invariants in `aevum-maintainer`. Cedar policies
 can further restrict — they cannot relax these:

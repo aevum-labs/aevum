@@ -161,4 +161,4 @@ before the change reaches production.
 - [CLI Reference](../reference/cli.md) — `aevum verify` and `aevum verify-receipt`
   commands for sigchain inspection
 - [Compliance Mapping](../learn/compliance-mapping.md) — how `AevumAgentHooks`
-  satisfies EU AI Act Article 12 and Colorado SB 205 logging requirements
+  satisfies EU AI Act Article 12 and Colorado SB 26-189 logging requirements

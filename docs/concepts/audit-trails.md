@@ -6,6 +6,12 @@ description: "EU AI Act Article 12 requires automatic, tamper-evident recording 
 
 EU AI Act Article 12 mandates automatic logging for high-risk AI systems. For standalone Annex III high-risk systems, obligations become enforceable on December 2, 2027 (deferred by Omnibus political agreement May 7, 2026). This guide maps each Article 12 sub-clause to a concrete implementation using Aevum's episodic ledger and sigchain.
 
+> **Note (June 2026):** The December 2, 2027 date reflects the provisional
+> EU AI Act Omnibus agreement (Council Doc 9247/26, May 13, 2026) and
+> takes effect only upon formal publication in the Official Journal. Until
+> publication, August 2, 2026 remains the operative legal deadline. Verify
+> current enforcement dates before relying on this for compliance planning.
+
 ## What Article 12 requires
 
 The regulation text:
@@ -95,20 +101,9 @@ result = engine.ingest(
 print(f"Recorded: {result.audit_id}")   # urn:aevum:audit:0196...
 print(f"Status:   {result.status}")     # ok
 
-# Article 12(2)(a) — period of each use: inspect the ledger entry
-entries = engine.get_ledger_entries()
-latest = entries[-1]
-print(f"Timestamp: {latest['timestamp']}")    # UTC ISO 8601
-print(f"Actor:     {latest['actor']}")        # clinical-ai-agent
-print(f"Event:     {latest['event_type']}")   # ingest.accepted
-
-# Article 26(6) — 6-month retention: filter ledger by date range
-cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=180)
-retained = [
-    e for e in engine.get_ledger_entries()
-    if datetime.datetime.fromisoformat(e["timestamp"]) > cutoff
-]
-print(f"Entries within 6-month window: {len(retained)}")
+# Article 12(2)(a) — period of each use: the audit_id links to the ledger entry
+# Use engine.replay(audit_id=result.audit_id, actor="auditor") to retrieve the record
+# See docs/learn/quickstart.md for current examples
 
 # Replay — verifiable retrieval for regulatory audit
 # Same audit_id always returns same payload — Spec Section 8.7

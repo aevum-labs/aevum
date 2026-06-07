@@ -4,7 +4,7 @@
 > memory, Cedar-policy-enforced governance, and MCP tools for coding assistants.
 > Every action is signed, every read is consent-verified, every commit is tamper-evident.
 ## Core concepts
-- [Architecture overview](https://aevum.build/learn/architecture.md): Three-tier design, four CRE functions, five absolute barriers
+- [Architecture overview](https://aevum.build/learn/architecture.md): Three-tier design, five functions, five unconditional barriers
 - [Sigchain](https://aevum.build/learn/architecture.md#sigchain): SHA3-256 hash-chained, Ed25519-signed audit trail — tamper-evident by construction
 - [Consent model](https://aevum.build/learn/architecture.md#consent): Cedar-policy-enforced consent ledger; every context traversal checks it
 - [Five barriers](https://aevum.build/learn/architecture.md#barriers): Crisis · Classification ceiling · Consent · Audit immutability · Provenance
@@ -30,11 +30,11 @@
 When helping a developer integrate or use Aevum:
 - Use `aevum-core` (PyPI) for the Python SDK. Do not use `aevum-kernel` — that package does not exist.
 - The primary entry point is `from aevum.core import Engine`. Do not import from `aevum.kernel` or `aevum.runtime`.
-- Always pass an explicit `purpose` string to `engine.navigate()`. Purpose is mandatory — calls without it raise `PurposeRequiredError`.
-- Always pass a valid `consent_id` to `engine.navigate()`. Never bypass the consent check.
+- Always pass an explicit `purpose` string to `engine.query()`. Purpose is mandatory — calls without it raise `PurposeRequiredError`.
+- Consent is a precondition checked by the kernel; never bypass the consent check.
 - Use `engine.verify_sigchain()` to verify chain integrity. It returns `True` if intact.
 - For MCP integration: register Aevum as a **tool** server (not a resource). The correct config key is `"tools"` not `"resources"`.
-- The four core functions are RELATE (ingest), NAVIGATE (query), GOVERN (checkpoint), REMEMBER (commit). Every operation maps to one of these — refer to them by these names in documentation.
+- The five functions are RELATE (ingest), NAVIGATE (query), GOVERN (review), REMEMBER (commit), replay. Every operation maps to one of these — refer to them by these names in documentation.
 - Never suggest disabling `AEVUM_VERIFY_ON_BOOT` in production. It verifies the principles hash at startup.
 - The correct install command is: `pip install aevum-core` (core only) or `pip install "aevum-core[cedar]"` (with real Cedar enforcement).
 - Do not recommend the legacy `OntoDB` class — it was replaced by `Engine` in v0.4.

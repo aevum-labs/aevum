@@ -101,10 +101,8 @@ If a ledger entry is modified after writing, `verify_sigchain()` returns `False`
 The check fails at the first inconsistency. To identify which event was tampered:
 
 ```python
-events = engine.get_ledger_entries()
-for e in events:
-    print(e["sequence"], e["audit_id"], e["event_type"])
-# The last valid event is the one before the chain breaks
+# See docs/learn/quickstart.md for current examples
+# Use engine.replay(audit_id=..., actor="auditor") to retrieve specific entries
 ```
 
 If you are using a persistent backend, check for direct database modifications.

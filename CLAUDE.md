@@ -25,11 +25,12 @@ See NON-GOALS.md for the full normative list.
 
 ## Current State
 
-Phase 0 is complete (namespaces, governance, monorepo skeleton).
-Phase 1 (protocol specification) is next.
-
-Do not implement logic not yet designed. If something is not in this
-document and not in a phase briefing, ask rather than infer.
+v0.7.3 — production-ready foundation. Thirteen packages on PyPI. Five
+unconditional barriers enforced. Ed25519 + ML-DSA-65 dual signing.
+COSE_Sign1 receipts with RFC 3161 timestamps. Cedar ABAC + OPA policy
+engines. Adapters: OpenAI Agents, LangGraph, CrewAI, LangChain, A2A,
+Google ADK, Microsoft Agent Framework. SQLite WAL receipt store.
+OpenTelemetry GenAI instrumentation bridge.
 
 ---
 

@@ -70,11 +70,9 @@ legit = engine.ingest(
     actor="billing-agent",
 )
 
-# Inspect the ledger entry to verify provenance
-entries = engine.get_ledger_entries()
-latest = entries[-1]
-print(latest["event_type"])  # ingest.accepted
-# Full provenance is stored in the ledger entry alongside the audit_id
+# Inspect the ledger entry to verify provenance via replay
+# Use engine.replay(audit_id=result.audit_id, actor="auditor") to retrieve provenance
+# See docs/learn/quickstart.md for current examples
 ```
 
 A poisoned entry arriving via a compromised external tool would show `source_id: "external-tool-response"` and a custody chain that does not include the legitimate billing system. The mismatch is detectable in the ledger before the downstream effect is traced.
@@ -87,7 +85,7 @@ Telling the model "ignore malicious memory entries" in the system prompt is a ru
 
 ## What Aevum addresses and what it does not
 
-Aevum structurally addresses Layers 2 and 3. It enforces consent as a precondition for writes and records a complete provenance chain for every successful ingest. It does not perform content inspection (Layer 1) or anomaly detection (Layer 4). For Layer 1, implement input validation in your application before calling `ingest`. For Layer 4, consume `engine.get_ledger_entries()` from your observability stack and build detection rules against the event sequence.
+Aevum structurally addresses Layers 2 and 3. It enforces consent as a precondition for writes and records a complete provenance chain for every successful ingest. It does not perform content inspection (Layer 1) or anomaly detection (Layer 4). For Layer 1, implement input validation in your application before calling `ingest`. For Layer 4, export episodic ledger events to your observability stack and build detection rules against the event sequence.
 
 ## See also
 
