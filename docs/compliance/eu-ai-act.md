@@ -37,7 +37,7 @@ Aevum is a context kernel that sits between data sources and AI consumers. It pr
   calls
 - An append-only episodic ledger — all decisions are cryptographically recorded
 - Consent-checked graph traversal — no data access without an active consent grant
-- Deterministic decision replay — any past decision can be reconstructed
+- Verifiable decision records — any past decision can be reconstructed with cryptographic proof
 
 Aevum is intended to be operated by organizations deploying AI systems that process
 personal data or make consequential decisions. It is not intended for end-user
@@ -48,7 +48,7 @@ deployment.
 | Component | Role |
 |---|---|
 | Five public functions (ingest, query, review, commit, replay) | Stable, policy-evaluated API surface |
-| Cedar policy engine | Attribute-based authorization; enforces absolute barriers |
+| Cedar policy engine | Attribute-based authorization; enforces unconditional barriers |
 | Consent ledger (OR-Set CRDT) | Per-subject, per-purpose, time-bounded consent grants |
 | Episodic ledger (sigchain) | Ed25519-signed, SHA3-256 Merkle-chained audit events |
 | Unconditional barriers (5) | Non-configurable, non-overridable safety gates |
