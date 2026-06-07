@@ -352,8 +352,8 @@ class Sigchain:
 
                     from aevum.core.escalation import escalate_if_triggered
                     from aevum.core.receipt import AevumReceipt
-                    cose = cbor2.loads(event.receipt_cbor)
-                    receipt_payload = cbor2.loads(cose[2])
+                    cose = cbor2.loads(event.receipt_cbor, max_depth=400)
+                    receipt_payload = cbor2.loads(cose[2], max_depth=400)
                     receipt_obj = AevumReceipt.model_validate(receipt_payload)
                     escalate_if_triggered(
                         store=self._receipt_store,
@@ -374,8 +374,8 @@ class Sigchain:
                 import cbor2
 
                 from aevum.core.receipt import AevumReceipt
-                cose = cbor2.loads(event.receipt_cbor)
-                receipt = AevumReceipt.model_validate(cbor2.loads(cose[2]))
+                cose = cbor2.loads(event.receipt_cbor, max_depth=400)
+                receipt = AevumReceipt.model_validate(cbor2.loads(cose[2], max_depth=400))
                 self._exceedance_detector.process(receipt)
             except Exception as _e:
                 logger.warning("exceedance detection failed (non-blocking): %s", _e)

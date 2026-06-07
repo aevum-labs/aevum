@@ -14,7 +14,7 @@ classifiers = [
 ]
 dependencies = [
     "aevum-core",
-    "fastmcp>=3.2.0,<4",
+    "fastmcp>=3.2.4,<4",  # AIKIDO-2026-10735 — auth-header credential leak, fixed 3.2.4
 ]
 
 [project.scripts]
