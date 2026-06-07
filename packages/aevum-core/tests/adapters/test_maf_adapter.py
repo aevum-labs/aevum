@@ -364,3 +364,113 @@ async def test_function_middleware_tool_name_falls_back_to_unknown() -> None:
 
     assert result is None
     call_next.assert_awaited_once()
+
+
+# ── call_next no-args regression guards ──────────────────────────────────────
+
+
+async def test_call_next_no_args_agent_middleware() -> None:
+    """AevumAgentMiddleware must call call_next with no positional or keyword args."""
+    middleware = AevumAgentMiddleware(kernel=None)
+    ctx = _make_agent_context()
+    args_received: list[object] = []
+
+    async def mock_call_next(*args: object, **kwargs: object) -> None:
+        args_received.extend(args)
+        args_received.extend(kwargs.values())
+
+    await middleware.process(ctx, mock_call_next)
+    assert args_received == [], "call_next must be called with no args"
+
+
+async def test_call_next_no_args_function_middleware() -> None:
+    """AevumFunctionMiddleware must call call_next with no positional or keyword args."""
+    middleware = AevumFunctionMiddleware(kernel=None)
+    ctx = _make_function_context("some_tool")
+    args_received: list[object] = []
+
+    async def mock_call_next(*args: object, **kwargs: object) -> None:
+        args_received.extend(args)
+        args_received.extend(kwargs.values())
+
+    with _permit_patch():
+        await middleware.process(ctx, mock_call_next)
+
+    assert args_received == [], "call_next must be called with no args"
+
+
+async def test_call_next_no_args_chat_middleware() -> None:
+    """AevumChatMiddleware must call call_next with no positional or keyword args."""
+    middleware = AevumChatMiddleware(kernel=None)
+    ctx = _make_chat_context()
+    args_received: list[object] = []
+
+    async def mock_call_next(*args: object, **kwargs: object) -> None:
+        args_received.extend(args)
+        args_received.extend(kwargs.values())
+
+    await middleware.process(ctx, mock_call_next)
+    assert args_received == [], "call_next must be called with no args"
+
+
+# ── DSSAD fields in emitted receipts ─────────────────────────────────────────
+
+
+async def test_agent_middleware_emits_dssad_fields() -> None:
+    """agent.start and agent.end record_event payloads must include all DSSAD fields."""
+    kernel = MagicMock()
+    middleware = AevumAgentMiddleware(kernel=kernel)
+    ctx = _make_agent_context("dssad-agent")
+    call_next = AsyncMock()
+
+    await middleware.process(ctx, call_next)
+
+    assert kernel.record_event.call_count == 2
+    for call in kernel.record_event.call_args_list:
+        payload = call[1]["payload"]
+        assert "handoff_type" in payload, "missing handoff_type in agent payload"
+        assert "acted_on_behalf_of" in payload, "missing acted_on_behalf_of in agent payload"
+        assert "maf_agent_id" in payload, "missing maf_agent_id in agent payload"
+        assert "maf_middleware_type" in payload, "missing maf_middleware_type in agent payload"
+        assert payload["maf_middleware_type"] == "agent"
+        assert payload["handoff_type"] == "ACTIVATION"
+
+
+async def test_function_middleware_emits_dssad_fields() -> None:
+    """tool.start and tool.end record_event payloads must include all DSSAD fields."""
+    kernel = MagicMock()
+    middleware = AevumFunctionMiddleware(kernel=kernel)
+    ctx = _make_function_context("dssad_tool")
+    call_next = AsyncMock()
+
+    with _permit_patch():
+        await middleware.process(ctx, call_next)
+
+    assert kernel.record_event.call_count == 2
+    for call in kernel.record_event.call_args_list:
+        payload = call[1]["payload"]
+        assert "handoff_type" in payload, "missing handoff_type in function payload"
+        assert "acted_on_behalf_of" in payload, "missing acted_on_behalf_of in function payload"
+        assert "maf_agent_id" in payload, "missing maf_agent_id in function payload"
+        assert "maf_middleware_type" in payload, "missing maf_middleware_type in function payload"
+        assert payload["maf_middleware_type"] == "function"
+        assert payload["handoff_type"] == "ACTIVATION"
+
+
+async def test_chat_middleware_emits_dssad_fields() -> None:
+    """llm.call record_event payload must include all DSSAD fields."""
+    kernel = MagicMock()
+    middleware = AevumChatMiddleware(kernel=kernel)
+    ctx = _make_chat_context()
+    call_next = AsyncMock()
+
+    await middleware.process(ctx, call_next)
+
+    kernel.record_event.assert_called_once()
+    payload = kernel.record_event.call_args[1]["payload"]
+    assert "handoff_type" in payload, "missing handoff_type in chat payload"
+    assert "acted_on_behalf_of" in payload, "missing acted_on_behalf_of in chat payload"
+    assert "maf_agent_id" in payload, "missing maf_agent_id in chat payload"
+    assert "maf_middleware_type" in payload, "missing maf_middleware_type in chat payload"
+    assert payload["maf_middleware_type"] == "chat"
+    assert payload["handoff_type"] == "ACTIVATION"
