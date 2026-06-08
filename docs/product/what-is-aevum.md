@@ -72,7 +72,7 @@ end-to-end data flow.
 
 ---
 
-## v0.7.1 capabilities
+## v0.7.4 capabilities
 
 **Zero-config developer mode.** Set `AEVUM_DEV=1` to get a fully working
 Aevum engine with no consent configuration, no database, and no signer setup.
