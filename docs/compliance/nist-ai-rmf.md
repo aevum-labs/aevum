@@ -32,14 +32,14 @@ operation bypasses policy evaluation.
 
 | Policy file | Purpose |
 |---|---|
-| `barriers.cedar` | Five absolute `forbid` rules that cannot be overridden by any principal or configuration |
+| `barriers.cedar` | Five unconditional `forbid` rules that cannot be overridden by any principal or configuration |
 | `permits.cedar` | Base `permit` rules for routine operations; overridable by forbid rules |
 | `autonomy.cedar` | Five autonomy levels (L1–L5) governing how much independent action is permitted without human approval |
 | `gdpr_pii.cedar` | Unconditionally blocks any graph write where `context.contains_raw_pii == true` |
 | `trifecta.cedar` | Prevents simultaneous untrusted-source reads, private-data reads, and external exfiltration |
 
 **Autonomy levels** (`autonomy.cedar`): L1 requires human approval for all consequential
-actions; L2 for irreversible actions; L3 for irreversible actions; L4–L5 progressively
+actions; L2 for consequential actions; L3 for irreversible actions only; L4–L5 progressively
 relax restrictions. Operators configure the level for their deployment. High-risk AI
 deployments should use L1 or L2.
 

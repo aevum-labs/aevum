@@ -134,10 +134,10 @@ permit. No configuration, no override, no escape hatch.
 | Barrier | What it blocks |
 |---|---|
 | **1 — Crisis** | Any graph write when crisis-signal keywords are detected |
-| **2 — Consent** | Any context traversal without a scoped, active consent grant |
-| **3 — Classification ceiling** | Any action on data whose level exceeds the deployment ceiling |
-| **4 — Audit seal** | Any deletion or mutation of the provenance graph |
-| **5 — Provenance (veto-as-default)** | Any irreversible+consequential action without a human checkpoint |
+| **2 — Classification Ceiling** | Any action on data whose level exceeds the deployment ceiling |
+| **3 — Consent** | Any context traversal without a scoped, active consent grant |
+| **4 — Audit Immutability** | Any deletion or mutation of the provenance graph |
+| **5 — Provenance** | Any irreversible+consequential action without a human checkpoint |
 
 ## Compliance
 
@@ -162,7 +162,7 @@ python -c "from aevum.conformance.suite import ConformanceSuite; \
 ```
 
 See [`docs/conformance_report.txt`](docs/conformance_report.txt) for the
-reference run. The v0.6.0 suite covers 74 invariants across sigchain format,
+reference run. The v0.7.4 suite covers 74 invariants across sigchain format,
 dev mode contracts, OTel bridge privacy defaults, and VaultTransitSigner key
 schemes.
 
