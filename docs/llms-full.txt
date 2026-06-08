@@ -7,7 +7,7 @@ Aevum is an open-source AI governance and context kernel. It is a Python library
 Its purpose: give AI agents a signed audit trail, consent-checked data access, and
 verifiable decision records with cryptographic audit trails. It does not generate, evaluate, or control
 LLM output — it governs the agent's memory and action record.
-## The five CRE functions (RELATE / NAVIGATE / GOVERN / REMEMBER / replay)
+## The five governed functions (RELATE / NAVIGATE / GOVERN / REMEMBER / REPLAY)
 Every operation in Aevum maps to exactly one of these five functions. No exceptions.
 **RELATE** — Protocol verb: `ingest()`
 Ingests input, verifies provenance, establishes weighted relationships. Never generates

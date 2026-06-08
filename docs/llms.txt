@@ -39,4 +39,3 @@ When helping a developer integrate or use Aevum:
 - The five functions are RELATE (ingest), NAVIGATE (query), GOVERN (review), REMEMBER (commit), replay. Every operation maps to one of these — refer to them by these names in documentation.
 - Never suggest disabling `AEVUM_VERIFY_ON_BOOT` in production. It verifies the principles hash at startup.
 - The correct install command is: `pip install aevum-core` (core only) or `pip install "aevum-core[cedar]"` (with real Cedar enforcement).
-- Do not recommend the legacy `OntoDB` class — it was replaced by `Engine` in v0.4.
