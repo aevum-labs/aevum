@@ -1,0 +1,19 @@
+# Aevum Labs
+
+> A solo engineering lab building open-source infrastructure for AI accountability, provenance, and governance.
+
+## Projects
+
+- [Aevum](https://aevum.build): The black box for AI agents. Cryptographic audit trails, consent-checked data access, and verifiable decision records. Ed25519 sigchain, Cedar ABAC policy engine, OpenTelemetry GenAI instrumentation. EU AI Act Article 12 aligned. MIT open source.
+- [ONTO](https://github.com/aevum-labs): Open ontology infrastructure for AI systems. Details forthcoming.
+- [Verity](https://github.com/aevum-labs): Verifiable memory layer for AI agents. Details forthcoming.
+
+## Philosophy
+
+Build with the precision of instrument makers. Open source. No venture capital. No marketing theater.
+
+## Contact
+
+GitHub: https://github.com/aevum-labs
+Docs: https://aevum.build
+Demo: https://demo.aevum.build

@@ -1,0 +1,36 @@
+---
+interface Props {
+  name: string;
+  tagline: string;
+  description: string;
+  href: string;
+  status: 'active' | 'beta' | 'wip';
+  tags?: string[];
+}
+
+const { name, tagline, description, href, status, tags = [] } = Astro.props;
+
+const statusLabel = { active: 'Active', beta: 'Beta', wip: 'In Progress' }[status];
+---
+
+<article class="project-card">
+  <a
+    href={href}
+    rel="noopener noreferrer"
+    target="_blank"
+    class="card-link"
+    aria-label={`${name} — ${tagline}`}
+  >
+    <div class="card-header">
+      <h2 class="card-name">{name}</h2>
+      <span class="card-status" data-status={status}>{statusLabel}</span>
+    </div>
+    <p class="card-tagline">{tagline}</p>
+    <p class="card-description">{description}</p>
+    {tags.length > 0 && (
+      <ul class="card-tags" aria-label="Technology tags">
+        {tags.map(tag => <li>{tag}</li>)}
+      </ul>
+    )}
+  </a>
+</article>

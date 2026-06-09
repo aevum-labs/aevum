@@ -1,0 +1,91 @@
+---
+import Base from '../layouts/Base.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+---
+
+<Base>
+  <!-- ── HERO ── -->
+  <section class="hero" aria-label="Introduction">
+    <div class="hero-inner">
+      <p class="hero-label hero-line">AEVUM LABS</p>
+      <h1 class="hero-headline hero-line">Precision by design.</h1>
+      <p class="hero-sub hero-line">
+        Open-source infrastructure for AI accountability and governance.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── WORK ── -->
+  <section id="work" aria-labelledby="work-heading">
+    <div class="section-inner">
+      <h2 id="work-heading" class="section-label">Selected Work</h2>
+      <div class="project-list">
+        <ProjectCard
+          name="Aevum"
+          tagline="The black box for AI agents"
+          description="Cryptographic audit trails, consent-checked data access, and verifiable decision records for agent pipelines. Ed25519 sigchain, Cedar ABAC policy engine, OpenTelemetry GenAI instrumentation. EU AI Act Article 12 aligned. MIT open source."
+          href="https://aevum.build"
+          status="active"
+          tags={["Python", "Ed25519", "Cedar ABAC", "OpenTelemetry"]}
+        />
+        <ProjectCard
+          name="ONTO"
+          tagline="Open ontology infrastructure"
+          description="Building structured knowledge primitives for AI systems. Details forthcoming."
+          href="https://github.com/aevum-labs"
+          status="wip"
+          tags={[]}
+        />
+        <ProjectCard
+          name="Verity"
+          tagline="Verifiable memory for AI agents"
+          description="Tamper-evident, consent-governed memory layer. Details forthcoming."
+          href="https://github.com/aevum-labs"
+          status="wip"
+          tags={[]}
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PHILOSOPHY ── -->
+  <section id="philosophy" aria-labelledby="philosophy-heading">
+    <div class="section-inner">
+      <h2 id="philosophy-heading" class="section-label">Principles</h2>
+      <div class="philosophy-body">
+        <p>
+          We build like instrument makers — each component mastered for a single
+          purpose, assembled only when it earns its place. A watch movement works
+          because every part is right, not because every part is present.
+        </p>
+        <p>
+          Open source by default. Honest about gaps. No venture performance,
+          no marketing theater. The work speaks.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CONTACT ── -->
+  <section id="contact" aria-labelledby="contact-heading">
+    <div class="section-inner">
+      <h2 id="contact-heading" class="section-label">Contact</h2>
+      <ul class="contact-list" role="list">
+        <li>
+          <span class="contact-label">GitHub</span>
+          <a href="https://github.com/aevum-labs" rel="noopener noreferrer">
+            github.com/aevum-labs
+          </a>
+        </li>
+        <li>
+          <span class="contact-label">Docs</span>
+          <a href="https://aevum.build">aevum.build</a>
+        </li>
+        <li>
+          <span class="contact-label">Demo</span>
+          <a href="https://demo.aevum.build">demo.aevum.build</a>
+        </li>
+      </ul>
+    </div>
+  </section>
+</Base>

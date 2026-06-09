@@ -1,0 +1,80 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  canonicalURL?: URL | string;
+}
+
+const {
+  title,
+  description,
+  canonicalURL = Astro.url,
+} = Astro.props;
+
+const siteURL = 'https://aevumlabs.io';
+
+const orgSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Aevum Labs",
+  "url": siteURL,
+  "logo": `${siteURL}/favicon.svg`,
+  "description": "Open-source infrastructure for AI accountability, provenance, and governance.",
+  "sameAs": [
+    "https://github.com/aevum-labs",
+    "https://aevum.build"
+  ]
+};
+
+const personSchema = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "Rusty",
+  "jobTitle": "Solo Maintainer",
+  "url": siteURL,
+  "worksFor": { "@type": "Organization", "name": "Aevum Labs" },
+  "knowsAbout": ["AI governance", "cryptographic audit trails", "open source"],
+  "sameAs": ["https://github.com/aevum-labs"]
+};
+---
+
+<!-- Theme init: must be inline, must be first, must be synchronous -->
+<script is:inline>
+  (function() {
+    var stored = localStorage.getItem('theme');
+    var preferred = window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', stored || preferred);
+  })();
+</script>
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="generator" content={Astro.generator} />
+
+<title>{title}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonicalURL} />
+<link rel="sitemap" href="/sitemap-index.xml" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:url" content={canonicalURL} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:site_name" content="Aevum Labs" />
+
+<!-- Twitter/X Card -->
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+
+<!-- Favicons -->
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" href="/favicon.ico" />
+
+<!-- JSON-LD: Organization -->
+<script type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
+
+<!-- JSON-LD: Person -->
+<script type="application/ld+json" set:html={JSON.stringify(personSchema)} />
