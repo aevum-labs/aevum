@@ -278,6 +278,38 @@ of what the agent would have done if run again today.
 
 ---
 
+## Kernel-Event Impersonation via REMEMBER (D-08)
+
+An application could attempt to forge a kernel or governance event (e.g. a fake
+`complication.approved` or `session.committed`) by passing a kernel-reserved
+`event_type` to `commit()` (the public REMEMBER path). Because `commit()` produces
+cryptographically valid, correctly-chained ledger entries, such a forged event would
+be indistinguishable from a genuine kernel assertion when reading the sigchain by
+`event_type` alone.
+
+**Mitigation:** `commit()` rejects any `event_type` whose prefix matches a
+kernel-reserved namespace: `ingest.`, `query.`, `review.`, `commit.`, `replay.`,
+`barrier.`, `policy.`, `agent.`, `session.`, `complication.`, `capture.`,
+`context.`. The rejection returns `error_code="reserved_event_type"` and records a
+`commit.rejected` event in the sigchain. Application events must use unreserved
+namespaces (e.g. `app.`, `action.outcome.`, or any custom prefix not in the reserved
+list). This boundary is enforced in the kernel code path and is covered by a
+drift-guard canary test (`test_canary_all_kernel_namespaces_reserved`) that will fail
+if a future kernel namespace is added without also reserving it.
+
+**Residual risk:** An actor with direct storage access can bypass the public API
+entirely, writing raw ledger rows without passing through `commit()`. This is
+mitigated by storage access controls (PostgreSQL RLS, restricted DBA access) and
+by `verify_sigchain()`, which detects chain inconsistencies. Forged events written
+through the public path still carry the caller's `actor` field, providing forensic
+attribution.
+
+**Design flag:** A namespace registry (an explicit allowlist of kernel-owned prefixes
+maintained alongside `_RESERVED_PREFIXES`) would prevent future drift without
+requiring manual synchronisation of the canary. Tracked as a future hardening item.
+
+---
+
 ## Deployment Recommendations for Regulated Workloads
 
 ### HIPAA (healthcare, PHI)

@@ -59,6 +59,19 @@ def test_canary_barrier5_provenance_required() -> None:
         "CANARY FAIL: Barrier 5 (Provenance) bypassed"
 
 
+def test_canary_all_kernel_namespaces_reserved() -> None:
+    from aevum.core.functions.commit import _RESERVED_PREFIXES
+    kernel_reserved = {
+        "ingest.", "query.", "review.", "commit.", "replay.",
+        "barrier.", "policy.", "agent.",
+        "session.", "complication.", "capture.", "context.",
+    }
+    missing = kernel_reserved - set(_RESERVED_PREFIXES)
+    assert not missing, f"Kernel namespaces not reserved (forgery gap): {missing}"
+    assert "app." not in _RESERVED_PREFIXES, "app. must remain writable"
+    assert "action.outcome." not in _RESERVED_PREFIXES, "action.outcome. must remain writable"
+
+
 def test_canary_all_barrier_functions_exist() -> None:
     assert callable(barriers.check_crisis), "CANARY: check_crisis missing"
     assert callable(barriers.check_classification_ceiling), "CANARY: classification ceiling BLOCK missing"

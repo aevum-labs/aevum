@@ -42,6 +42,22 @@ def test_commit_reserved_prefix() -> None:
     assert r.data["error_code"] == "reserved_event_type"
 
 
+@pytest.mark.parametrize("evt", [
+    "session.committed", "complication.approved", "capture.gap", "context.stale",
+])
+def test_commit_rejects_kernel_lifecycle_prefixes(evt: str) -> None:
+    e = Engine()
+    r = e.commit(event_type=evt, payload={"x": 1}, actor="app-actor")
+    assert r.status == "error" and r.data["error_code"] == "reserved_event_type"
+
+
+@pytest.mark.parametrize("evt", ["app.event", "action.outcome.ok", "myapp.thing"])
+def test_commit_allows_app_namespaces(evt: str) -> None:
+    e = Engine()
+    r = e.commit(event_type=evt, payload={"x": 1}, actor="app-actor")
+    assert not (r.status == "error" and r.data.get("error_code") == "reserved_event_type")
+
+
 def test_ingest_ok() -> None:
     e = Engine()
     e.add_consent_grant(_grant())
