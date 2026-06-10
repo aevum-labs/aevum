@@ -45,6 +45,13 @@ class TestPyprojectExtras:
         toml = Path("packages/aevum-core/pyproject.toml").read_text()
         assert "aevum-store-postgres" in toml
 
+    def test_pqc_extra_defined(self) -> None:
+        import tomllib
+        data = tomllib.loads(Path("packages/aevum-core/pyproject.toml").read_text())
+        opt = data["project"]["optional-dependencies"]
+        assert "pqc" in opt, "pqc extra not declared"
+        assert any("liboqs" in dep for dep in opt["pqc"]), "pqc extra does not contain liboqs-python"
+
 
 class TestBenchmarks:
     def test_benchmarks_directory_exists(self) -> None:
