@@ -210,7 +210,7 @@ class CanarySuite:
                     passed=False,
                     detail="Cedar permitted govern_approve for irreversible+"
                            "consequential action WITHOUT human review. "
-                           "Barrier 5 is broken.",
+                           "govern checkpoint is broken.",
                 )
 
             # With human_checkpoint_completed=True, it should be permitted
@@ -230,7 +230,7 @@ class CanarySuite:
                     passed=False,
                     detail="Cedar denied govern_approve even WITH "
                            "human_checkpoint_completed=True. "
-                           "Barrier 5 escape clause is broken.",
+                           "govern checkpoint escape clause is broken.",
                 )
 
             return CanaryResult(name=name, passed=True)
