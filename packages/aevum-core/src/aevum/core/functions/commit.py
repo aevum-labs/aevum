@@ -13,9 +13,16 @@ from aevum.core.envelope.models import OutputEnvelope, ProvenanceRecord
 from aevum.core.protocols.audit_ledger import AuditLedgerProtocol
 from aevum.core.protocols.graph_store import GraphStore
 
+# Kernel-reserved event-type prefixes. Application code (REMEMBER/commit) MUST NOT be
+# able to forge events under any namespace the kernel itself emits — otherwise an app
+# could inject a cryptographically valid but semantically forged governance/lifecycle
+# event into the sigchain, breaking the kernel-asserted vs app-asserted trust boundary.
+# `app.` (application namespace) and `action.outcome.` (complication-author convention)
+# are intentionally NOT reserved.
 _RESERVED_PREFIXES = (
     "ingest.", "query.", "review.", "commit.",
     "replay.", "barrier.", "policy.", "agent.",
+    "session.", "complication.", "capture.", "context.",
 )
 
 
