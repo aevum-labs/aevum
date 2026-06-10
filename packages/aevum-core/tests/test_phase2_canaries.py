@@ -139,11 +139,11 @@ class TestSkipHonesty:
         assert result.skipped is True, "dep-absent canary must report skipped, not passed"
         assert result.passed is False, "skipped canary must not report passed=True"
 
-    def test_canary6_skips_when_liboqs_absent(self, suite):
+    def test_canary6_fails_when_liboqs_absent(self, suite):
         with patch("aevum.core.signing._OQS_AVAILABLE", False):
             result = suite._canary_dual_signature_every_entry()
-        assert result.skipped is True, "dep-absent canary must report skipped, not passed"
-        assert result.passed is False, "skipped canary must not report passed=True"
+        assert result.passed is False, "canary must fail when liboqs is absent"
+        assert result.skipped is False, "canary must not skip — hybrid posture is required (ADR-012)"
 
 
 class TestCanaryErrorPropagation:

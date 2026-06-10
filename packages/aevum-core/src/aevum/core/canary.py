@@ -396,26 +396,10 @@ class CanarySuite:
         """
         Verify that DualSigner can sign and verify a test payload.
         Exercises both Ed25519 (PyNaCl) and ML-DSA-65 (liboqs).
-        If liboqs is absent this is an environmental limitation, not a code
-        defect — return skipped=True so the system can still boot with an honest warning.
+        Fails if liboqs is absent — hybrid posture is required (ADR-012).
         """
         name = "dual_signature_every_chain_entry"
         try:
-            from aevum.core.signing import _OQS_AVAILABLE
-
-            if not _OQS_AVAILABLE:
-                return CanaryResult(
-                    name=name,
-                    passed=False,
-                    skipped=True,
-                    detail=(
-                        "Ed25519 (PyNaCl) available and verified. "
-                        "ML-DSA-65 requires liboqs-python (not installed in this environment). "
-                        "Install liboqs-python for full post-quantum dual-signature coverage. "
-                        "Conformance invariant 8 is PARTIALLY satisfied."
-                    ),
-                )
-
             signer = DualSigner.generate()
             test_data = b"aevum-canary-test-payload-phase-1"
             dual_sig = signer.sign(test_data)
