@@ -244,11 +244,10 @@ def check_consent(
     return None
 
 
-# Barrier 4 — Audit Immutability: the I1-APPEND_ONLY invariant is enforced structurally
-# in the ledger implementation. Any attempt to overwrite or delete an existing audit entry
-# raises ImmutableLedgerError (see sigchain.py). This barrier has no function in this module
-# because its enforcement is architectural — it is baked into the ledger data structure itself.
-# Barrier 4 — AUDIT IMMUTABILITY enforced by InMemoryLedger.__delitem__/__setitem__
+# Barrier 4 — Audit Immutability: the I1-APPEND_ONLY invariant is enforced
+# structurally by the ledger (delete/overwrite attempts raise BarrierViolationError;
+# see sigchain.py / InMemoryLedger.__delitem__/__setitem__). This barrier has no
+# runtime function in this module — it is a structural guarantee of the ledger.
 
 
 def check_provenance(provenance: dict[str, Any], audit_id: str) -> OutputEnvelope | None:

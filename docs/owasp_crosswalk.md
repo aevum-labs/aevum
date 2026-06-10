@@ -53,12 +53,11 @@ Last updated: v0.6.0 (2026-05-20)
 
 ✓ ASI06: Human-in-the-Loop Bypass
   Coverage: FULL
-  Barriers: Barrier 5: Provenance
   • GOVERN checkpoint — structurally non-bypassable
   • Automation bias warning — displayed at every substantive checkpoint
-  • Cedar Barrier 5 — govern_approve forbidden without human_checkpoint_completed
+  • Cedar autonomy policy (L3) — govern_approve forbidden without human_checkpoint_completed
   • Veto-as-default — timeout = veto, not approval
-  Note: Cedar's Barrier 5 forbid cannot be bypassed by any permit. The human_checkpoint_completed flag is set ONLY by the GOVERN implementation after actual human input is received. Timeout always results in veto, never in approval.
+  Note: Cedar's autonomy (L3) govern forbid cannot be bypassed by any permit. The human_checkpoint_completed flag is set ONLY by the GOVERN implementation after actual human input is received. Timeout always results in veto, never in approval.
 
 ✓ ASI07: Data Exfiltration / Leakage
   Coverage: FULL
