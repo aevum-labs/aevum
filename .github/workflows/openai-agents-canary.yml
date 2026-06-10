@@ -46,11 +46,19 @@ jobs:
           ninja -C liboqs-build -j$(nproc) install
           rm -rf liboqs-0.14.0 liboqs-build
 
+      - name: Wire liboqs onto the loader path
+        run: |
+          echo "LD_LIBRARY_PATH=$HOME/_oqs/lib:$HOME/_oqs/lib64:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+
       - name: Install workspace + pre-release openai-agents
         run: |
           uv sync --frozen --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} \
             --pre "openai-agents>=0.0.12"
+
+      - name: Verify liboqs is loadable (fail loud, not as a buried signing error)
+        run: |
+          uv run --python ${{ matrix.python }} python -c "import oqs; s=oqs.Signature('ML-DSA-65'); print('liboqs OK:', oqs.oqs_version())"
 
       - name: Show installed openai-agents version
         run: uv run --python ${{ matrix.python }} python -c "import agents; print(agents.__version__)"

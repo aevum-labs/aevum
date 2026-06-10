@@ -56,6 +56,10 @@ jobs:
           ninja -C liboqs-build -j$(nproc) install
           rm -rf liboqs-0.14.0 liboqs-build
 
+      - name: Wire liboqs onto the loader path
+        run: |
+          echo "LD_LIBRARY_PATH=$HOME/_oqs/lib:$HOME/_oqs/lib64:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+
       - name: Install workspace (no Cedar)
         if: matrix.install-extra == 'no-cedar'
         run: uv sync --frozen --python ${{ matrix.python }}
@@ -101,6 +105,11 @@ jobs:
         run: |
           uv sync --frozen --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} "google-adk>=2.2,<3"
+
+      - name: Verify liboqs is loadable (fail loud, not as a buried signing error)
+        if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\",\"anthropic\",\"langchain\",\"adk\",\"maf\"]'), matrix.install-extra)"
+        run: |
+          uv run --python ${{ matrix.python }} python -c "import oqs; s=oqs.Signature('ML-DSA-65'); print('liboqs OK:', oqs.oqs_version())"
 
       - name: Run policy protocol tests
         if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\",\"anthropic\",\"langchain\",\"adk\",\"maf\"]'), matrix.install-extra)"
