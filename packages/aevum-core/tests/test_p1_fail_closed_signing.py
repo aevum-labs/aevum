@@ -6,35 +6,31 @@ SignerUnavailableError (not a warning, not a degraded object) when liboqs is
 absent or when PQC key files are missing.  They use monkeypatching, so the
 liboqs C library is not required to execute them.
 """
-import pathlib
 
-import pytest
 from unittest.mock import patch
 
 import nacl.signing
+import pytest
 
 from aevum.core.signing import DualSigner, SignerUnavailableError
 
 
 class TestFailClosedGenerate:
     def test_generate_raises_signer_unavailable_when_liboqs_absent(self):
-        with patch("aevum.core.signing._OQS_AVAILABLE", False):
-            with pytest.raises(SignerUnavailableError) as exc_info:
-                DualSigner.generate()
+        with patch("aevum.core.signing._OQS_AVAILABLE", False), pytest.raises(SignerUnavailableError) as exc_info:
+            DualSigner.generate()
         msg = str(exc_info.value)
         assert "aevum-core[pqc]" in msg, "error must name the install target"
         assert "ADR-012" in msg, "error must reference ADR-012 for classical-only opt-in"
 
     def test_generate_does_not_return_ed25519_only_signer_when_liboqs_absent(self):
-        with patch("aevum.core.signing._OQS_AVAILABLE", False):
-            with pytest.raises(SignerUnavailableError):
-                DualSigner.generate()
+        with patch("aevum.core.signing._OQS_AVAILABLE", False), pytest.raises(SignerUnavailableError):
+            DualSigner.generate()
         # If we reach here without exception that would be the bug — pytest.raises handles it.
 
     def test_generate_raises_not_warns_when_liboqs_absent(self, recwarn):
-        with patch("aevum.core.signing._OQS_AVAILABLE", False):
-            with pytest.raises(SignerUnavailableError):
-                DualSigner.generate()
+        with patch("aevum.core.signing._OQS_AVAILABLE", False), pytest.raises(SignerUnavailableError):
+            DualSigner.generate()
         assert len(recwarn) == 0, "must raise, not warn"
 
 
