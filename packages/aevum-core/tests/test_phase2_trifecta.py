@@ -120,6 +120,7 @@ class TestTrifectaEnforcement:
                 "taint_reads_private": True,
                 "taint_can_exfiltrate": True,
                 "has_crisis_content": False,
+                "has_provenance": True,
             },
         )
         assert permitted
