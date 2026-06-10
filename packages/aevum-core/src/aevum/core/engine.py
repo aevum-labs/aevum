@@ -74,7 +74,7 @@ class Engine:
     """The Aevum context kernel — governed membrane between raw data and AI consumers.
 
     Every ingest/query/review/commit/replay call passes through the five unconditional
-    barriers (barriers.py) before any graph write or policy check. Barriers are absolute
+    barriers (barriers.py) before any graph write or policy check. Barriers are unconditional
     and non-configurable; the policy engine is configurable. Evaluation order:
       unconditional barriers → policy engine → knowledge graph
 

@@ -1,5 +1,5 @@
 // ============================================================
-// AEVUM ABSOLUTE BARRIERS
+// AEVUM UNCONDITIONAL BARRIERS
 // Five Cedar forbid policies — non-bypassable by any permit.
 // These form the immutable security core of the kernel.
 //

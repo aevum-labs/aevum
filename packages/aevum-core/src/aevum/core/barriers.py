@@ -9,7 +9,7 @@ be bypassed, overridden, or toggled off. Even dev mode (AEVUM_DEV=1) does not by
 
 Contrast with the policy engine (aevum.core.policy): policy decisions are configurable,
 can be granted or revoked by Cedar policies, and can be overridden via break-glass paths.
-Barriers are absolute. If a barrier fires, the operation is halted regardless of what any
+Barriers are unconditional. If a barrier fires, the operation is halted regardless of what any
 policy engine says. The evaluation order for every RELATE/NAVIGATE/GOVERN/REMEMBER call is:
   barriers first → policy engine → knowledge graph write
 
