@@ -21,7 +21,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from aevum.core.audit.sigchain import _uuid7
-from aevum.core.barriers import check_consent, check_crisis
+from aevum.core.barriers import check_classification_ceiling, check_consent, check_crisis
 from aevum.core.envelope.models import (
     OutputEnvelope,
     ProvenanceRecord,
@@ -360,11 +360,29 @@ def query(
             ),
         )
 
-    # Graph read (Barrier 2 enforced by GraphStore)
+    # Barrier 2 — Classification Ceiling (BLOCK, not redact).
+    # Any requested subject that EXISTS but exceeds clearance halts the whole query.
+    # Absent subjects are NOT a barrier event (they just yield no rows).
+    above_ceiling = graph.subjects_above_ceiling(
+        subject_ids=subject_ids, classification_max=classification_max
+    )
+    ceiling_block = check_classification_ceiling(above_ceiling, provisional_id)
+    if ceiling_block is not None:
+        ledger.append(event_type="barrier.triggered",
+                      payload={"barrier": 2, "function": "query",
+                               "reason": "classification_ceiling",
+                               "above_ceiling": above_ceiling},
+                      actor=actor, episode_id=episode_id, correlation_id=correlation_id)
+        return ceiling_block
+
+    # Graph read — every returned subject is within clearance by construction.
     graph_results = graph.query_entities(
         subject_ids=subject_ids, classification_max=classification_max
     )
-    redacted = [s for s in subject_ids if s not in graph_results]
+    # Default path no longer redacts on classification. Absent subjects simply produce no
+    # rows; they are not labelled as classification-redacted. (Opt-in recorded redaction
+    # is a future pass — see barriers.apply_classification_ceiling.)
+    redacted: list[str] = []
 
     complication_results: dict[str, Any] = {}
     available: list[str] = []

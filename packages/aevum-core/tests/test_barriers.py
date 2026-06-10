@@ -70,3 +70,42 @@ def test_barrier5_no_provenance() -> None:
     r = e.ingest(data={"x": 1}, provenance={}, purpose="t", subject_id="s1", actor="actor")
     assert r.status == "error"
     assert r.data["error_code"] == "provenance_required"
+
+
+def test_barrier2_classification_blocks_above_clearance_query() -> None:
+    e = _engine_with_consent()
+    # Ingest a classification-3 subject (grant allows class-3 ingest).
+    e.ingest(
+        data={"content": "top secret"},
+        provenance={"source_id": "src", "chain_of_custody": ["src"], "classification": 3},
+        purpose="barrier-testing", subject_id="s1", actor="actor",
+    )
+    # Query it with clearance 0 → must BLOCK, not return a degraded/redacted view.
+    r = e.query(purpose="barrier-testing", subject_ids=["s1"],
+                actor="actor", classification_max=0)
+    assert r.status == "error", "Barrier 2 must BLOCK above-clearance reads, not degrade"
+    assert r.data["error_code"] == "classification_blocked"
+    # The block must be recorded as a barrier.triggered (barrier=2) audit event.
+    types = [ev["event_type"] for ev in e.get_ledger_entries()]
+    assert "barrier.triggered" in types
+    assert e.verify_sigchain() is True
+
+
+def test_barrier2_absent_subject_is_not_blocked() -> None:
+    e = _engine_with_consent()
+    # Subject "s1" has consent but was never ingested → absent, NOT above-ceiling. Must not block.
+    r = e.query(purpose="barrier-testing", subject_ids=["s1"],
+                actor="actor", classification_max=0)
+    assert r.status != "error", "Absent subjects must not trigger Barrier 2"
+
+
+def test_barrier2_within_clearance_query_ok() -> None:
+    e = _engine_with_consent()
+    e.ingest(
+        data={"content": "public"},
+        provenance={"source_id": "src", "chain_of_custody": ["src"], "classification": 0},
+        purpose="barrier-testing", subject_id="s1", actor="actor",
+    )
+    r = e.query(purpose="barrier-testing", subject_ids=["s1"],
+                actor="actor", classification_max=0)
+    assert r.status == "ok"

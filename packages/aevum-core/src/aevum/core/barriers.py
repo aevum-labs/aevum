@@ -15,7 +15,8 @@ policy engine says. The evaluation order for every RELATE/NAVIGATE/GOVERN/REMEMB
 
 The five barriers:
   Barrier 1 — Crisis Detection:       halt on self-harm or dangerous-content keywords
-  Barrier 2 — Classification Ceiling: silently redact above-clearance data (not block)
+  Barrier 2 — Classification Ceiling: BLOCK the operation if any requested data exceeds clearance
+                                      (redaction is a separate opt-in, RECORDED feature — never silent)
   Barrier 3 — Consent:                deny if no active consent grant exists for the triple
   Barrier 4 — Audit Immutability:     enforce I1-APPEND_ONLY on the episodic ledger
   Barrier 5 — Provenance:             deny if source_id is missing from the provenance record
@@ -136,13 +137,14 @@ def apply_classification_ceiling(
     classifications: dict[str, int],
     actor_clearance: int,
 ) -> tuple[dict[str, Any], list[str]]:
-    """Barrier 2 — Classification Ceiling. Redact items whose classification exceeds the actor's clearance.
+    """Barrier 2 helper — OPT-IN RECORDED redaction primitive. NOT the default path.
 
-    Unlike the other barriers, this one does not raise or return an error envelope — it
-    silently removes above-clearance items from the results dict. The caller detects the
-    redacted list and downgrades the OutputEnvelope status to "degraded" when any items
-    were removed. A "degraded" status tells the caller the view is incomplete, not that the
-    operation failed. This design maximises information disclosure within clearance bounds.
+    The default Barrier 2 behaviour is to BLOCK (see check_classification_ceiling). This
+    function exists for a future opt-in, explicitly-RECORDED redaction mode where a caller
+    deliberately chooses partial results over a hard block. It must never be wired as a
+    silent default. It does not raise; it returns (filtered, redacted) and the caller is
+    responsible for emitting an audit event when redacted is non-empty — redaction is never
+    silent.
 
     Args:
         results: Dict of entity_id → entity_data to filter.
@@ -161,6 +163,44 @@ def apply_classification_ceiling(
         else:
             redacted.append(entity_id)
     return filtered, redacted
+
+
+def check_classification_ceiling(
+    above_ceiling_ids: list[str],
+    audit_id: str,
+) -> OutputEnvelope | None:
+    """Barrier 2 — Classification Ceiling. BLOCK if any requested subject exceeds clearance.
+
+    Canonical behaviour (June 2026 decision): the classification ceiling BLOCKS the whole
+    operation rather than silently redacting above-clearance items. If any requested subject's
+    classification exceeds the actor's clearance, the operation is denied with
+    error_code="classification_blocked". Partial, redacted results are never returned by
+    default — redaction is a separate, opt-in, RECORDED feature (see apply_classification_ceiling),
+    never silent.
+
+    Mirrors check_consent: does not raise; returns an error OutputEnvelope on denial so the
+    caller can append the barrier.triggered event and surface a structured response. A None
+    return means every requested subject is within clearance.
+
+    Args:
+        above_ceiling_ids: Requested subjects that EXIST and exceed the actor's clearance.
+        audit_id: Included in the returned error envelope for traceability.
+
+    Returns:
+        None if above_ceiling_ids is empty; an error OutputEnvelope with
+        error_code="classification_blocked" otherwise.
+    """
+    if above_ceiling_ids:
+        return OutputEnvelope.error(
+            audit_id=audit_id,
+            error_code="classification_blocked",
+            error_detail=(
+                "Classification ceiling exceeded for subjects: "
+                f"{', '.join(sorted(above_ceiling_ids))}. Operation blocked (Barrier 2)."
+            ),
+            provenance=_kernel_provenance(audit_id),
+        )
+    return None
 
 
 def check_consent(
