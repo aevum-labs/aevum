@@ -331,12 +331,15 @@ def query(
 
     # ABAC: action="navigate" with consent context
     _abac_engine: PolicyEngine = policy_engine if policy_engine is not None else NullPolicyEngine()
+    # Classification on the read path is enforced per-subject in the kernel
+    # (check_classification_ceiling, B2) — see below. We deliberately do NOT pass a
+    # synthetic data_classification_level here: a single per-query value would be a
+    # coarser duplicate of the kernel's per-subject check. Cedar classification
+    # governs the write path (ingest passes the real level).
     abac_context: dict[str, Any] = {
         "has_crisis_content": False,
         "has_active_consent": True,
         "consent_purpose_matches": True,
-        "data_classification_level": 0,
-        "deployment_ceiling_level": 3,
         "autonomy_level": 1,
     }
     if not _abac_engine.is_permitted(
