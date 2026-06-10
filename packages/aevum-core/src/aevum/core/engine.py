@@ -362,18 +362,20 @@ class Engine:
         """NAVIGATE — traverse the knowledge graph for a declared purpose.
 
         Evaluation order:
-          1. Barrier 3 (Consent): deny if no active consent grant for this subject/operation.
-          2. Graph traversal.
-          3. Barrier 2 (Classification Ceiling): redact entities that exceed actor_clearance.
-             Results are silently filtered; envelope status becomes "degraded" (not "error")
-             to signal an incomplete but valid view — the actor sees the maximum they can see.
-          4. Barrier 1 (Crisis): halt if results contain crisis keywords.
-          5. Optional: Witness capture seals the result hash against the consent ledger
+          1. Barrier 1 (Crisis): halt if the query purpose contains crisis keywords.
+          2. Barrier 3 (Consent): deny if no active consent grant for this subject/operation.
+          3. Policy engine (Cedar/OPA): ABAC check for action="navigate".
+          4. Barrier 2 (Classification Ceiling): BLOCK the whole query if any requested
+             subject EXISTS and exceeds the actor's clearance (classification_max).
+             Absent subjects are not a barrier event — they yield no rows.
+          5. Graph traversal — every returned subject is within clearance by construction.
+          6. Optional: Witness capture seals the result hash against the consent ledger
              sequence at query time, protecting against TOCTOU revocation.
 
         Returns:
-            OutputEnvelope — status "ok" (full results), "degraded" (some redacted by Barrier 2),
-            "error" (consent or policy denial), or "crisis". Never raises on denial.
+            OutputEnvelope — status "ok" (full results), "error" with
+            error_code="classification_blocked" (Barrier 2 block), "error" with
+            error_code="consent_required" (Barrier 3 denial), or "crisis". Never raises.
         """
         import time
         t0 = time.monotonic()
