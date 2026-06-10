@@ -69,16 +69,16 @@ class TestCanary3GoverCannotAutoApprove:
         result = suite._canary_govern_cannot_be_auto_approved()
         assert result.name == "govern_cannot_be_auto_approved_without_Cedar_permit"
 
-    def test_canary3_fails_if_barrier5_broken(self, suite):
+    def test_canary3_fails_if_govern_checkpoint_broken(self, suite):
         pytest.importorskip("cedarpy")
         from aevum.core.cedar_engine import CedarPolicyEngine
         broken_engine = MagicMock(spec=CedarPolicyEngine)
-        broken_engine.is_permitted.return_value = True  # always allow — barrier broken
+        broken_engine.is_permitted.return_value = True  # always allow — govern checkpoint broken
         with patch("aevum.core.cedar_engine.CedarPolicyEngine") as mock_cls:
             mock_cls.default.return_value = broken_engine
             result = suite._canary_govern_cannot_be_auto_approved()
         assert not result.passed
-        assert "Barrier 5 is broken" in result.detail
+        assert "govern checkpoint" in result.detail
 
 
 class TestCanary4ReasoningTrace:
