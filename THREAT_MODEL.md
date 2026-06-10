@@ -173,9 +173,11 @@ Barrier 2 enforces the classification ceiling at **query time**, not at
 ingest time (`apply_classification_ceiling()` in `barriers.py`).
 
 **What it does:** When an actor queries the knowledge graph, Barrier 2
-redacts any entity whose recorded classification level exceeds the
-actor's declared clearance. Redacted entities are removed from the
-result set; the operation is not halted.
+checks whether any requested subject's recorded classification level
+exceeds the actor's declared clearance. If any subject exceeds the
+ceiling, the entire query is blocked: the operation returns
+`error_code="classification_blocked"` and a `barrier.triggered` audit
+event is appended. No partial or redacted result is returned.
 
 **What it does not do:**
 
@@ -193,12 +195,12 @@ result set; the operation is not halted.
 
 **Practical implication:** If you ingest sensitive data with a high
 classification label and a low-clearance actor later calls `query()`,
-Barrier 2 will redact that data from the result. However, the data is
-present in the storage backend and visible to anyone with direct
-backend access (see Assumption 2). For workloads requiring strict
-ingest-time classification control, apply access controls at the ingest
-boundary (e.g., policy in your application layer or in an OPA sidecar)
-before calling `ingest()`.
+Barrier 2 will block that query entirely — the actor receives no results
+at all. However, the data is present in the storage backend and visible
+to anyone with direct backend access (see Assumption 2). For workloads
+requiring strict ingest-time classification control, apply access controls
+at the ingest boundary (e.g., policy in your application layer or in an
+OPA sidecar) before calling `ingest()`.
 
 ---
 
@@ -574,17 +576,19 @@ aevum-core v0.5.0 in the Phase G gate investigation (baseline:
 |------|-------|--------|-------|
 | G-11 | Crisis barrier (Barrier 1) | PASS | Keyword `i want to kill myself` in ingested data triggers crisis envelope before graph write |
 | G-12 | Consent barrier (Barrier 3) | PASS | No consent grant → ingest blocked immediately with `consent_required` |
-| G-13 | Classification ceiling (Barrier 2) | PASS | Classification ceiling applied at query via `apply_classification_ceiling()`; ingest with classification=3 proceeds but is filtered on query when ceiling=1 |
+| G-13 | Classification ceiling (Barrier 2) | PASS | Classification ceiling enforced at query via `check_classification_ceiling()`; ingest with classification=3 proceeds but query is blocked (`classification_blocked`) when ceiling=1 |
 | G-14 | Audit seal (Barrier 4) | PASS | `InMemoryLedger.__delitem__` raises `BarrierViolationError`; sigchain remains intact after 50 commits |
 | G-15 | Provenance veto (Barrier 5) | PASS | Empty `source_id` in provenance dict → `provenance_required` error before graph write |
 | G-16 | Lethal trifecta prevention | PASS | Cedar `forbid` fires on `action='tool_call'` when all three taints present; two-taint composition permitted |
 
 **G-13 finding — classification ceiling is query-time only:**
-The ceiling is enforced when reading (via `apply_classification_ceiling()` in
+The ceiling is enforced when reading (via `check_classification_ceiling()` in
 `query()`), not when writing. Data at any classification level can be ingested
-regardless of the actor's clearance. This is documented in the "Classification
-Ceiling Limitation" section above. For ingest-time classification control, apply
-policy in your application layer or an OPA sidecar before calling `ingest()`.
+regardless of the actor's clearance. When a query includes a subject whose
+classification exceeds the ceiling, the entire query is blocked — not silently
+filtered. This is documented in the "Classification Ceiling Limitation" section
+above. For ingest-time classification control, apply policy in your application
+layer or an OPA sidecar before calling `ingest()`.
 
 **G-16 finding — trifecta action scope:**
 The Cedar `forbid` rule for the lethal trifecta is scoped to

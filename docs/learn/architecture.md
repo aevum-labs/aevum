@@ -129,21 +129,22 @@ The crisis event is logged to the episodic ledger.
 
 **Applies to:** `query`
 
-**Behavior:** Results whose classification level exceeds `classification_max`
-are silently redacted from the response. The operation is not errored — the
-caller simply does not receive above-clearance data.
+**Behavior:** If any requested subject's classification level exceeds
+`classification_max`, the entire query is blocked. The operation returns
+`status="error"` with `error_code="classification_blocked"` and appends a
+`barrier.triggered` audit event — no partial or redacted result is returned.
 
 ```python
 result = engine.query(
     purpose="billing-inquiry",
     subject_ids=["user-1"],
     actor="low-clearance-agent",
-    classification_max=1,  # can only see classification 0 and 1
+    classification_max=1,  # block if any subject exceeds level 1
 )
 
-result.status    # "ok"
-result.warnings  # ["user-1: redacted (classification 2 > ceiling 1)"]
-result.data["results"].get("user-1")  # None — redacted
+result.status      # "error"
+result.error_code  # "classification_blocked"
+result.data        # {} — no results returned
 ```
 
 Classification levels:
@@ -388,8 +389,9 @@ if result.status == "ok":
 
 **Barriers checked:** Consent (3), Classification Ceiling (2)
 
-Results above `classification_max` are silently redacted (not errored).
-The `warnings` field lists redacted subject IDs.
+If any requested subject's classification exceeds `classification_max`, the
+entire query is blocked: `status="error"`, `error_code="classification_blocked"`.
+No partial result is returned.
 
 ### review — GOVERN
 
@@ -588,7 +590,7 @@ grantee can see, interacting with Barrier 2:
 
 - Data ingested at classification 2
 - Grant has `classification_max=1`
-- The grantee's query returns no results for that data (redacted by Barrier 2)
+- The grantee's query is blocked by Barrier 2 (`error_code="classification_blocked"`)
 
 ### Consent and GDPR
 

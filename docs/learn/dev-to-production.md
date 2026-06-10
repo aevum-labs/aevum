@@ -228,7 +228,7 @@ Run through this before any deployment:
 These five unconditional barriers are always active regardless of `AEVUM_DEV`:
 
 1. **Crisis detection** — ingested content is always screened
-2. **Classification ceiling** — results above actor clearance are always redacted
+2. **Classification ceiling** — queries are blocked when any requested subject exceeds actor clearance
 3. **Consent** — in dev mode this is bypassed by `DevModeConsentLedger`; in production it is enforced
 4. **Audit immutability** — the ledger never allows deletion or overwrite
 5. **Provenance** — every ingest requires a `source_id`

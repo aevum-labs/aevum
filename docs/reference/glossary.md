@@ -24,8 +24,9 @@ wherever the term is used in prose.
   even on error. Used as the key for `replay(audit_id=...)` calls.
 
 **classification ceiling**
-: The maximum classification level an actor may access, enforced by
-  Barrier 2 on every `query` call.
+: The maximum classification level an actor may access. Enforced by
+  Barrier 2 on every `query` call: if any requested subject's classification
+  exceeds this level, the query is blocked entirely (`error_code="classification_blocked"`).
 
 **complication**
 : A vetted extension mechanism. Not a plugin — complications require
