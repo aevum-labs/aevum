@@ -61,7 +61,8 @@ def test_canary_barrier5_provenance_required() -> None:
 
 def test_canary_all_barrier_functions_exist() -> None:
     assert callable(barriers.check_crisis), "CANARY: check_crisis missing"
-    assert callable(barriers.apply_classification_ceiling), "CANARY: classification ceiling missing"
+    assert callable(barriers.check_classification_ceiling), "CANARY: classification ceiling BLOCK missing"
+    assert callable(barriers.apply_classification_ceiling), "CANARY: classification redaction primitive missing"
     assert callable(barriers.check_consent), "CANARY: check_consent missing"
     assert callable(barriers.check_provenance), "CANARY: check_provenance missing"
     from aevum.core.audit.ledger import InMemoryLedger
