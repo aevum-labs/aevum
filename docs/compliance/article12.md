@@ -35,7 +35,7 @@ appends a signed `AuditEvent` to the episodic ledger automatically. No
 additional configuration is required. Events are recorded before the operation
 completes — the ledger write is part of the operation's success path.
 
-The ledger is append-only by design (Barrier 4 — Audit Seal). Events cannot
+The ledger is append-only by design (Barrier 4 — Audit Immutability). Events cannot
 be deleted or modified after writing. `engine.verify_sigchain()` verifies
 the integrity of the complete chain at any time.
 
