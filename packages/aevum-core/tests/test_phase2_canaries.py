@@ -4,11 +4,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-try:
-    import oqs as _oqs_check  # noqa: F401
-except (ImportError, OSError, SystemExit):
-    pytest.skip("liboqs native library not available — skipping oqs-dependent tests", allow_module_level=True)
-
 from aevum.core.canary import CanaryError, CanaryResult, CanarySuite
 
 
@@ -18,9 +13,9 @@ def suite():
 
 
 class TestPhase2CanariesPass:
-    def test_all_canaries_pass(self, suite):
+    def test_no_canary_genuinely_fails(self, suite):
         results = suite.run_all()
-        failures = [f"{r.name}: {r.detail}" for r in results if not r.passed]
+        failures = [f"{r.name}: {r.detail}" for r in results if not r.passed and not r.skipped]
         assert not failures, "Canaries failed:\n" + "\n".join(failures)
 
     def test_returns_seven_results(self, suite):
@@ -68,13 +63,14 @@ class TestCanary2ConsentRequired:
 class TestCanary3GoverCannotAutoApprove:
     def test_canary3_passes(self, suite):
         result = suite._canary_govern_cannot_be_auto_approved()
-        assert result.passed, result.detail
+        assert result.passed or result.skipped, result.detail
 
     def test_canary3_name(self, suite):
         result = suite._canary_govern_cannot_be_auto_approved()
         assert result.name == "govern_cannot_be_auto_approved_without_Cedar_permit"
 
     def test_canary3_fails_if_barrier5_broken(self, suite):
+        pytest.importorskip("cedarpy")
         from aevum.core.cedar_engine import CedarPolicyEngine
         broken_engine = MagicMock(spec=CedarPolicyEngine)
         broken_engine.is_permitted.return_value = True  # always allow — barrier broken
@@ -98,13 +94,14 @@ class TestCanary4ReasoningTrace:
 class TestCanary5AuditSeal:
     def test_canary5_passes(self, suite):
         result = suite._canary_audit_chain_append_only()
-        assert result.passed, result.detail
+        assert result.passed or result.skipped, result.detail
 
     def test_canary5_name(self, suite):
         result = suite._canary_audit_chain_append_only()
         assert result.name == "audit_chain_append_only"
 
     def test_canary5_fails_if_barrier4_broken(self, suite):
+        pytest.importorskip("cedarpy")
         from aevum.core.cedar_engine import CedarPolicyEngine
         broken_engine = MagicMock(spec=CedarPolicyEngine)
         broken_engine.is_permitted.return_value = True  # delete permitted — broken!
@@ -118,11 +115,35 @@ class TestCanary5AuditSeal:
 class TestCanary6DualSignature:
     def test_canary6_passes(self, suite):
         result = suite._canary_dual_signature_every_entry()
-        assert result.passed, result.detail
+        assert result.passed or result.skipped, result.detail
 
     def test_canary6_name(self, suite):
         result = suite._canary_dual_signature_every_entry()
         assert result.name == "dual_signature_every_chain_entry"
+
+
+class TestSkipHonesty:
+    """Verify dep-absent canaries report skipped=True / passed=False, never vacuously passed."""
+
+    def test_canary3_skips_when_cedarpy_absent(self, suite):
+        with patch("aevum.core.cedar_engine.CedarPolicyEngine") as mock_cls:
+            mock_cls.default.side_effect = RuntimeError("cedarpy is not installed — use the [cedar] extra")
+            result = suite._canary_govern_cannot_be_auto_approved()
+        assert result.skipped is True, "dep-absent canary must report skipped, not passed"
+        assert result.passed is False, "skipped canary must not report passed=True"
+
+    def test_canary5_skips_when_cedarpy_absent(self, suite):
+        with patch("aevum.core.cedar_engine.CedarPolicyEngine") as mock_cls:
+            mock_cls.default.side_effect = RuntimeError("cedarpy is not installed — use the [cedar] extra")
+            result = suite._canary_audit_chain_append_only()
+        assert result.skipped is True, "dep-absent canary must report skipped, not passed"
+        assert result.passed is False, "skipped canary must not report passed=True"
+
+    def test_canary6_skips_when_liboqs_absent(self, suite):
+        with patch("aevum.core.signing._OQS_AVAILABLE", False):
+            result = suite._canary_dual_signature_every_entry()
+        assert result.skipped is True, "dep-absent canary must report skipped, not passed"
+        assert result.passed is False, "skipped canary must not report passed=True"
 
 
 class TestCanaryErrorPropagation:
@@ -150,6 +171,8 @@ class TestCanaryErrorPropagation:
             assert hasattr(r, "name")
             assert hasattr(r, "passed")
             assert hasattr(r, "detail")
+            assert hasattr(r, "skipped")
             assert isinstance(r.name, str)
             assert isinstance(r.passed, bool)
             assert isinstance(r.detail, str)
+            assert isinstance(r.skipped, bool)
