@@ -89,6 +89,9 @@ class AevumADKPlugin(_BasePlugin):  # type: ignore[misc]
         Called before each tool execution.
         Evaluates Cedar policy. Returns deny dict to block; None to allow.
 
+        Note: this adapter enforces Cedar policy and records to the sigchain. The five
+        unconditional barriers run in the kernel ingest path (Engine.ingest), not in this adapter.
+
         CRITICAL: 'tool', 'tool_args', 'tool_context' are keyword-only.
         ADK dispatches these by name — any rename causes TypeError at runtime.
         ('tool_args' not 'args' — verified against google-adk 2.2.0 BasePlugin)
@@ -96,7 +99,7 @@ class AevumADKPlugin(_BasePlugin):  # type: ignore[misc]
         tool_name = getattr(tool, "name", str(tool))
         if not self._is_permitted(tool_name, tool_args):
             return {
-                "error": f"Aevum barrier denied tool: {tool_name}",
+                "error": f"Aevum policy denied tool: {tool_name}",
                 "aevum_denied": True,
                 "tool_name": tool_name,
             }

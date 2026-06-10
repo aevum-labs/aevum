@@ -137,7 +137,7 @@ async def test_function_middleware_deny_shape() -> None:
     call_next.assert_not_awaited()
     assert ctx.result == snapshot(
         {
-            "error": "Aevum barrier denied tool: dangerous_tool",
+            "error": "Aevum policy denied tool: dangerous_tool",
             "aevum_denied": True,
             "tool_name": "dangerous_tool",
         }

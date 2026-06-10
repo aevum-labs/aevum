@@ -37,6 +37,7 @@ class InvariantResult:
     name: str
     passed: bool
     detail: str = ""
+    skipped: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -55,8 +56,17 @@ class ConformanceResult:
         return len(self.results)
 
     @property
+    def skipped_count(self) -> int:
+        return sum(1 for r in self.results if r.skipped)
+
+    @property
+    def failed_count(self) -> int:
+        return sum(1 for r in self.results if not r.passed and not r.skipped)
+
+    @property
     def all_passed(self) -> bool:
-        return self.passed_count == self.total_count
+        # True only when every invariant genuinely passed (no failures, no skips).
+        return self.failed_count == 0 and self.skipped_count == 0
 
     def render(self) -> str:
         """Plain text gate report output."""
@@ -68,12 +78,22 @@ class ConformanceResult:
             "-" * 50,
         ]
         for r in self.results:
-            status = "PASS" if r.passed else "FAIL"
+            status = "PASS" if r.passed else ("SKIP" if r.skipped else "FAIL")
             lines.append(f"INVARIANT {r.invariant_id:>2}  {r.name:<45} {status}")
-            if not r.passed and r.detail:
+            if r.detail and not r.passed:
                 lines.append(f"           Detail: {r.detail[:120]}")
         lines.append("-" * 50)
-        status_str = f"STATUS: {'PASS' if self.all_passed else 'FAIL'} ({self.passed_count}/{self.total_count})"
+        if self.failed_count:
+            overall = "FAIL"
+        elif self.skipped_count:
+            overall = "PASS (with skips)"
+        else:
+            overall = "PASS"
+        status_str = (
+            f"STATUS: {overall} "
+            f"({self.passed_count} passed, {self.skipped_count} skipped, "
+            f"{self.failed_count} failed / {self.total_count})"
+        )
         lines.append(status_str)
         return "\n".join(lines)
 
@@ -83,12 +103,15 @@ class ConformanceResult:
             "aevum_version": self.aevum_version,
             "passed": self.all_passed,
             "passed_count": self.passed_count,
+            "skipped_count": self.skipped_count,
+            "failed_count": self.failed_count,
             "total_count": self.total_count,
             "results": [
                 {
                     "invariant_id": r.invariant_id,
                     "name": r.name,
                     "passed": r.passed,
+                    "skipped": r.skipped,
                     "detail": r.detail,
                 }
                 for r in self.results
@@ -178,7 +201,8 @@ class ConformanceSuite:
                 return InvariantResult(
                     invariant_id=inv_id,
                     name=result.name,
-                    passed=True,
+                    passed=False,
+                    skipped=True,
                     detail="oqs not available — dual-sig invariant skipped (liboqs not installed)",
                 )
             # Cedar-dependent invariants (3, 7) report FAIL when cedarpy is absent —
@@ -187,7 +211,8 @@ class ConformanceSuite:
                 return InvariantResult(
                     invariant_id=inv_id,
                     name=result.name,
-                    passed=True,
+                    passed=False,
+                    skipped=True,
                     detail="cedarpy not installed — Cedar policy invariant skipped",
                 )
             return InvariantResult(

@@ -101,7 +101,7 @@ async def test_before_tool_callback_deny_shape() -> None:
         )
     assert result == snapshot(
         {
-            "error": "Aevum barrier denied tool: dangerous_tool",
+            "error": "Aevum policy denied tool: dangerous_tool",
             "aevum_denied": True,
             "tool_name": "dangerous_tool",
         }
