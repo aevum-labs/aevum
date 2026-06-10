@@ -212,34 +212,44 @@ class Engine:
         # Log to ledger
         self._ledger.append(
             event_type="complication.installed",
-            payload={"name": name, "version": manifest.get("version", "")},
+            payload={
+                "name": name,
+                "version": manifest.get("version", ""),
+                "actor_id": manifest.get("actor_id", name),
+            },
             actor="aevum-core",
         )
 
         if auto_approve:
             self.approve_complication(name)
 
-    def approve_complication(self, name: str) -> None:
+    def approve_complication(self, name: str, *, approved_by: str = "aevum-core") -> None:
         """Admin approval: PENDING → APPROVED → ACTIVE."""
         self._complication_registry.approve(name)
         self._ledger.append(
             event_type="complication.approved",
-            payload={"name": name},
-            actor="aevum-core",
+            payload={"name": name, "approved_by": approved_by},
+            actor=approved_by,
         )
 
-    def suspend_complication(self, name: str) -> None:
+    def suspend_complication(self, name: str, *, suspended_by: str = "aevum-core",
+                             reason: str = "") -> None:
         """Admin suspension: ACTIVE → SUSPENDED."""
         self._complication_registry.suspend(name)
         self._ledger.append(
             event_type="complication.suspended",
-            payload={"name": name},
-            actor="aevum-core",
+            payload={"name": name, "suspended_by": suspended_by, "reason": reason},
+            actor=suspended_by,
         )
 
-    def resume_complication(self, name: str) -> None:
+    def resume_complication(self, name: str, *, resumed_by: str = "aevum-core") -> None:
         """Admin resume: SUSPENDED → ACTIVE."""
         self._complication_registry.resume(name)
+        self._ledger.append(
+            event_type="complication.resumed",
+            payload={"name": name, "resumed_by": resumed_by},
+            actor=resumed_by,
+        )
 
     def complication_state(self, name: str) -> ComplicationState:
         return self._complication_registry.state(name)

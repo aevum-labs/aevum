@@ -168,6 +168,102 @@ def test_complication_lifecycle_states() -> None:
     assert engine.complication_state("echo") == ComplicationState.SUSPENDED
 
 
+# Accountability: complication.installed payload has actor_id
+def test_install_emits_actor_id() -> None:
+    engine = _engine_with_consent()
+    engine.install_complication(_EchoComp())
+    events = [e for e in engine._ledger._events if e.event_type == "complication.installed"]
+    assert len(events) == 1
+    assert events[0].payload["actor_id"] == "echo"  # manifest has no actor_id → falls back to name
+
+
+# Accountability: complication.installed uses manifest actor_id when present
+def test_install_emits_manifest_actor_id_when_present() -> None:
+    class _IdentifiedComp(_EchoComp):
+        def manifest(self) -> dict:
+            m = super().manifest()
+            m["actor_id"] = "urn:example:comp:echo"
+            return m
+
+    engine = _engine_with_consent()
+    engine.install_complication(_IdentifiedComp())
+    events = [e for e in engine._ledger._events if e.event_type == "complication.installed"]
+    assert events[0].payload["actor_id"] == "urn:example:comp:echo"
+
+
+# Accountability: approve_complication emits approved_by
+def test_approve_emits_approved_by() -> None:
+    engine = _engine_with_consent()
+    engine.install_complication(_EchoComp())
+    engine.approve_complication("echo", approved_by="alice")
+    events = [e for e in engine._ledger._events if e.event_type == "complication.approved"]
+    assert len(events) == 1
+    assert events[0].payload["approved_by"] == "alice"
+    assert events[0].actor == "alice"
+
+
+# Accountability: suspend_complication emits suspended_by + reason
+def test_suspend_emits_suspended_by_and_reason() -> None:
+    engine = _engine_with_consent()
+    engine.install_complication(_EchoComp(), auto_approve=True)
+    engine.suspend_complication("echo", suspended_by="bob", reason="circuit breaker tripped")
+    events = [e for e in engine._ledger._events if e.event_type == "complication.suspended"]
+    assert len(events) == 1
+    assert events[0].payload["suspended_by"] == "bob"
+    assert events[0].payload["reason"] == "circuit breaker tripped"
+    assert events[0].actor == "bob"
+
+
+# Accountability: resume_complication now emits complication.resumed (was silent)
+def test_resume_emits_resumed_event() -> None:
+    from aevum.core.complications.registry import ComplicationState
+    engine = _engine_with_consent()
+    engine.install_complication(_EchoComp(), auto_approve=True)
+    engine.suspend_complication("echo")
+    engine.resume_complication("echo", resumed_by="carol")
+    assert engine.complication_state("echo") == ComplicationState.ACTIVE
+    events = [e for e in engine._ledger._events if e.event_type == "complication.resumed"]
+    assert len(events) == 1
+    assert events[0].payload["resumed_by"] == "carol"
+    assert events[0].actor == "carol"
+
+
+# Accountability round-trip: install→approve→suspend→resume carries correct identities/reason
+def test_lifecycle_accountability_round_trip() -> None:
+    """Full lifecycle audit trail carries correct identities and reason verbatim."""
+    engine = _engine_with_consent()
+    engine.install_complication(_EchoComp())
+    engine.approve_complication("echo", approved_by="alice")
+    engine.suspend_complication("echo", suspended_by="bob", reason="circuit breaker tripped")
+    engine.resume_complication("echo", resumed_by="carol")
+
+    by_type = {e.event_type: e for e in engine._ledger._events}
+
+    assert by_type["complication.installed"].payload["actor_id"] == "echo"
+    assert by_type["complication.approved"].payload["approved_by"] == "alice"
+    assert by_type["complication.suspended"].payload["suspended_by"] == "bob"
+    assert by_type["complication.suspended"].payload["reason"] == "circuit breaker tripped"
+    assert by_type["complication.resumed"].payload["resumed_by"] == "carol"
+
+    # Sigchain must remain valid after all four events
+    assert engine.verify_sigchain() is True
+
+
+# Backward-compat: existing callers (no identity passed) still work with defaults
+def test_lifecycle_defaults_backward_compat() -> None:
+    engine = _engine_with_consent()
+    engine.install_complication(_EchoComp())
+    engine.approve_complication("echo")           # no approved_by → default "aevum-core"
+    engine.suspend_complication("echo")           # no suspended_by/reason → defaults
+    engine.resume_complication("echo")            # no resumed_by → default "aevum-core"
+
+    by_type = {e.event_type: e for e in engine._ledger._events}
+    assert by_type["complication.approved"].payload["approved_by"] == "aevum-core"
+    assert by_type["complication.suspended"].payload["suspended_by"] == "aevum-core"
+    assert by_type["complication.suspended"].payload["reason"] == ""
+    assert by_type["complication.resumed"].payload["resumed_by"] == "aevum-core"
+
+
 # Gate test 6: webhook fires on review events
 def test_webhook_fires_on_review_approve() -> None:
     from unittest.mock import MagicMock

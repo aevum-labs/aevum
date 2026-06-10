@@ -159,6 +159,7 @@ Application code MUST NOT use these prefixes:
 | `complication.installed` | Complication registered |
 | `complication.approved` | Complication moved to ACTIVE |
 | `complication.suspended` | Complication suspended by admin |
+| `complication.resumed` | Complication resumed by admin |
 | `review.created` | review() gate opened |
 | `review.approved` | Human approved a pending review |
 | `review.vetoed` | Human vetoed (or deadline passed) |
