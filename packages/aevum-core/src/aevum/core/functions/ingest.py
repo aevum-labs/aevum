@@ -262,6 +262,7 @@ def ingest(
         "has_active_consent": True,
         "consent_purpose_matches": True,
         "autonomy_level": 1,
+        "has_provenance": bool(provenance.get("source_id")),
     }
     if not _abac_engine.is_permitted(
         principal_type="AevumAgent",

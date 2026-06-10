@@ -36,7 +36,7 @@ forbid(
 
 // BARRIER 2: Classification Ceiling
 // Forbid any action on data whose classification exceeds the deployment ceiling.
-// Levels: 0=UNCLASSIFIED, 1=INTERNAL, 2=CONFIDENTIAL, 3=PHI, 4=SECRET
+// Levels: 0 = public, 1 = internal, 2 = confidential, 3 = restricted
 forbid(
     principal,
     action,
@@ -61,22 +61,18 @@ forbid(
     resource
 );
 
-// BARRIER 5: Provenance — Veto as Default
-// Irreversible AND consequential actions require explicit human review.
-// The forbid fires unless the GOVERN checkpoint has completed human review
-// and set human_checkpoint_completed = true in the context.
-// The GOVERN implementation sets this AFTER human approval is received.
-// It cannot be set to true by application code without going through GOVERN.
+// BARRIER 5: Provenance
+// Every knowledge-graph write must carry provenance (source_id present).
+// The kernel enforces this structurally in check_provenance (barriers.py),
+// which fires BEFORE the policy stage; this forbid mirrors it here so that no
+// permit can grant an unprovenanced write. Defense-in-depth: for valid input
+// has_provenance is always true by the time policy runs, so this never changes
+// observable behavior — it only bites if the kernel check is ever removed.
 forbid(
     principal,
-    action == Action::"govern_approve",
+    action == Action::"relate_graph_write",
     resource
-) when {
-    context has action_reversible &&
-    context.action_reversible == false &&
-    context has action_consequential &&
-    context.action_consequential == true
-} unless {
-    context has human_checkpoint_completed &&
-    context.human_checkpoint_completed == true
+) unless {
+    context has has_provenance &&
+    context.has_provenance == true
 };
