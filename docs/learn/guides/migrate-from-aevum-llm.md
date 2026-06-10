@@ -105,7 +105,7 @@ config = {"configurable": {"thread_id": "alice-session-1"}}
 result = graph.invoke(inputs, config)
 ```
 
-Every superstep is dual-signed (Ed25519 + ML-DSA-65) and chained.
+Every superstep is signed (Ed25519 by default; optional ML-DSA-65 post-quantum dual signing) and chained.
 `delete_thread("alice-session-1")` triggers GDPR Art. 17 crypto-erasure.
 
 ---

@@ -10,11 +10,11 @@ Exception).
 
 I, [NAME], [TITLE] at [ORGANIZATION], hereby certify:
 
-1. I am familiar with the Aevum governance kernel deployed by [ORGANIZATION]
+1. I am familiar with the Aevum audit and evidence layer deployed by [ORGANIZATION]
    and the process by which it generates audit receipts.
 
 2. The attached Aevum receipts (file hash: [SHA-256 of receipt bundle]) were
-   generated automatically by the Aevum governance kernel, version [X.Y.Z],
+   generated automatically by the Aevum audit and evidence layer, version [X.Y.Z],
    operating in [ORGANIZATION]'s production environment.
 
 3. The receipts were generated as a regular practice of [ORGANIZATION]'s

@@ -269,8 +269,8 @@ without a central coordinator.
 ## A Note on Synthesis
 
 None of the works cited above describe anything like Aevum.
-Wixted describes forgetting curves; he does not describe a
-governed AI context kernel. The OpenPort Protocol describes
+Wixted describes forgetting curves; he does not describe an
+independent black box for AI agents. The OpenPort Protocol describes
 a governance specification; it does not describe a Python
 implementation with a sigchain and complication framework.
 

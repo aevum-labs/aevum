@@ -6,10 +6,10 @@ for tool-call gating. Each pattern maps to a different enforcement guarantee."
 
 # Deployment Patterns
 
-Aevum is an in-process Python library — a context kernel in the microkernel
-sense: minimal stable mechanism (consent, provenance, sigchain, verifiable
-decision records) paired with externalized policy (Cedar, OPA). This means enforcement
-operates at the application layer.
+Aevum is an in-process Python library — the independent black box for AI agents.
+Like a microkernel, it provides a minimal stable mechanism (consent, provenance,
+sigchain, verifiable decision records) paired with externalized policy (Cedar, OPA).
+This means enforcement operates at the application layer.
 
 !!! note "Honest scope"
     No in-process library can own the syscall boundary the way an OS kernel

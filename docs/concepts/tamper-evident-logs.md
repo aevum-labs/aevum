@@ -23,7 +23,7 @@ Aevum implements all three properties in its episodic ledger. It is important no
 
 **Hash-chained:** each `AuditEvent` includes `prior_hash` — the SHA3-256 digest of the preceding event's canonical representation. `engine.verify_sigchain()` recomputes the full chain from the genesis entry and returns `False` if any hash does not match. Any modification to any field in any entry — including metadata fields like timestamps, actor identifiers, or event types — produces a hash mismatch that is detected on the next verification pass.
 
-**Ed25519 + ML-DSA-65 dual signed (post-quantum):** each event is signed with both the kernel's Ed25519 key (classical) and ML-DSA-65 (NIST FIPS 204, post-quantum). Both signatures must verify — an AND gate, not an OR gate. This means the audit trail remains verifiable even if one signature scheme is later broken. Public keys for both algorithms are available for external verification.
+**Ed25519 by default; optional ML-DSA-65 dual signing (post-quantum):** by default each event is signed with the kernel's Ed25519 key (the in-process signer). For deployments that need post-quantum assurance over long retention windows, the optional dual signer adds an ML-DSA-65 (NIST FIPS 204) signature so each event carries both. When dual signing is enabled, both signatures must verify — an AND gate, not an OR gate — so the trail remains verifiable even if one scheme is later broken. Public keys for the active algorithm(s) are available for external verification.
 
 ```python
 from aevum.core import Engine

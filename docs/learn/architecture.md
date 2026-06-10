@@ -5,8 +5,9 @@ the sigchain, five public functions, and the consent model — in one page."
 
 # Architecture
 
-Aevum is a replay-first, policy-governed context kernel. It sits between your
-AI agents and the data they reason over, enforcing consent, provenance, and
+Aevum is the independent black box for AI agents — a tamper-evident, independently
+verifiable audit layer. It sits between your AI agents and the data they reason over,
+enforcing consent, provenance, and
 classification on every operation before any data is read or written. Where
 observability tools log what happened after the fact, Aevum enforces governance
 before the agent acts — and records a cryptographically signed, hash-chained

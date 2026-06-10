@@ -160,7 +160,7 @@ undone.
 
 ## Gaps and deployer responsibilities
 
-Aevum is a context kernel, not a complete AI risk management system. The following are
+Aevum is an AI agent audit and evidence layer, not a complete AI risk management system. The following are
 outside Aevum's scope:
 
 - **Model evaluation:** Aevum does not evaluate AI model outputs for bias, fairness, or
