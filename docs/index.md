@@ -1,16 +1,18 @@
 ---
-description: "Aevum — the governed context kernel for AI agents.
-Cryptographic audit trails, consent enforcement, and verifiable decision records."
+description: "Aevum — the independent black box for AI agents.
+Tamper-evident, independently verifiable records of agent actions for audit, compliance, and forensics."
 ---
 
 # Aevum
 
-**The Python library that makes your AI agent's memory accountable.**
+**The independent black box for AI agents.**
 
-Aevum is a Python library that gives AI agents a signed audit trail,
-consent-checked data access, and verifiable decision records —
-three problems that tend to surface together in production. The quickstart
-gets you to working code in ten minutes.
+Aevum records what your AI agents do into a tamper-evident, independently
+verifiable ledger — signed, hash-chained, and timestamped — so you can prove
+what happened to an auditor, regulator, or court without asking them to trust
+you. It attaches to your existing agent stack as a recorder; an optional
+governed kernel adds consent enforcement and hardcoded safety barriers.
+The quickstart gets you to working code in ten minutes.
 
 !!! tip "Developer"
     New here? Start with `AEVUM_DEV=1` — [Quickstart →](/getting-started/quickstart/)

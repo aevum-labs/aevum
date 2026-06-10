@@ -1,9 +1,12 @@
 # Aevum
-> Aevum is an open-source AI governance and context kernel — Apache 2.0.
-> It gives AI agents a cryptographically chained audit trail (sigchain),
-> consent-checked memory, policy-governed ABAC, and verifiable decision records
-> with cryptographic audit trails. Every action is signed, every read is consent-verified,
-> every commit is tamper-evident.
+> Aevum is the independent black box for AI agents — Apache 2.0.
+> It records every agent action into a cryptographically signed, hash-chained
+> audit trail (sigchain) and wraps each entry in a portable signed receipt
+> (COSE_Sign1 + RFC 3161 timestamp) that anyone can verify without trusting the
+> operator, the model provider, or the cloud. Tamper-evident by construction,
+> independently verifiable, built for record-keeping rules (EU AI Act Art. 12,
+> SEC 17a-4, FDA 21 CFR Part 11, HIPAA). An optional governed kernel adds
+> consent enforcement and five hardcoded, unconditional safety barriers.
 
 ## Core concepts
 - [Architecture](https://aevum.build/learn/architecture/): Three-tier design, five unconditional barriers, sigchain, consent model
