@@ -40,4 +40,4 @@ forbid(
 
 // L3: Irreversible actions require human checkpoint (covered by Barrier 5)
 // L4: Crisis-adjacent only (covered by Barrier 1)
-// L5: No autonomy restrictions beyond the five absolute barriers
+// L5: No autonomy restrictions beyond the five unconditional barriers
