@@ -117,8 +117,17 @@ dependencies = [
     { name = "aevum-core" },
 ]
 
+[package.optional-dependencies]
+full = [
+    { name = "aevum-publish" },
+]
+
 [package.metadata]
-requires-dist = [{ name = "aevum-core", editable = "packages/aevum-core" }]
+requires-dist = [
+    { name = "aevum-core", editable = "packages/aevum-core" },
+    { name = "aevum-publish", marker = "extra == 'full'", editable = "packages/aevum-publish" },
+]
+provides-extras = ["full"]
 
 [[package]]
 name = "aevum-core"

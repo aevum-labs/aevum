@@ -275,7 +275,14 @@ class ConformanceSuite:
             from aevum.core.audit.event import AuditEvent
             from aevum.core.audit.signer import InProcessSigner
             from aevum.core.receipt import AevumReceipt
-            from aevum.publish.encoder import ReceiptEncoder
+            try:
+                from aevum.publish.encoder import ReceiptEncoder
+            except ModuleNotFoundError:
+                return InvariantResult(
+                    invariant_id=10, name=name, passed=False, skipped=True,
+                    detail="aevum-publish not installed — COSE receipt invariant skipped "
+                           "(install aevum-publish or aevum-conformance[full] to verify)",
+                )
 
             signer = InProcessSigner()
             encoder = ReceiptEncoder(signer=signer, tsa_client=None, dev_mode=True)

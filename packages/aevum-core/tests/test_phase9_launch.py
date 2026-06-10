@@ -89,9 +89,9 @@ class TestDocumentation:
         assert "STATUS: PASS" in content, \
             "Conformance report does not show STATUS: PASS"
 
-    def test_conformance_report_has_nine_invariants(self) -> None:
+    def test_conformance_report_has_eleven_invariants(self) -> None:
         content = Path("docs/conformance_report.txt").read_text()
-        for i in range(1, 10):
+        for i in range(1, 12):
             assert f"INVARIANT{i:>3}" in content or f"INVARIANT {i}" in content, \
                 f"Conformance report missing invariant {i}"
 
