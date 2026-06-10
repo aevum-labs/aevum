@@ -77,7 +77,7 @@ class TestCedarPolicyEngineLoad:
             action="relate_graph_write",
             resource_type="DataGraph",
             resource_id="knowledge",
-            context={"has_crisis_content": False},
+            context={"has_crisis_content": False, "has_provenance": True},
         )
         assert isinstance(result, bool)
 
@@ -98,7 +98,7 @@ class TestBarrier1Crisis:
             action="relate_graph_write",
             resource_type="DataGraph",
             resource_id="knowledge",
-            context={"has_crisis_content": True},
+            context={"has_crisis_content": True, "has_provenance": True},
         )
         assert not permitted
 
@@ -109,7 +109,7 @@ class TestBarrier1Crisis:
             action="relate_graph_write",
             resource_type="DataGraph",
             resource_id="knowledge",
-            context={"has_crisis_content": False},
+            context={"has_crisis_content": False, "has_provenance": True},
         )
         assert permitted
 
@@ -121,7 +121,7 @@ class TestBarrier1Crisis:
             action="relate_graph_write",
             resource_type="DataGraph",
             resource_id="knowledge",
-            context={},
+            context={"has_provenance": True},
         )
         assert permitted
 
@@ -139,6 +139,7 @@ class TestBarrier1Crisis:
                 "consent_purpose_matches": True,
                 "data_classification_level": 0,
                 "deployment_ceiling_level": 3,
+                "has_provenance": True,
             },
         )
         assert not permitted
@@ -151,7 +152,7 @@ class TestBarrier1Crisis:
                 action="relate_graph_write",
                 resource_type="DataGraph",
                 resource_id="knowledge",
-                context={"has_crisis_content": True},
+                context={"has_crisis_content": True, "has_provenance": True},
             )
             assert not permitted, f"Barrier 1 failed for principal {principal_id!r}"
 
@@ -229,7 +230,7 @@ class TestBarrier2Consent:
             action="relate_graph_write",
             resource_type="DataGraph",
             resource_id="knowledge",
-            context={"has_crisis_content": False},  # no consent needed for relate
+            context={"has_crisis_content": False, "has_provenance": True},  # no consent needed for relate
         )
         assert permitted
 
@@ -321,6 +322,7 @@ class TestBarrier3Classification:
                     "action_reversible": True, "action_consequential": False,
                     "human_checkpoint_completed": False,
                     "autonomy_level": 5,
+                    "has_provenance": True,
                 },
             )
             assert not permitted, f"Ceiling barrier should block {action!r}"
@@ -409,10 +411,14 @@ class TestBarrier4AuditSeal:
 
 
 # ---------------------------------------------------------------------------
-# Barrier 5 — Provenance / Veto as Default
+# Autonomy-L3 — Govern / Human Checkpoint
+# (forbid relocated from barriers.cedar to autonomy.cedar in W5)
 # ---------------------------------------------------------------------------
 
-class TestBarrier5Provenance:
+class TestAutonomyL3GovernCheckpoint:
+    """Autonomy-L3 govern/human-checkpoint forbid (relocated from barriers.cedar in W5).
+    Covers the autonomy.cedar rule, not a kernel barrier."""
+
     @pytest.fixture
     def engine(self):
         return CedarPolicyEngine.default()
@@ -464,7 +470,7 @@ class TestBarrier5Provenance:
         assert permitted
 
     def test_irrev_non_consequential_permitted_without_review(self, engine):
-        # Barrier 5 requires BOTH irreversible AND consequential
+        # Autonomy-L3 requires BOTH irreversible AND consequential
         permitted = engine.is_permitted(
             principal_type="AevumAgent",
             principal_id="test-agent",
@@ -475,19 +481,51 @@ class TestBarrier5Provenance:
         )
         assert permitted
 
-    def test_barrier5_only_applies_to_govern_approve(self, engine):
-        # relate_graph_write is not gated by barrier 5
+
+# ---------------------------------------------------------------------------
+# Barrier 5 — Provenance
+# ---------------------------------------------------------------------------
+
+class TestBarrier5Provenance:
+    """Barrier 5 — Provenance: graph WRITES require provenance (source_id present),
+    surfaced to the policy as context.has_provenance. Fail-closed: a write is denied
+    unless has_provenance == true. Mirrors the kernel's check_provenance (defense-in-depth)."""
+
+    @pytest.fixture
+    def engine(self):
+        return CedarPolicyEngine.default()
+
+    def test_write_without_provenance_denied(self, engine):
         permitted = engine.is_permitted(
             principal_type="AevumAgent",
             principal_id="test-agent",
             action="relate_graph_write",
             resource_type="DataGraph",
             resource_id="knowledge",
-            context={
-                "action_reversible": False,
-                "action_consequential": True,
-                "human_checkpoint_completed": False,
-                "has_crisis_content": False,
-            },
+            context={"has_crisis_content": False},  # no has_provenance → fail-closed deny
+        )
+        assert not permitted
+
+    def test_write_with_provenance_permitted(self, engine):
+        permitted = engine.is_permitted(
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="relate_graph_write",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={"has_crisis_content": False, "has_provenance": True},
+        )
+        assert permitted
+
+    def test_provenance_only_gates_writes(self, engine):
+        # navigate (read) is NOT gated by the provenance barrier (it has its own consent gate)
+        permitted = engine.is_permitted(
+            principal_type="AevumAgent",
+            principal_id="test-agent",
+            action="navigate",
+            resource_type="DataGraph",
+            resource_id="knowledge",
+            context={"has_crisis_content": False, "has_active_consent": True,
+                     "consent_purpose_matches": True},
         )
         assert permitted
