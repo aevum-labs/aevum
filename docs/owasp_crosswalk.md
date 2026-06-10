@@ -41,7 +41,7 @@ Last updated: v0.6.0 (2026-05-20)
 
 ~ ASI05: Cascading Agent Failure / Trust Chain Attacks
   Coverage: PARTIAL
-  Barriers: Barrier 4: Audit Seal
+  Barriers: Barrier 4: Audit Immutability
   • Sigchain with dual-sig — every session commit is signed
   • Session Merkle root — tampering detected across agent handoffs
   • GOVERN at each consequential step — no silent propagation
