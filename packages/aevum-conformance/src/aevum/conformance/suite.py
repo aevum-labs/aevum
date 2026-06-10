@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2024-2026 Aevum Labs contributors
 """
-Aevum conformance test suite — 9 invariants.
+Aevum conformance test suite — 11 invariants.
 
 Run against any Aevum installation:
   from aevum.conformance.suite import ConformanceSuite
@@ -9,8 +9,12 @@ Run against any Aevum installation:
   result = suite.run_all()
   print(result.render())
 
-The 9 invariants correspond to the behavioral canaries, extended with
+The 11 invariants correspond to the behavioral canaries, extended with
 end-to-end checks that require a running kernel.
+
+Conformance invariants are numbered 1–11 and are distinct from the seven
+**formal receipt invariants** ``I1–I7`` defined in ``aevum.core.invariants``
+(the spec-level guarantees). The two taxonomies do not share identifiers.
 
 Invariants:
   1. crisis_barrier_fires_before_graph_write
@@ -22,6 +26,8 @@ Invariants:
   7. audit_chain_append_only
   8. dual_signature_every_chain_entry (Ed25519 AND ML-DSA-65)
   9. consent_revoke_destroys_dek
+ 10. cose_sign1_receipt_valid_structure_alg_minus_8 (COSE_Sign1 receipt structure)
+ 11. prov_agent_fields_present (PROV-AGENT vocabulary fields on every receipt)
 """
 from __future__ import annotations
 
@@ -150,7 +156,7 @@ class ConformanceSuite:
         self._kernel = kernel
 
     def run_all(self) -> ConformanceResult:
-        """Run all 9 invariants and return a ConformanceResult."""
+        """Run all 11 invariants and return a ConformanceResult."""
         from unittest.mock import MagicMock
 
         from aevum.core.canary import CanarySuite
@@ -259,7 +265,7 @@ class ConformanceSuite:
 
     def _check_cose_structure(self) -> InvariantResult:
         """
-        Invariant 10 (I6-COSE-STRUCTURE):
+        Invariant 10 (COSE-STRUCTURE):
         A COSE_Sign1 receipt produced by ReceiptEncoder is a valid 4-element
         CBOR array with alg=-8 in the protected header.
         """
@@ -322,12 +328,14 @@ class ConformanceSuite:
 
     def _check_prov_agent_fields(self) -> InvariantResult:
         """
-        Invariant 11 (I7-PROV-AGENT-FIELDS):
+        Invariant 11 (PROV-AGENT-FIELDS):
         Every AevumReceipt contains all required PROV-AGENT vocabulary fields
         with non-empty values.
 
-        Note: I7-SCITT_REGISTERED is not testable in dev mode (NullBackend).
-        SCITT registration is verified only in production mode with AEVUM_SCITT_URL set.
+        Note: The formal receipt invariant I7-SCITT_REGISTERED (see ``aevum.core.invariants``)
+        is not testable in dev mode (NullBackend); conformance invariant 11 covers the
+        PROV-AGENT fields only. SCITT registration is verified only in production mode
+        with AEVUM_SCITT_URL set.
         """
         name = "prov_agent_fields_present_in_every_receipt"
         try:

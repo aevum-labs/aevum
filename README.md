@@ -189,10 +189,7 @@ python -c "from aevum.conformance.suite import ConformanceSuite; \
     r = ConformanceSuite().run_all(); print(r.passed_count, '/', r.total_count)"
 ```
 
-See [`docs/conformance_report.txt`](docs/conformance_report.txt) for the
-reference run. The v0.7.4 suite covers 74 invariants across sigchain format,
-dev mode contracts, OTel bridge privacy defaults, and VaultTransitSigner key
-schemes.
+Aevum ships an **11-invariant** machine-verifiable conformance suite. Run it against any installation; it reports passed/skipped/failed (some invariants skip when optional dependencies are absent — e.g. `liboqs` for dual-signature, `cedarpy` for policy invariants). See [`docs/conformance_report.txt`](docs/conformance_report.txt) for a reference run.
 
 ## Packages
 

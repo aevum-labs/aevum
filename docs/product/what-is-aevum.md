@@ -96,10 +96,7 @@ shows what to replace before you deploy.
 spans. Privacy-preserving by default: only `audit_id` is emitted unless
 content capture is explicitly opted in. Adds less than 0.5 ms p99 overhead.
 
-**74/74 conformance.** The machine-verifiable conformance suite covers
-74 invariants across sigchain format, dev mode contracts, OTel bridge
-privacy defaults, and VaultTransitSigner key schemes. Run it against any
-Aevum deployment:
+**Machine-verifiable conformance.** An 11-invariant suite verifies the core guarantees (crisis, consent, governance, audit append-only, dual-signature, COSE receipt structure, PROV-AGENT fields, …) against any installation, reporting pass/skip/fail honestly. Run it yourself — don't take our word for it.
 
 ```bash
 pip install aevum-conformance
