@@ -156,11 +156,7 @@ ledger-recorded.
 
 ### The five unconditional barriers
 
-These are **hardcoded checks in the kernel engine — not Cedar policies, not
-configuration.** They cannot be disabled by any operator setting, environment
-variable, or runtime argument; even `AEVUM_DEV=1` does not bypass them. If a
-barrier fires, the operation halts. (Cedar policy is the separate, configurable
-ABAC layer.)
+The five barriers are enforced as **hardcoded checks in `barriers.py` that run first, on every operation, before the policy engine** — independent of any operator setting, environment variable, or runtime argument, and not bypassed even by dev mode (`AEVUM_DEV=1`). If a barrier fires, the operation halts. The same five are **also expressed as Cedar `forbid` policies (`barriers.cedar`)**, enforced by the policy engine when the `[cedar]` extra is installed — defense-in-depth: the hardcoded layer is the unconditional guarantee (it fires even without Cedar); the Cedar layer is a redundant expression.
 
 | Barrier | What it blocks |
 |---|---|

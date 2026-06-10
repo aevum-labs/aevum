@@ -8,7 +8,7 @@
 ## The Tension: Append-Only Sigchains vs the Right to Erasure
 
 Aevum's episodic ledger is **append-only by design**. Every `commit` operation
-appends a signed, chained `AuditEvent` to the sigchain. Barrier 4 (Audit Seal)
+appends a signed, chained `AuditEvent` to the sigchain. Barrier 4 (Audit Immutability)
 makes deletion or mutation of ledger entries a hardcoded unconditional barrier —
 no policy override is possible.
 
@@ -169,7 +169,7 @@ that:
 
 1. **Retains its chain position.** The event's `prior_hash`, `signature`, and
    `sequence` remain intact. Removing or modifying it would break the hash
-   chain — Barrier 4 (Audit Seal) prevents this unconditionally.
+   chain — Barrier 4 (Audit Immutability) prevents this unconditionally.
 
 2. **Contains only non-identifying fields.** The `payload` stores a
    pseudonymous `subject_id`, a `data_hash` (SHA-256 of the now-deleted
@@ -209,7 +209,7 @@ an Aevum deployment:
 ```
 
 !!! warning "What operators must NOT do"
-    Do not delete or mutate sigchain entries. Barrier 4 (Audit Seal) prevents
+    Do not delete or mutate sigchain entries. Barrier 4 (Audit Immutability) prevents
     this at the kernel level — any attempt raises `ImmutableLedgerError`.
     An auditor examining the sigchain must be able to confirm the chain was
     intact at every point in time. The tombstone's presence is itself evidence
@@ -264,5 +264,5 @@ This is verified by conformance invariant 9
 - GDPR Article 17: Right to erasure ('right to be forgotten')
 - Aevum Frozen Invariant 5: Append-only property of the episodic ledger
 - Aevum Frozen Invariant 7: Provenance as precondition
-- Aevum Barrier 4 (`barriers.cedar`): Audit Seal — no deletions or mutations
+- Aevum Barrier 4 — Audit Immutability (hardcoded in `barriers.py`, mirrored in `barriers.cedar`): no deletions or mutations
 - `packages/aevum-core/src/aevum/core/policies/gdpr_pii.cedar`
