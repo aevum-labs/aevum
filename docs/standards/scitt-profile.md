@@ -185,7 +185,7 @@ See `docs/legal/fre-902-13-certification-template.md` for the qualified person
 certification template enabling FRE 902(13) self-authentication in US federal court.
 
 The certification attests that:
-- Receipts were generated automatically by the Aevum governance kernel
+- Receipts were generated automatically by the Aevum audit and evidence layer
 - The Ed25519 signature process is described in sufficient detail for the court
 - Tampering is detectable via `aevum verify-receipt <receipt_file>`
 

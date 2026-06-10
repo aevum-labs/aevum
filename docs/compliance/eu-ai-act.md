@@ -10,8 +10,8 @@
 Aevum is a third-party software tool and component. It is:
 
 - **Not a GPAI model** — Aevum performs no inference, generation, or prediction. It is a
-  context kernel that records, governs, and enables replay of AI decisions made by other
-  systems.
+  tamper-evident, independently verifiable audit layer that records, governs, and enables
+  replay of AI decisions made by other systems.
 - **Not a high-risk AI system** — Aevum does not make determinations that affect persons
   in the Annex III domains. It is infrastructure for AI systems.
 - **Not a general-purpose AI model** — Aevum provides no AI capability. There are no
@@ -31,7 +31,7 @@ This document is that voluntary documentation.
 
 ### Intended purpose
 
-Aevum is a context kernel that sits between data sources and AI consumers. It provides:
+Aevum is an AI agent audit and evidence layer that sits between data sources and AI consumers. It provides:
 
 - A governed ingestion membrane — all data enters through policy-evaluated `ingest()`
   calls

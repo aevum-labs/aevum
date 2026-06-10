@@ -4,7 +4,7 @@ description: "Data flow through Aevum's five functions, three named graphs, five
 
 # How It Works
 
-Aevum is a replay-first, policy-governed context kernel. This page explains
+Aevum is the independent black box for AI agents — a tamper-evident, independently verifiable audit layer. This page explains
 the data flow from raw input to governed output.
 
 ## The big picture

@@ -193,6 +193,7 @@ nav:
     - EU AI Act Article 12: compliance/article12.md
     - OWASP Crosswalk: owasp_crosswalk.md
     - SOC 2: compliance/soc2.md
+    - Financial Services: compliance/financial-services.md
     - GDPR Article 17: compliance/gdpr-article-17.md
   - Standards:
     - SCITT Profile: standards/scitt-profile.md
