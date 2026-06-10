@@ -3,9 +3,14 @@
 """
 Dual-signature engine for the Aevum sigchain.
 
-DualSigner (opt-in, requires the [pqc] extra) signs entries with both Ed25519 (RFC 8032)
-and ML-DSA-65 (FIPS 204). The default signer is InProcessSigner (Ed25519-only, ADR-004);
-ML-DSA-65 is post-quantum defense-in-depth available when aevum-core[pqc] is installed.
+`Kernel.local()` uses `DualSigner` as its default signing implementation. When liboqs is
+present (`aevum-core[pqc]`), `DualSigner` signs with both Ed25519 (RFC 8032) and ML-DSA-65
+(FIPS 204) simultaneously. When liboqs is absent, `DualSigner.generate()` falls back to
+Ed25519-only and emits a loud `logger.warning` — this is an interim state for v0.7.5; v0.8.0
+enforces fail-closed (see ADR-012).
+
+`InProcessSigner` is the reference implementation of the `Signer` ABC for classical Ed25519
+use (ADR-004). It is not the default for `Kernel.local()`.
 
 Both algorithms sign the same canonical bytes — the caller (sigchain.new_event) is responsible
 for applying RFC 8785 JCS serialisation before calling sign(), so that the bytes are identical
@@ -39,8 +44,11 @@ Usage:
 from __future__ import annotations
 
 import dataclasses
+import logging
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 import nacl.encoding
 import nacl.exceptions
@@ -149,18 +157,16 @@ class DualSigner:
         """Generate a fresh keypair.
 
         When liboqs is available: Ed25519 + ML-DSA-65 (dual-signature mode).
-        When liboqs is absent: Ed25519 only — sign() will raise ImportError if called.
+        When liboqs is absent: Ed25519-only keys are generated with a loud logger.warning
+        (interim — v0.8.0 will fail-closed instead, per ADR-012); sign() raises ImportError.
         Keys are not persisted automatically; call save() after generate().
         """
-        import warnings
-
         ed25519_sk = nacl.signing.SigningKey.generate()
         if not _OQS_AVAILABLE:
-            warnings.warn(
-                "liboqs not available; Ed25519-only keys generated. "
-                "Install liboqs-python for ML-DSA-65 post-quantum coverage.",
-                RuntimeWarning,
-                stacklevel=2,
+            logger.warning(
+                "ML-DSA-65 (liboqs) is unavailable — operating Ed25519-only (interim). "
+                "This is a degraded signing posture. Install aevum-core[pqc] to enable "
+                "hybrid post-quantum signing. v0.8.0 will make this fail-closed (ADR-012)."
             )
             return cls(ed25519_sk, b"", b"")
         with _oqs_module.Signature(cls._MLDSA65_ALG) as signer:
