@@ -43,6 +43,6 @@ Predecessor: v0.7.2
 
 ## Regulatory tracking
 
-- EU AI Act Annex III deadline: December 2, 2027 (Digital Omnibus provisional agreement May 7, 2026)
+- EU AI Act Annex III deadline: December 2, 2027 (Digital Omnibus provisional agreement May 7, 2026; pending Official Journal publication — Aug 2, 2026 remains active until then)
 - Colorado SB 26-189: effective January 1, 2027
 - Next review recommended before any compliance documentation updates
