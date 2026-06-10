@@ -94,6 +94,35 @@ def test_entity_count(fake_store_parts: Any) -> None:
     assert store.entity_count() == 2
 
 
+def test_subjects_above_ceiling_returns_above(fake_store_parts: Any) -> None:
+    """subjects_above_ceiling returns stored entities that exceed the ceiling."""
+    store, _, _ = fake_store_parts
+    store.store_entity("e-high", {"content": "classified"}, classification=3)
+    result = store.subjects_above_ceiling(["e-high"], classification_max=0)
+    assert result == ["e-high"]
+
+
+def test_subjects_above_ceiling_absent_excluded(fake_store_parts: Any) -> None:
+    """Absent subjects must not appear in the result (absence ≠ above-ceiling)."""
+    store, _, _ = fake_store_parts
+    result = store.subjects_above_ceiling(["never-stored"], classification_max=0)
+    assert result == []
+
+
+def test_subjects_above_ceiling_at_ceiling_excluded(fake_store_parts: Any) -> None:
+    """Entity at exactly classification_max must not be returned (> not >=)."""
+    store, _, _ = fake_store_parts
+    store.store_entity("e-zero", {"content": "public"}, classification=0)
+    result = store.subjects_above_ceiling(["e-zero"], classification_max=0)
+    assert result == []
+
+
+def test_subjects_above_ceiling_empty_list(fake_store_parts: Any) -> None:
+    """Empty subject list returns empty list without error."""
+    store, _, _ = fake_store_parts
+    assert store.subjects_above_ceiling([], classification_max=0) == []
+
+
 # ── Integration tests (real Postgres) ────────────────────────────────────────
 
 def test_pg_store_entity_real(pg_store: Any) -> None:

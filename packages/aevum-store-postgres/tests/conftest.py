@@ -54,6 +54,14 @@ class _FakeCursor:
                 if eid in ids and rec["classification"] <= cls_max
             ]
 
+        elif "SELECT ENTITY_ID" in sql_up and "CLASSIFICATION >" in sql_up:
+            ids, cls_max = list(params[0]), int(params[1])
+            self._rows = [
+                (eid,)
+                for eid, rec in self._store["entities"].items()
+                if eid in ids and rec["classification"] > cls_max
+            ]
+
         elif "SELECT CLASSIFICATION FROM AEVUM_ENTITIES" in sql_up:
             entity_id = params[0]
             row = self._store["entities"].get(entity_id)
