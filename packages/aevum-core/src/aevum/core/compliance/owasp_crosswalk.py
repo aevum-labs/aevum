@@ -121,13 +121,13 @@ OWASP_CROSSWALK: tuple[OWASPEntry, ...] = (
         aevum_mechanisms=(
             "GOVERN checkpoint — structurally non-bypassable",
             "Automation bias warning — displayed at every substantive checkpoint",
-            "Cedar Barrier 5 — govern_approve forbidden without human_checkpoint_completed",
+            "Cedar autonomy policy (L3) — govern_approve forbidden without human_checkpoint_completed",
             "Veto-as-default — timeout = veto, not approval",
         ),
-        aevum_barriers=("Barrier 5: Provenance",),
+        aevum_barriers=(),
         coverage="full",
         notes=(
-            "Cedar's Barrier 5 forbid cannot be bypassed by any permit. "
+            "Cedar's autonomy (L3) govern forbid cannot be bypassed by any permit. "
             "The human_checkpoint_completed flag is set ONLY by the GOVERN "
             "implementation after actual human input is received. "
             "Timeout always results in veto, never in approval."
