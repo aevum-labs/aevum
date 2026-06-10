@@ -139,17 +139,30 @@ class DualSigner:
         """ML-DSA-65 public key bytes (1,952 bytes)."""
         return self._mldsa65_pk
 
+    @property
+    def has_pq_keys(self) -> bool:
+        """True when ML-DSA-65 keys are present (liboqs was available at key generation)."""
+        return bool(self._mldsa65_sk)
+
     @classmethod
     def generate(cls) -> DualSigner:
-        """Generate a fresh dual keypair. Keys are not persisted automatically."""
-        if not _OQS_AVAILABLE:
-            raise ImportError(
-                "liboqs-python is required for ML-DSA-65 signing. "
-                "Install: pip install liboqs-python\n"
-                "If already installed, ensure the native library path is set:\n"
-                "  LD_LIBRARY_PATH=$HOME/_oqs/lib:$LD_LIBRARY_PATH"
-            )
+        """Generate a fresh keypair.
+
+        When liboqs is available: Ed25519 + ML-DSA-65 (dual-signature mode).
+        When liboqs is absent: Ed25519 only — sign() will raise ImportError if called.
+        Keys are not persisted automatically; call save() after generate().
+        """
+        import warnings
+
         ed25519_sk = nacl.signing.SigningKey.generate()
+        if not _OQS_AVAILABLE:
+            warnings.warn(
+                "liboqs not available; Ed25519-only keys generated. "
+                "Install liboqs-python for ML-DSA-65 post-quantum coverage.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return cls(ed25519_sk, b"", b"")
         with _oqs_module.Signature(cls._MLDSA65_ALG) as signer:
             mldsa65_pk = signer.generate_keypair()
             mldsa65_sk = signer.export_secret_key()
@@ -157,29 +170,40 @@ class DualSigner:
 
     @classmethod
     def load(cls, state_dir: Path) -> DualSigner:
-        """Load keypair from state directory. Raises FileNotFoundError if absent."""
+        """Load keypair from state directory. Raises FileNotFoundError if Ed25519 key absent.
+
+        ML-DSA-65 key files are optional; when absent (liboqs was unavailable at key
+        generation) the signer operates in Ed25519-only mode and sign() raises ImportError.
+        """
         ed25519_key_bytes = (state_dir / cls._ED25519_KEYFILE).read_bytes()
         ed25519_sk = nacl.signing.SigningKey(ed25519_key_bytes)
 
-        mldsa65_sk = (state_dir / cls._MLDSA65_SK_FILE).read_bytes()
-        mldsa65_pk = (state_dir / cls._MLDSA65_PK_FILE).read_bytes()
+        sk_file = state_dir / cls._MLDSA65_SK_FILE
+        pk_file = state_dir / cls._MLDSA65_PK_FILE
+        mldsa65_sk = sk_file.read_bytes() if sk_file.exists() else b""
+        mldsa65_pk = pk_file.read_bytes() if pk_file.exists() else b""
 
         return cls(ed25519_sk, mldsa65_sk, mldsa65_pk)
 
     def save(self, state_dir: Path) -> None:
-        """Persist keys to state directory. Creates directory if needed."""
+        """Persist keys to state directory. Creates directory if needed.
+
+        ML-DSA-65 key files are only written when keys are present (i.e. liboqs
+        was available at generate() time). Ed25519-only signers omit those files.
+        """
         state_dir.mkdir(parents=True, exist_ok=True)
         # Ed25519 secret key (32 raw bytes)
         ed25519_key_path = state_dir / self._ED25519_KEYFILE
         ed25519_key_path.write_bytes(bytes(self._ed25519_sk))
         ed25519_key_path.chmod(0o600)
-        # ML-DSA-65 keys
-        sk_path = state_dir / self._MLDSA65_SK_FILE
-        sk_path.write_bytes(self._mldsa65_sk)
-        sk_path.chmod(0o600)
-        pk_path = state_dir / self._MLDSA65_PK_FILE
-        pk_path.write_bytes(self._mldsa65_pk)
-        pk_path.chmod(0o644)
+        # ML-DSA-65 keys (absent when liboqs was unavailable at key generation)
+        if self._mldsa65_sk:
+            sk_path = state_dir / self._MLDSA65_SK_FILE
+            sk_path.write_bytes(self._mldsa65_sk)
+            sk_path.chmod(0o600)
+            pk_path = state_dir / self._MLDSA65_PK_FILE
+            pk_path.write_bytes(self._mldsa65_pk)
+            pk_path.chmod(0o644)
 
     def sign(self, data: bytes) -> DualSignature:
         """Sign data with Ed25519 (RFC 8032) and ML-DSA-65 (FIPS 204). Returns DualSignature.
@@ -198,6 +222,11 @@ class DualSigner:
                 "Install: pip install liboqs-python\n"
                 "If already installed, ensure the native library path is set:\n"
                 "  LD_LIBRARY_PATH=$HOME/_oqs/lib:$LD_LIBRARY_PATH"
+            )
+        if not self._mldsa65_sk:
+            raise ImportError(
+                "ML-DSA-65 keys were not generated (liboqs was absent at key generation). "
+                "Regenerate keys by removing the keys directory and running `aevum init`."
             )
         # Ed25519 via PyNaCl
         signed = self._ed25519_sk.sign(data)

@@ -54,8 +54,8 @@ def init(
     """
     Initialize Aevum state directory and verify principles.
 
-    Creates the state directory, generates dual signing keys (Ed25519 +
-    ML-DSA-65), and verifies the signed_principles.yaml file.
+    Creates the state directory, generates signing keys (Ed25519 + ML-DSA-65
+    if liboqs is available), and verifies the signed_principles.yaml file.
     """
     typer.echo(f"Initializing Aevum state at {state_dir}...")
 
@@ -76,7 +76,8 @@ def init(
             tsa_enabled=False,
         )
         ed25519_pub = kernel.signer.ed25519_public_key.hex()[:16]
-        typer.echo(f"  Keys: OK (ed25519={ed25519_pub}...)")
+        pq_note = "" if kernel.signer.has_pq_keys else " — ML-DSA-65 skipped (install liboqs-python for post-quantum coverage)"
+        typer.echo(f"  Keys: OK (ed25519={ed25519_pub}...{pq_note})")
         typer.echo(f"  Canaries: PASS ({len(kernel.principles.immutable_ids())} immutable principles)")
     except Exception as exc:  # noqa: BLE001
         typer.echo(f"  Kernel init: FAILED — {exc}", err=True)

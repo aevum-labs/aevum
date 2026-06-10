@@ -225,7 +225,7 @@ A complication was registered with the kernel.
 |---|---|---|
 | `name` | str | Complication name |
 | `version` | str | Complication version |
-| `actor_id` | str | Complication actor identity (manifest `actor_id` if present, else `name`) |
+| `actor_id` | str | Complication actor identity, as supplied by the caller (manifest `actor_id` if present, else `name`; defaults to `aevum-core` until the server's admin routes pass the authenticated identity) |
 
 ---
 
@@ -236,7 +236,7 @@ A complication was approved and moved to ACTIVE state.
 | Field | Type | Description |
 |---|---|---|
 | `name` | str | Complication name |
-| `approved_by` | str | Admin actor who approved |
+| `approved_by` | str | Admin actor who approved, as supplied by the caller (defaults to `aevum-core` until the server's admin routes pass the authenticated identity) |
 
 ---
 
@@ -247,8 +247,8 @@ A complication was suspended by an admin.
 | Field | Type | Description |
 |---|---|---|
 | `name` | str | Complication name |
-| `suspended_by` | str | Admin actor who suspended |
-| `reason` | str | Why the complication was suspended (empty string if unspecified; field always present) |
+| `suspended_by` | str | Admin actor who suspended, as supplied by the caller (defaults to `aevum-core` until the server's admin routes pass the authenticated identity) |
+| `reason` | str | Why the complication was suspended, as supplied by the caller (empty string if unspecified; field always present) |
 
 ---
 
@@ -259,7 +259,7 @@ A suspended complication was resumed by an admin (SUSPENDED → ACTIVE).
 | Field | Type | Description |
 |---|---|---|
 | `name` | str | Complication name |
-| `resumed_by` | str | Admin actor who resumed |
+| `resumed_by` | str | Admin actor who resumed, as supplied by the caller (defaults to `aevum-core` until the server's admin routes pass the authenticated identity) |
 
 ---
 
@@ -274,6 +274,8 @@ does not write these events — they are written by complications via `commit()`
 
 ### action.outcome.ok
 
+_Emitted by complications, not the kernel._
+
 The external action completed successfully.
 
 | Field | Type | Description |
@@ -287,6 +289,8 @@ The external action completed successfully.
 
 ### action.outcome.failed
 
+_Emitted by complications, not the kernel._
+
 The external action was attempted but failed.
 
 | Field | Type | Description |
@@ -297,6 +301,8 @@ The external action was attempted but failed.
 | `detail` | dict | MUST include `"error": str` describing the failure |
 
 ### action.outcome.partial
+
+_Emitted by complications, not the kernel._
 
 The external action partially completed. Use sparingly — prefer
 `action.outcome.ok` or `action.outcome.failed` with detail instead.
