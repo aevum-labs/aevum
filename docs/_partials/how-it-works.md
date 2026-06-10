@@ -59,7 +59,7 @@ If all checks pass:
 An agent calls `engine.query()` with a purpose, list of subject IDs, and an actor.
 
 1. **Barrier 3 (Consent)** — checked for each `subject_id` in the list
-2. **Barrier 2 (Classification Ceiling)** — results above `classification_max` are redacted, not errored
+2. **Barrier 2 (Classification Ceiling)** — if any requested subject's classification exceeds `classification_max`, the entire query is blocked (`error_code="classification_blocked"`)
 
 The result is an `OutputEnvelope` whose `data["results"]` is a dict keyed by subject ID.
 

@@ -44,9 +44,9 @@ Cedar policy decisions are evaluated before every operation and can be logged at
 integration boundary. An auditor can export the consent ledger to show the complete
 authorization history for a subject or grantee over the audit period.
 
-Barrier 2 (Classification Ceiling) unconditionally redacts results above the actor's
-clearance level, independent of consent grants. This provides defense-in-depth on top
-of consent-based access control.
+Barrier 2 (Classification Ceiling) unconditionally blocks a query when any requested
+subject's classification exceeds the actor's clearance level, independent of consent
+grants. This provides defense-in-depth on top of consent-based access control.
 
 ### CC6.2 — Authentication
 

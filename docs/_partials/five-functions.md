@@ -57,7 +57,7 @@ result = engine.query(
     purpose="billing-inquiry",
     subject_ids=["customer-42"],
     actor="billing-agent",
-    classification_max=1,   # redact anything classified higher than 1
+    classification_max=1,   # block if any subject exceeds this level
     constraints={"type": "invoice"},  # optional filter
 )
 
@@ -69,8 +69,10 @@ if result.status == "ok":
 
 **Returns:** `OutputEnvelope` with `data={"results": {subject_id: ...}}`.
 
-Results above `classification_max` are silently redacted (not errored).
-The `warnings` field lists redacted subject IDs.
+If any requested subject's classification exceeds `classification_max`, the
+entire query is blocked: `status="error"`, `error_code="classification_blocked"`,
+and a `barrier.triggered` audit event is appended. No partial or redacted
+result is returned.
 
 When `capture_witness=True` (the default), the result includes
 a witness snapshot in `result.data["witness"]`. This records

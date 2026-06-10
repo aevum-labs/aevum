@@ -166,8 +166,10 @@ could be fabricated.
 **Threat:** An agent with a low-classification grant attempts to access
 high-classification data.
 
-**Mitigation:** Barrier 2 (Classification Ceiling) redacts results above
-the `classification_max` in the query. This fires in the kernel, not in policy.
+**Mitigation:** Barrier 2 (Classification Ceiling) blocks the entire query when
+any requested subject's classification exceeds the actor's clearance. The query
+returns `error_code="classification_blocked"` and appends a `barrier.triggered`
+audit event — no partial or redacted result is returned. This fires in the kernel, not in policy.
 
 **Residual risk:** A misconfigured consent grant with a high `classification_max`
 grants access above the intended level. Principle of least privilege: set

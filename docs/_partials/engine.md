@@ -70,7 +70,7 @@ engine.query(
 | `purpose` | str | Declared purpose for consent checking. |
 | `subject_ids` | list[str] | Subjects to query. Consent checked per subject. |
 | `actor` | str | Caller identity. Required, non-empty. |
-| `classification_max` | int | Data above this classification is silently redacted. Default 5 (no ceiling). |
+| `classification_max` | int | If any requested subject's classification exceeds this level, the query is blocked (`error_code="classification_blocked"`). Default 5 (no ceiling). |
 | `constraints` | dict \| None | Optional filter applied to graph traversal. |
 | `capture_witness` | bool | When True, appends a witness snapshot to `result.data["witness"]`. Default True. Set False only for read-only analytics queries that will never feed a `commit()`. |
 | `episode_id` | str \| None | Optional. Groups related events into an episode. |

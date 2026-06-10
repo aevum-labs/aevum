@@ -84,7 +84,7 @@ These methods bypass barrier checks and are always allowed through:
 | Barrier | What it checks | Enforced here |
 |---|---|---|
 | 1 — Crisis Detection | Self-harm / dangerous-content keywords | Yes (via `Engine.ingest`) |
-| 2 — Classification Ceiling | Above-clearance data redaction | Yes (via `Engine.ingest`) |
+| 2 — Classification Ceiling | Above-clearance query blocking | Yes (via `Engine.ingest`) |
 | 3 — Consent | Active consent grant for actor + subject | Yes (via `Engine.ingest`) |
 | 4 — Audit Immutability | Append-only ledger invariant | Structural in ledger |
 | 5 — Provenance | Chain of custody present | Yes (via `Engine.ingest`) |
