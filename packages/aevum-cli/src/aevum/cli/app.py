@@ -76,8 +76,7 @@ def init(
             tsa_enabled=False,
         )
         ed25519_pub = kernel.signer.ed25519_public_key.hex()[:16]
-        pq_note = "" if kernel.signer.has_pq_keys else " — ML-DSA-65 skipped (install liboqs-python for post-quantum coverage)"
-        typer.echo(f"  Keys: OK (ed25519={ed25519_pub}...{pq_note})")
+        typer.echo(f"  Keys: OK (posture=hybrid Ed25519+ML-DSA-65, ed25519={ed25519_pub}...)")
         typer.echo(f"  Canaries: PASS ({len(kernel.principles.immutable_ids())} immutable principles)")
     except Exception as exc:  # noqa: BLE001
         typer.echo(f"  Kernel init: FAILED — {exc}", err=True)

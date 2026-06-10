@@ -92,7 +92,7 @@ class Kernel:
         verifier = PrinciplesVerifier(_principles_path)
         principles = verifier.verify()
 
-        # Step 2: Load or generate DualSigner
+        # Step 2: Load or generate DualSigner (hybrid; fails closed if liboqs absent)
         keys_dir = _state_dir / "keys"
         if (keys_dir / "ed25519.key").exists():
             logger.debug("Loading existing signing keys from %s", keys_dir)
@@ -105,6 +105,10 @@ class Kernel:
                 "New keys generated. Ed25519 pubkey: %s...",
                 signer.ed25519_public_key.hex()[:16],
             )
+        logger.info(
+            "Signing posture: hybrid Ed25519 + ML-DSA-65 (ed25519_pub=%s...)",
+            signer.ed25519_public_key.hex()[:16],
+        )
 
         # Step 3: TSA client
         tsa_client = TSAClient(
