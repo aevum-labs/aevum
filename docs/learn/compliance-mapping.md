@@ -19,7 +19,7 @@ compliance review before making regulatory assertions based on this content.*
 
 | Standard | Provision | Aevum Primitive | Coverage | Notes |
 |----------|-----------|-----------------|----------|-------|
-| EU AI Act (Reg. 2024/1689) | Art. 12(1) Automatic recording over system lifetime | Barrier 4 + sigchain + session.start | ✅ | Deadline December 2, 2027 (Annex III standalone; deferred by Omnibus political agreement May 7, 2026) |
+| EU AI Act (Reg. 2024/1689) | Art. 12(1) Automatic recording over system lifetime | Barrier 4 + sigchain + session.start | ✅ | Active deadline: **2 August 2026** (Annex III standalone). Digital Omnibus provisional agreement (7 May 2026) would defer to 2 December 2027; takes effect only on Official Journal publication |
 | EU AI Act | Art. 12(2)(a)–(c) Recording purposes | AuditEvent.payload + episode_id | ✅ | |
 | EU AI Act | Art. 12(3) Biometric-specific fields | AuditEvent.payload (deployer-extended) | ⚠️ | Deployer must populate biometric fields |
 | EU AI Act | Art. 19(1) Provider log retention ≥6 months | Append-only ledger | 🔧 | Retention period is deployer config |

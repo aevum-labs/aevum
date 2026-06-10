@@ -1,6 +1,6 @@
 ---
 title: "Tamper-Evident Audit Logs for AI Agents"
-description: "How Aevum builds cryptographically chained, post-quantum signed audit logs that make tampering mathematically detectable — and what EU AI Act Article 12 actually requires."
+description: "How Aevum builds cryptographically hash-chained, Ed25519-signed audit logs (with optional ML-DSA-65 post-quantum signing) that make tampering mathematically detectable — and what EU AI Act Article 12 actually requires for AI agent records."
 ---
 
 # What "Tamper-Evident" Actually Means for AI Agent Logs
