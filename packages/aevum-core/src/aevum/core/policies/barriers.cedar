@@ -20,7 +20,7 @@ forbid(
     context.has_crisis_content == true
 };
 
-// BARRIER 2: Consent
+// BARRIER 3: Consent
 // Forbid navigate (context assembly) without an active, scoped consent grant.
 // No data flows to an agent without explicit consent for that purpose.
 forbid(
@@ -34,7 +34,7 @@ forbid(
     context.consent_purpose_matches == true
 };
 
-// BARRIER 3: Classification Ceiling
+// BARRIER 2: Classification Ceiling
 // Forbid any action on data whose classification exceeds the deployment ceiling.
 // Levels: 0=UNCLASSIFIED, 1=INTERNAL, 2=CONFIDENTIAL, 3=PHI, 4=SECRET
 forbid(
