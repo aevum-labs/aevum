@@ -22,7 +22,7 @@ class TestConformanceSuite:
     def test_all_invariants_pass_on_correct_installation(self) -> None:
         suite = ConformanceSuite()
         result = suite.run_all()
-        failures = [r for r in result.results if not r.passed]
+        failures = [r for r in result.results if not r.passed and not r.skipped]
         assert not failures, [f"{r.invariant_id}: {r.name}: {r.detail}" for r in failures]
 
     def test_result_has_timestamp(self) -> None:
@@ -107,6 +107,15 @@ class TestInvariantResult:
         r = InvariantResult(2, "test2", False, detail="something failed")
         assert r.detail == "something failed"
 
+    def test_default_skipped_false(self) -> None:
+        r = InvariantResult(1, "test", True)
+        assert r.skipped is False
+
+    def test_skipped_result_passed_false_skipped_true(self) -> None:
+        r = InvariantResult(3, "cedar_inv", False, detail="cedarpy not installed", skipped=True)
+        assert r.passed is False
+        assert r.skipped is True
+
 
 class TestConformanceResult:
     def test_all_passed_true_when_all_pass(self) -> None:
@@ -128,3 +137,86 @@ class TestConformanceResult:
         results = tuple(InvariantResult(i, f"inv{i}", True) for i in range(1, 10))
         cr = ConformanceResult(results=results, checked_at=datetime.now(), aevum_version="test")
         assert cr.total_count == 9
+
+    def test_skipped_count(self) -> None:
+        results = (
+            InvariantResult(1, "inv1", True),
+            InvariantResult(2, "inv2", False, skipped=True),
+            InvariantResult(3, "inv3", True),
+        )
+        cr = ConformanceResult(results=results, checked_at=datetime.now(), aevum_version="test")
+        assert cr.skipped_count == 1
+
+    def test_failed_count_excludes_skips(self) -> None:
+        results = (
+            InvariantResult(1, "inv1", True),
+            InvariantResult(2, "inv2", False, skipped=True),
+            InvariantResult(3, "inv3", False),
+        )
+        cr = ConformanceResult(results=results, checked_at=datetime.now(), aevum_version="test")
+        assert cr.failed_count == 1
+
+    def test_passed_count_excludes_skips(self) -> None:
+        results = (
+            InvariantResult(1, "inv1", True),
+            InvariantResult(2, "inv2", False, skipped=True),
+            InvariantResult(3, "inv3", True),
+        )
+        cr = ConformanceResult(results=results, checked_at=datetime.now(), aevum_version="test")
+        assert cr.passed_count == 2
+
+    def test_all_passed_false_when_skip_present_no_failures(self) -> None:
+        results = (
+            InvariantResult(1, "inv1", True),
+            InvariantResult(2, "inv2", False, skipped=True),
+        )
+        cr = ConformanceResult(results=results, checked_at=datetime.now(), aevum_version="test")
+        assert cr.all_passed is False
+
+    def test_render_skipped_shows_skip(self) -> None:
+        results = (
+            InvariantResult(1, "inv1", True),
+            InvariantResult(2, "inv2", False, skipped=True, detail="dep not installed"),
+        )
+        cr = ConformanceResult(results=results, checked_at=datetime.now(), aevum_version="test")
+        rendered = cr.render()
+        assert "SKIP" in rendered
+
+    def test_render_status_with_skips(self) -> None:
+        results = (
+            InvariantResult(1, "inv1", True),
+            InvariantResult(2, "inv2", False, skipped=True, detail="dep not installed"),
+        )
+        cr = ConformanceResult(results=results, checked_at=datetime.now(), aevum_version="test")
+        rendered = cr.render()
+        assert "PASS (with skips)" in rendered
+
+    def test_to_dict_includes_skipped_count(self) -> None:
+        results = (
+            InvariantResult(1, "inv1", True),
+            InvariantResult(2, "inv2", False, skipped=True, detail="dep not installed"),
+        )
+        cr = ConformanceResult(results=results, checked_at=datetime.now(), aevum_version="test")
+        d = cr.to_dict()
+        assert "skipped_count" in d
+        assert d["skipped_count"] == 1
+
+    def test_to_dict_includes_failed_count(self) -> None:
+        results = (
+            InvariantResult(1, "inv1", True),
+            InvariantResult(2, "inv2", False),
+        )
+        cr = ConformanceResult(results=results, checked_at=datetime.now(), aevum_version="test")
+        d = cr.to_dict()
+        assert "failed_count" in d
+        assert d["failed_count"] == 1
+
+    def test_to_dict_per_result_skipped_field(self) -> None:
+        results = (
+            InvariantResult(1, "inv1", True),
+            InvariantResult(2, "inv2", False, skipped=True, detail="dep not installed"),
+        )
+        cr = ConformanceResult(results=results, checked_at=datetime.now(), aevum_version="test")
+        d = cr.to_dict()
+        assert d["results"][0]["skipped"] is False
+        assert d["results"][1]["skipped"] is True

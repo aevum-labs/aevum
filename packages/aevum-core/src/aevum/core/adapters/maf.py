@@ -138,6 +138,9 @@ class AevumFunctionMiddleware(_FunctionMiddlewareBase):  # type: ignore[misc, un
     On Cedar deny: sets context.result to a deny dict and raises MiddlewareTermination.
     On Cedar exception: fail-open (logs warning, calls call_next).
 
+    Note: this adapter enforces Cedar policy and records to the sigchain. The five
+    unconditional barriers run in the kernel ingest path (Engine.ingest), not in this adapter.
+
     Usage:
         agent = Agent(client=client, middleware=[AevumFunctionMiddleware(kernel=kernel)])
     """
@@ -158,7 +161,7 @@ class AevumFunctionMiddleware(_FunctionMiddlewareBase):  # type: ignore[misc, un
         tool_name = getattr(getattr(context, "function", None), "name", "unknown")
         if not self._is_permitted(tool_name, context):
             deny_response = {
-                "error": f"Aevum barrier denied tool: {tool_name}",
+                "error": f"Aevum policy denied tool: {tool_name}",
                 "aevum_denied": True,
                 "tool_name": tool_name,
             }
