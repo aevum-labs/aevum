@@ -38,6 +38,10 @@ operation bypasses policy evaluation.
 | `gdpr_pii.cedar` | Unconditionally blocks any graph write where `context.contains_raw_pii == true` |
 | `trifecta.cedar` | Prevents simultaneous untrusted-source reads, private-data reads, and external exfiltration |
 
+> The `barriers.cedar` forbid rules mirror the hardcoded barriers in
+> `barriers.py` (defense-in-depth); the hardcoded layer enforces the five
+> barriers even when Cedar is not installed.
+
 **Autonomy levels** (`autonomy.cedar`): L1 requires human approval for all consequential
 actions; L2 for consequential actions; L3 for irreversible actions only; L4–L5 progressively
 relax restrictions. Operators configure the level for their deployment. High-risk AI

@@ -76,8 +76,13 @@ the invariants unconditionally.
 
 ## Five unconditional barriers
 
-Unconditional barriers are hardcoded checks in `aevum-core`.
-They are not policies. They are not configurable. They cannot be bypassed.
+Unconditional barriers are hardcoded checks in `barriers.py` that run before the
+policy engine, on every operation. They are not *configurable* and cannot be
+bypassed — not by any setting, environment variable, or dev mode. The same five
+barriers are also expressed as Cedar `forbid` policies in `barriers.cedar` for
+defense-in-depth: the hardcoded layer is the guarantee (it fires even when Cedar
+is not installed), and the Cedar layer is a redundant expression at the policy
+stage.
 
 | | Unconditional barrier | Policy (OPA / Cedar) |
 |---|---|---|

@@ -139,19 +139,21 @@ moment.
   every tool invocation in the governed membrane.
 - Five unconditional barriers (defined in `aevum.core.barriers`) are hardcoded
   and non-bypassable:
-  1. **CrisisBarrier** — blocks crisis-response bypass attempts
-  2. **ConsentBarrier** — blocks traversal without valid consent token
-  3. **ClassificationCeilingBarrier** — blocks outputs above classification level
-  4. **AuditImmutabilityBarrier** — blocks modification of audit records
-  5. **ProvenanceBarrier** — blocks ingestion without chain of custody
+  1. **Crisis** — halts on crisis-signal content before any graph write
+  2. **Classification Ceiling** — blocks any action on data above the deployment ceiling
+  3. **Consent** — blocks context traversal without a valid, scoped consent grant
+  4. **Audit Immutability** — blocks deletion or mutation of audit records
+  5. **Provenance** — blocks irreversible + consequential action without a human checkpoint
 - ADR-005 mandates fail-closed behavior: if Cedar policy evaluation fails or
   raises an exception, the decision is DENY, not ALLOW.
 
 **Failure mode:** If Cedar policy evaluation fails open (returns allow on
 exception), the boundary is not enforced. ADR-005 explicitly prohibits this.
-The five unconditional barriers are not Cedar policies — they are hardcoded
-Python code that runs before Cedar and cannot be bypassed by any policy
-configuration.
+The five unconditional barriers are hardcoded Python code (in `barriers.py`) that
+runs before the policy engine and cannot be bypassed by any policy configuration.
+They are additionally mirrored as Cedar `forbid` policies in `barriers.cedar`
+(defense-in-depth) — but the hardcoded layer is what makes the guarantee
+unconditional, since it fires even when Cedar is not installed.
 
 **Test reference:**
 `packages/aevum-core/tests/barriers/` (barrier unit tests)
