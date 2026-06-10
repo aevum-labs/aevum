@@ -1,7 +1,7 @@
 [project]
 name = "aevum-conformance"
 version = "0.7.4"
-description = "Aevum conformance test suite — 9 behavioral invariants."
+description = "Aevum conformance test suite — 11 behavioral invariants."
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 keywords = ["ai", "governance", "conformance", "audit"]
@@ -16,6 +16,9 @@ dependencies = [
     "aevum-core>=0.7.0",
 ]
 
+[project.optional-dependencies]
+full = ["aevum-publish>=0.7.0"]   # enables invariant 10 (COSE receipt) in a full reference run
+
 [project.urls]
 Homepage = "https://aevum.build"
 Repository = "https://github.com/aevum-labs/aevum"
@@ -29,6 +32,7 @@ packages = ["src/aevum"]
 
 [tool.uv.sources]
 aevum-core = { workspace = true }
+aevum-publish = { workspace = true }
 
 [tool.mypy]
 mypy_path = "src"

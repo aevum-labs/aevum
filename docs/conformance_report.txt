@@ -1,5 +1,5 @@
 AEVUM CONFORMANCE REPORT
-Date: 2026-06-10 18:44:43 UTC
+Date: 2026-06-10 19:23:51 UTC
 Version: 0.7.4
 Suite: aevum-conformance 2.0
 --------------------------------------------------
@@ -12,15 +12,7 @@ INVARIANT  6  reasoning_trace_nonempty_in_every_ContextBundle PASS
 INVARIANT  7  audit_chain_append_only                       PASS
 INVARIANT  8  dual_signature_every_chain_entry              PASS
 INVARIANT  9  consent_revoke_destroys_dek                   PASS
-INVARIANT 10  cose_sign1_receipt_valid_structure_alg_minus_8 FAIL
-           Detail: No module named 'aevum.publish'
+INVARIANT 10  cose_sign1_receipt_valid_structure_alg_minus_8 PASS
 INVARIANT 11  prov_agent_fields_present_in_every_receipt    PASS
 --------------------------------------------------
-STATUS: FAIL (10 passed, 0 skipped, 1 failed / 11)
-
-NOTE: Invariant 10 fails in this reference run because the aevum-publish
-package was not installed in the report-generation environment. To produce a
-full-pass report, install aevum-publish before running:
-
-  pip install aevum-conformance aevum-publish
-  python -c "from aevum.conformance.suite import ConformanceSuite; print(ConformanceSuite().run_all().render())"
+STATUS: PASS (11 passed, 0 skipped, 0 failed / 11)
