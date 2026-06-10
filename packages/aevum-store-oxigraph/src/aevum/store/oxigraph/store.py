@@ -212,6 +212,23 @@ class OxigraphStore:
                 result[entity_id] = entity_data
         return result
 
+    def subjects_above_ceiling(
+        self,
+        subject_ids: list[str],
+        classification_max: int = 0,
+    ) -> list[str]:
+        """Requested subjects that EXIST but exceed classification_max (Barrier 2 BLOCK input).
+
+        Mirrors InMemoryGraphStore: absent subjects are excluded (existence checked via
+        get_entity); only stored entities whose classification exceeds the ceiling are returned.
+        """
+        return [
+            entity_id
+            for entity_id in subject_ids
+            if self.get_entity(entity_id) is not None
+            and self.get_entity_classification(entity_id) > classification_max
+        ]
+
     def sparql_select(
         self,
         query: str,

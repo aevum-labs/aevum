@@ -121,6 +121,29 @@ def test_clear_does_not_affect_consent_graph() -> None:
     assert str(GRAPH_CONSENT) in graphs
 
 
+def test_subjects_above_ceiling_returns_above() -> None:
+    """subjects_above_ceiling returns stored entities that exceed the ceiling."""
+    s = _store()
+    s.store_entity("e-high", {"content": "classified"}, classification=3)
+    result = s.subjects_above_ceiling(["e-high"], classification_max=0)
+    assert result == ["e-high"]
+
+
+def test_subjects_above_ceiling_absent_excluded() -> None:
+    """Absent subjects must not appear in the result (absence ≠ above-ceiling)."""
+    s = _store()
+    result = s.subjects_above_ceiling(["never-stored"], classification_max=0)
+    assert result == []
+
+
+def test_subjects_above_ceiling_at_ceiling_excluded() -> None:
+    """Entity at exactly classification_max must not be returned (> not >=)."""
+    s = _store()
+    s.store_entity("e-zero", {"content": "public"}, classification=0)
+    result = s.subjects_above_ceiling(["e-zero"], classification_max=0)
+    assert result == []
+
+
 def test_thread_safety() -> None:
     """Concurrent writes must not corrupt the store."""
     import threading

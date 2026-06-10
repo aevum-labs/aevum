@@ -90,6 +90,28 @@ class PostgresStore:
             result[entity_id] = data
         return result
 
+    def subjects_above_ceiling(
+        self,
+        subject_ids: list[str],
+        classification_max: int = 0,
+    ) -> list[str]:
+        """Requested subjects that EXIST but exceed classification_max (Barrier 2 BLOCK input).
+
+        `entity_id = ANY(...)` guarantees existence (absent subjects are not rows);
+        `classification > %s` selects only above-ceiling entities.
+        """
+        if not subject_ids:
+            return []
+        sql = """
+            SELECT entity_id
+            FROM aevum_entities
+            WHERE entity_id = ANY(%s)
+              AND classification > %s
+        """
+        with self._lock, self._conn.cursor() as cur:
+            cur.execute(sql, (subject_ids, classification_max))
+            return [row[0] for row in cur.fetchall()]
+
     # ── Extra helpers (not in protocol — used by migrate) ─────────────────────
 
     def get_entity_classification(self, entity_id: str) -> int:
