@@ -38,6 +38,14 @@ class InMemoryGraphStore:
                     result[sid] = dict(self._entities[sid])
         return result
 
+    def subjects_above_ceiling(self, subject_ids: list[str], classification_max: int = 0) -> list[str]:
+        """Requested subjects that EXIST but exceed classification_max (Barrier 2 BLOCK input)."""
+        with self._lock:
+            return [
+                sid for sid in subject_ids
+                if sid in self._entities and self._classifications.get(sid, 0) > classification_max
+            ]
+
 
 # Verify Protocol at import time
 _: GraphStore = InMemoryGraphStore()
