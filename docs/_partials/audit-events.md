@@ -225,7 +225,7 @@ A complication was registered with the kernel.
 |---|---|---|
 | `name` | str | Complication name |
 | `version` | str | Complication version |
-| `actor_id` | str | Complication actor identity — **planned, not yet emitted** (records only `name` and `version` today) |
+| `actor_id` | str | Complication actor identity (manifest `actor_id` if present, else `name`) |
 
 ---
 
@@ -236,7 +236,7 @@ A complication was approved and moved to ACTIVE state.
 | Field | Type | Description |
 |---|---|---|
 | `name` | str | Complication name |
-| `approved_by` | str | Admin actor who approved — **planned, not yet emitted** (records only `name` today) |
+| `approved_by` | str | Admin actor who approved |
 
 ---
 
@@ -247,8 +247,19 @@ A complication was suspended by an admin.
 | Field | Type | Description |
 |---|---|---|
 | `name` | str | Complication name |
-| `suspended_by` | str | Admin actor who suspended — **planned, not yet emitted** (records only `name` today) |
-| `reason` | str | Why the complication was suspended — **planned, not yet emitted** |
+| `suspended_by` | str | Admin actor who suspended |
+| `reason` | str | Why the complication was suspended (empty string if unspecified; field always present) |
+
+---
+
+### complication.resumed
+
+A suspended complication was resumed by an admin (SUSPENDED → ACTIVE).
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | str | Complication name |
+| `resumed_by` | str | Admin actor who resumed |
 
 ---
 
