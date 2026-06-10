@@ -3,11 +3,13 @@
 """
 Dual-signature engine for the Aevum sigchain.
 
-Provides Ed25519 (RFC 8032 / FIPS 186-5, via PyNaCl) and ML-DSA-65 (NIST FIPS 204 /
-CRYSTALS-Dilithium, via liboqs-python) signatures on every sigchain entry. Both algorithms
-sign the same canonical bytes — the caller (sigchain.new_event) is responsible for applying
-RFC 8785 JCS serialisation before calling sign(), so that the bytes are identical across all
-platforms and Python versions.
+DualSigner (opt-in, requires the [pqc] extra) signs entries with both Ed25519 (RFC 8032)
+and ML-DSA-65 (FIPS 204). The default signer is InProcessSigner (Ed25519-only, ADR-004);
+ML-DSA-65 is post-quantum defense-in-depth available when aevum-core[pqc] is installed.
+
+Both algorithms sign the same canonical bytes — the caller (sigchain.new_event) is responsible
+for applying RFC 8785 JCS serialisation before calling sign(), so that the bytes are identical
+across all platforms and Python versions.
 
 Algorithm choice rationale:
   Ed25519 — Fast, compact (64-byte signatures), widely audited, FIPS 186-5 approved.
