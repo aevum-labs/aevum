@@ -44,6 +44,7 @@ class CanaryResult:
     name: str
     passed: bool
     detail: str = ""
+    skipped: bool = False  # dependency-absent / not-applicable; NOT a pass, NOT a failure
 
 
 class CanarySuite:
@@ -65,8 +66,9 @@ class CanarySuite:
     def run_all(self) -> list[CanaryResult]:
         """
         Run all registered canaries.
-        Raises CanaryError on first failure.
-        Returns list of CanaryResult on full success.
+        Raises CanaryError on genuine failure (not passed and not skipped).
+        Skips (optional dependency absent) log a WARNING but do not block boot.
+        Returns list of CanaryResult on completion.
         """
         self._results = []
         canaries: list[Callable[[], CanaryResult]] = [
@@ -82,6 +84,12 @@ class CanarySuite:
         for canary in canaries:
             result = canary()
             self._results.append(result)
+            if result.skipped:
+                logger.warning(
+                    "Canary SKIPPED (optional dependency absent): %s — %s",
+                    result.name, result.detail,
+                )
+                continue
             if not result.passed:
                 raise CanaryError(
                     f"Canary FAILED: {result.name}\n"
@@ -91,8 +99,11 @@ class CanarySuite:
                 )
             logger.debug("Canary PASS: %s", result.name)
 
+        passed = sum(1 for r in self._results if r.passed and not r.skipped)
+        skipped = sum(1 for r in self._results if r.skipped)
         logger.info(
-            "All %d canaries passed at boot.", len(self._results)
+            "Canaries at boot: %d passed, %d skipped (optional deps absent).",
+            passed, skipped,
         )
         return list(self._results)
 
@@ -226,8 +237,8 @@ class CanarySuite:
 
         except Exception as exc:  # noqa: BLE001
             if "cedarpy is not installed" in str(exc):
-                return CanaryResult(name=name, passed=True,
-                                    detail="cedarpy not installed — Cedar policy canary not applicable")
+                return CanaryResult(name=name, passed=False, skipped=True,
+                                    detail="cedarpy not installed — Cedar govern canary not applicable")
             return CanaryResult(name=name, passed=False,
                                 detail=f"Canary raised: {exc}")
 
@@ -308,8 +319,8 @@ class CanarySuite:
             return CanaryResult(name=name, passed=True)
         except Exception as exc:  # noqa: BLE001
             if "cedarpy is not installed" in str(exc):
-                return CanaryResult(name=name, passed=True,
-                                    detail="cedarpy not installed — Cedar policy canary not applicable")
+                return CanaryResult(name=name, passed=False, skipped=True,
+                                    detail="cedarpy not installed — Cedar audit-seal canary not applicable")
             return CanaryResult(name=name, passed=False, detail=str(exc))
 
     # ── Canary 3 (Phase 3) — uncertainty_mandatory ────────────────────────────
@@ -386,7 +397,7 @@ class CanarySuite:
         Verify that DualSigner can sign and verify a test payload.
         Exercises both Ed25519 (PyNaCl) and ML-DSA-65 (liboqs).
         If liboqs is absent this is an environmental limitation, not a code
-        defect — return passed=True with a note so the system can still boot.
+        defect — return skipped=True so the system can still boot with an honest warning.
         """
         name = "dual_signature_every_chain_entry"
         try:
@@ -395,7 +406,8 @@ class CanarySuite:
             if not _OQS_AVAILABLE:
                 return CanaryResult(
                     name=name,
-                    passed=True,
+                    passed=False,
+                    skipped=True,
                     detail=(
                         "Ed25519 (PyNaCl) available and verified. "
                         "ML-DSA-65 requires liboqs-python (not installed in this environment). "
