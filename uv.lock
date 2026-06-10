@@ -129,7 +129,6 @@ dependencies = [
     { name = "cbor2" },
     { name = "cryptography" },
     { name = "httpx" },
-    { name = "liboqs-python" },
     { name = "oxrdflib" },
     { name = "pydantic" },
     { name = "pynacl" },
@@ -153,6 +152,7 @@ all = [
     { name = "aevum-store-oxigraph" },
     { name = "aevum-store-postgres" },
     { name = "cedarpy" },
+    { name = "liboqs-python" },
 ]
 anthropic = [
     { name = "anthropic" },
@@ -200,6 +200,9 @@ oxigraph = [
 postgres = [
     { name = "aevum-store-postgres" },
 ]
+pqc = [
+    { name = "liboqs-python" },
+]
 server = [
     { name = "aevum-server" },
 ]
@@ -212,6 +215,7 @@ requires-dist = [
     { name = "aevum-core", extras = ["mcp"], marker = "extra == 'all'" },
     { name = "aevum-core", extras = ["oxigraph"], marker = "extra == 'all'" },
     { name = "aevum-core", extras = ["postgres"], marker = "extra == 'all'" },
+    { name = "aevum-core", extras = ["pqc"], marker = "extra == 'all'" },
     { name = "aevum-core", extras = ["server"], marker = "extra == 'all'" },
     { name = "aevum-mcp", marker = "extra == 'mcp'", editable = "packages/aevum-mcp" },
     { name = "aevum-server", marker = "extra == 'server'", editable = "packages/aevum-server" },
@@ -232,7 +236,7 @@ requires-dist = [
     { name = "inline-snapshot", marker = "extra == 'dev'", specifier = ">=0.13" },
     { name = "langchain-core", marker = "extra == 'langchain'", specifier = ">=1.2.22" },
     { name = "langgraph-checkpoint", marker = "extra == 'langgraph'", specifier = ">=4.1.0" },
-    { name = "liboqs-python", specifier = ">=0.14.0" },
+    { name = "liboqs-python", marker = "extra == 'pqc'", specifier = ">=0.14.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.9" },
     { name = "openai-agents", marker = "extra == 'openai-agents'", specifier = ">=0.0.12" },
     { name = "oxrdflib", specifier = ">=0.4.0" },
@@ -248,7 +252,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
 ]
-provides-extras = ["cedar", "default", "server", "mcp", "a2a", "oxigraph", "postgres", "langgraph", "crewai", "openai-agents", "adk", "maf", "anthropic", "langchain", "benchmark", "all", "dev"]
+provides-extras = ["cedar", "default", "server", "mcp", "a2a", "oxigraph", "postgres", "langgraph", "crewai", "openai-agents", "adk", "maf", "anthropic", "langchain", "benchmark", "pqc", "all", "dev"]
 
 [[package]]
 name = "aevum-llm"
