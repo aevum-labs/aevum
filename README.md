@@ -170,7 +170,7 @@ The five barriers are enforced as **hardcoded checks in `barriers.py` that run f
 
 | Requirement | Aevum control |
 |---|---|
-| EU AI Act Article 12 (logging) | Episodic ledger: Ed25519-signed, SHA3-256-chained, ≥6-month retention; optional ML-DSA-65 post-quantum signing |
+| EU AI Act Article 12 (logging) | Episodic ledger: SHA3-256-chained, ≥6-month retention; **hybrid Ed25519 + ML-DSA-65 (post-quantum) signing by default, fail-closed** — classical-only Ed25519 is an explicit, attested opt-in (ADR-012) |
 | SEC 17a-4 / FINRA 4511 (broker-dealer records) | Audit-trail alternative: records reconstructable after modification, with verified authenticity |
 | GDPR Art. 6/9 (lawful basis) | Consent ledger: OR-Set grants, purpose-scoped, Cedar-enforced |
 | GDPR Art. 17 (erasure) | Crypto-shredding: DEK destroyed on revoke, ciphertext unrecoverable |

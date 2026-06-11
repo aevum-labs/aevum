@@ -55,6 +55,12 @@ keys (the default, per ADR-012). **Without the PQC backend: `aevum init` fails c
 raises a clear error and does not generate Ed25519-only keys.** See
 [ADR-012](../adrs/adr-012-signing-posture.md).
 
+To run **Ed25519-only** without the PQC backend, opt in explicitly with
+`AEVUM_SIGNING_POSTURE=classical-only`. This is an **audited degraded mode**, not a silent
+fallback: the kernel logs a loud warning at every boot and records a signed
+`posture.attestation` as the chain's first entry. See
+[ADR-012](../adrs/adr-012-signing-posture.md).
+
 ```bash
 aevum init [OPTIONS]
 ```
