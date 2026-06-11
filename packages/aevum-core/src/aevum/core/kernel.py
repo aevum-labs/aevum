@@ -93,10 +93,11 @@ class Kernel:
         """Create an Engine wired to this kernel's canonical sigchain.
 
         All keyword arguments are forwarded to Engine(). The sigchain= parameter is
-        pre-filled with kernel.sigchain; passing sigchain= explicitly raises TypeError.
+        pre-filled with kernel.sigchain; signing_posture= is pre-filled from the kernel's
+        active posture. Passing either explicitly raises TypeError.
         """
         from aevum.core.engine import Engine  # local import avoids circular dependency
-        return Engine(sigchain=self._sigchain, **kwargs)  # type: ignore[arg-type]
+        return Engine(sigchain=self._sigchain, signing_posture=self.signing_posture, **kwargs)  # type: ignore[arg-type]
 
     @classmethod
     def local(
