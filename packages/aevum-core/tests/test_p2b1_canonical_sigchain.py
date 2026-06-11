@@ -114,15 +114,16 @@ class TestKernelOwnsSigchain:
         sp_path, _ = make_test_principles_file(tmp_path)
         kernel = _boot_kernel(tmp_path, sp_path)
 
-        for i in range(3):
+        events = [
             kernel.sigchain.new_event(
                 event_type=f"test.event.{i}",
                 payload={"i": i},
                 actor="test-suite",
             )
+            for i in range(3)
+        ]
 
-        events = kernel.sigchain._events  # type: ignore[attr-defined]
-        assert kernel.sigchain.verify_chain(list(events)), "verify_chain must return True"
+        assert kernel.sigchain.verify_chain(events), "verify_chain must return True"
 
 
 class TestRestartStability:
@@ -134,13 +135,14 @@ class TestRestartStability:
 
         # Process A: generate keys, write events
         kernel_a = _boot_kernel(tmp_path, sp_path)
-        for i in range(3):
+        events_from_a = [
             kernel_a.sigchain.new_event(
                 event_type=f"test.restart.{i}",
                 payload={"round": i, "process": "A"},
                 actor="process-A",
             )
-        events_from_a = list(kernel_a.sigchain._events)  # type: ignore[attr-defined]
+            for i in range(3)
+        ]
         pub_key_a = kernel_a.signer.ed25519_public_key
 
         # Process B: reload the same keys (simulates restart)
