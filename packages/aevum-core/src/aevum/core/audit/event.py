@@ -86,9 +86,6 @@ class AuditEvent:
     mldsa65_pub: str | None = None   # hex, 3904 chars
     tsa_url: str | None = None
     tsa_token: str | None = None     # hex of DER bytes
-    # Crypto-agility: informational scheme label; verify_sigchain() treats all as Ed25519 until
-    # hybrid signing is enabled. Future value: "Ed25519+ML-DSA".
-    signature_scheme: str = "Ed25519"
     # Phase C-1: algorithm selector read by verify_chain to dispatch to the correct verifier.
     # Valid values: "ed25519" (current default) | "ed25519+ml-dsa-65" (future hybrid).
     # Envelopes without this field (written before Phase C) are treated as "ed25519".

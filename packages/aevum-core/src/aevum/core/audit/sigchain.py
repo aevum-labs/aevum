@@ -279,10 +279,10 @@ class Sigchain:
             try:
                 from aevum.core.signing import DualSigner
                 dual_sig = self._dual_signer.sign(canonical)
-                DualSigner.verify(canonical, dual_sig)  # belt-and-suspenders
-                ed25519_sig_hex = dual_sig.ed25519_sig.hex()
+                DualSigner.verify(canonical, dual_sig)  # belt-and-suspenders at write time
+                # fmt==1: primary signature (event.signature) is the Ed25519 proof.
+                # Only the ML-DSA-65 half is persisted; ed25519_sig/ed25519_pub are redundant.
                 mldsa65_sig_hex = dual_sig.mldsa65_sig.hex()
-                ed25519_pub_hex = dual_sig.ed25519_pub.hex()
                 mldsa65_pub_hex = dual_sig.mldsa65_pub.hex()
             except Exception as exc:
                 logger.error("Dual-sig failed on new chain entry: %s", exc)
@@ -484,19 +484,19 @@ class Sigchain:
                 if ks == "ed25519":
                     pass  # primary Ed25519 already verified above
                 elif ks == "ed25519+ml-dsa-65":
-                    # All four dual-sig fields must be present; absence = tamper/downgrade
-                    if (event.mldsa65_sig is None or event.ed25519_sig is None
-                            or event.ed25519_pub is None or event.mldsa65_pub is None):
+                    # Primary Ed25519 already verified above (event.signature).
+                    # ML-DSA-65 presence is REQUIRED — absence = tamper/downgrade attack.
+                    # ed25519_sig/ed25519_pub are not required (removed in P2b-2);
+                    # old entries that still carry them are silently ignored.
+                    if event.mldsa65_sig is None or event.mldsa65_pub is None:
                         return False
                     try:
-                        from aevum.core.signing import DualSignature, DualSigner
-                        dual_sig = DualSignature(
-                            ed25519_sig=bytes.fromhex(event.ed25519_sig),
-                            mldsa65_sig=bytes.fromhex(event.mldsa65_sig),
-                            ed25519_pub=bytes.fromhex(event.ed25519_pub),
-                            mldsa65_pub=bytes.fromhex(event.mldsa65_pub),
+                        from aevum.core.signing import DualSigner
+                        DualSigner.verify_mldsa(
+                            canonical,
+                            bytes.fromhex(event.mldsa65_sig),
+                            bytes.fromhex(event.mldsa65_pub),
                         )
-                        DualSigner.verify(canonical, dual_sig)
                     except Exception:
                         return False  # liboqs absent or invalid sig → fail closed
                 else:

@@ -97,12 +97,11 @@ class TestKeySchemeBackwardsCompat:
 class TestWireFormatInvariant:
     """End-to-end wire format integrity check."""
 
-    def test_key_scheme_and_signature_scheme_both_present(self) -> None:
-        """Both cryptographic metadata fields must coexist on new envelopes."""
+    def test_key_scheme_present_on_new_envelopes(self) -> None:
+        """key_scheme must be present on new envelopes."""
         chain = Sigchain()
         event = chain.new_event(event_type="test.meta", payload={}, actor="meta-test")
         assert event.key_scheme == "ed25519"
-        assert event.signature_scheme == "Ed25519"
 
     def test_key_scheme_is_immutable_on_frozen_dataclass(self) -> None:
         chain = Sigchain()
