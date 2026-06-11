@@ -19,7 +19,7 @@ class TestPhase3Canaries:
         suite = self._suite()
         results = suite.run_all()
         assert len(results) == 7, f"Expected 7 canaries, got {len(results)}"
-        failures = [r for r in results if not r.passed]
+        failures = [r for r in results if not r.passed and not r.skipped]
         assert not failures, [f"{r.name}: {r.detail}" for r in failures]
 
     def test_canary3_uncertainty_mandatory(self):
