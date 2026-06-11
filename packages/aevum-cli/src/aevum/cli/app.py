@@ -75,8 +75,10 @@ def init(
             principles_path=principles,
             tsa_enabled=False,
         )
-        ed25519_pub = kernel.signer.ed25519_public_key.hex()[:16]
-        typer.echo(f"  Keys: OK (posture=hybrid Ed25519+ML-DSA-65, ed25519={ed25519_pub}...)")
+        ed25519_pub = kernel.signer.public_key_bytes().hex()[:16]
+        posture = kernel.signing_posture
+        scheme = "Ed25519+ML-DSA-65" if posture == "hybrid" else "Ed25519 (classical-only, no PQ)"
+        typer.echo(f"  Keys: OK (posture={posture}, {scheme}, ed25519={ed25519_pub}...)")
         typer.echo(f"  Canaries: PASS ({len(kernel.principles.immutable_ids())} immutable principles)")
     except Exception as exc:  # noqa: BLE001
         typer.echo(f"  Kernel init: FAILED — {exc}", err=True)
