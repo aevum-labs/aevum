@@ -139,11 +139,32 @@ class TestSkipHonesty:
         assert result.skipped is True, "dep-absent canary must report skipped, not passed"
         assert result.passed is False, "skipped canary must not report passed=True"
 
-    def test_canary6_fails_when_liboqs_absent(self, suite):
+    def test_canary6_fails_when_liboqs_absent(self):
+        """Hybrid-posture canary must fail (not skip) when liboqs becomes unavailable.
+
+        Uses a real DualSigner instance (DualSigner.__init__ does not require liboqs)
+        to give the kernel a signer that passes isinstance(..., DualSigner), then
+        patches _OQS_AVAILABLE=False so that DualSigner.generate() inside the canary
+        raises SignerUnavailableError. This verifies the canary detects liboqs loss.
+        """
+        from unittest.mock import MagicMock
+
+        import nacl.signing as _nacl_signing
+
+        from aevum.core.canary import CanarySuite
+        from aevum.core.signing import DualSigner
+
+        # Build a DualSigner with dummy ML-DSA bytes — init does not invoke liboqs.
+        ed_sk = _nacl_signing.SigningKey.generate()
+        dummy_dual = DualSigner(ed_sk, b"\x00" * 4032, b"\x00" * 1952)
+        kernel = MagicMock()
+        kernel.signer = dummy_dual
+        suite = CanarySuite(kernel=kernel)
+
         with patch("aevum.core.signing._OQS_AVAILABLE", False):
             result = suite._canary_dual_signature_every_entry()
-        assert result.passed is False, "canary must fail when liboqs is absent"
-        assert result.skipped is False, "canary must not skip — hybrid posture is required (ADR-012)"
+        assert result.passed is False, "canary must fail when liboqs is absent in hybrid posture"
+        assert result.skipped is False, "canary must not skip — hybrid posture requires liboqs (ADR-012)"
 
 
 class TestCanaryErrorPropagation:

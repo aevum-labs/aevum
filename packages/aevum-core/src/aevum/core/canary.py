@@ -396,9 +396,18 @@ class CanarySuite:
         """
         Verify that DualSigner can sign and verify a test payload.
         Exercises both Ed25519 (PyNaCl) and ML-DSA-65 (liboqs).
-        Fails if liboqs is absent — hybrid posture is required (ADR-012).
+        Skipped for classical-only posture (kernel.signer is not DualSigner).
+        Fails if liboqs is absent in hybrid posture — hybrid is required (ADR-012).
         """
         name = "dual_signature_every_chain_entry"
+        # Classical-only posture (signer is not DualSigner): ML-DSA-65 is not active — skip.
+        if not isinstance(self._kernel.signer, DualSigner):
+            return CanaryResult(
+                name=name,
+                passed=True,
+                skipped=True,
+                detail="Classical-only signing posture active — ML-DSA-65 canary not applicable",
+            )
         try:
             signer = DualSigner.generate()
             test_data = b"aevum-canary-test-payload-phase-1"
