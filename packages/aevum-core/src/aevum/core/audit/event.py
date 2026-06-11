@@ -117,11 +117,18 @@ class AuditEvent:
     def hash_event_for_chain(event: AuditEvent) -> str:
         """Compute the SHA3-256 chain hash for an event — stored as prior_hash in the next entry.
 
-        The hash covers the 16 identifying and payload fields but deliberately excludes the
-        signature field. This asymmetry is intentional: the signature is computed over these
-        same fields, so including it would create a circular dependency. The chain hash and
-        the signature are independent proofs — the chain can be traversed without the signing
-        key, and the signature can be verified without traversing the chain.
+        The chain hash covers the entry's full signing-field set, making the chain hash
+        identical to the signed digest (the "compute once" property):
+          - fmt==1 (v1.1, sig_format_version=1): 18 fields — 16 base fields plus key_scheme
+            and sig_format_version, matching new_event()'s signing_fields exactly.
+          - legacy (sig_format_version=None): 16 base fields (unchanged pre-P2a behaviour).
+        Altering any signed field — including the algorithm declaration (key_scheme) — breaks
+        both the signature proof and the chain-link proof simultaneously.
+
+        The signature field itself is always excluded: including it would create a circular
+        dependency. The chain and the signature remain independent proofs — the chain can be
+        traversed without the signing key, and the signature can be verified without
+        traversing the chain.
 
         Serialisation follows the RFC 8785 JCS approach: sort_keys=True + compact separators
         produce deterministic bytes on every platform regardless of dict insertion order,
@@ -151,6 +158,13 @@ class AuditEvent:
             "prior_hash": event.prior_hash,
             "signer_key_id": event.signer_key_id,
         }
+        fmt = event.sig_format_version
+        if fmt == 1:
+            fields["key_scheme"] = event.key_scheme
+            fields["sig_format_version"] = 1
+        # fmt is None → legacy 16-field baseline (unchanged).
+        # Other non-1 values are rejected upstream by verify_chain; hash value is moot,
+        # but we keep the function total by falling through to the 16-field baseline.
         canonical = json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha3_256(canonical).hexdigest()
 
