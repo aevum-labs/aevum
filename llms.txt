@@ -1,7 +1,7 @@
 # Aevum
 > Aevum is the independent black box for AI agents — Apache 2.0.
-> It records every agent action into a cryptographically signed, hash-chained
-> audit trail (sigchain) and wraps each entry in a portable signed receipt
+> It records every agent action into a **hybrid Ed25519 + ML-DSA-65 (post-quantum)**
+> signed, SHA3-256 hash-chained audit trail (sigchain) and wraps each entry in a portable signed receipt
 > (COSE_Sign1 + RFC 3161 timestamp) that anyone can verify without trusting the
 > operator, the model provider, or the cloud. Tamper-evident by construction,
 > independently verifiable, built for record-keeping rules (EU AI Act Art. 12,
@@ -10,7 +10,7 @@
 
 ## Core concepts
 - [Architecture](https://aevum.build/learn/architecture/): Three-tier design, five unconditional barriers, sigchain, consent model
-- [Sigchain](https://aevum.build/learn/architecture/#sigchain): SHA3-256 hash-chained, Ed25519-signed audit trail — tamper-evident by construction
+- [Sigchain](https://aevum.build/learn/architecture/#sigchain): SHA3-256 hash-chained, **hybrid Ed25519 + ML-DSA-65 (post-quantum)** signed audit trail — tamper-evident and quantum-resistant by construction
 - [Consent model](https://aevum.build/learn/architecture/#consent): Cedar-policy-enforced consent ledger; every context traversal checks it
 - [Five barriers](https://aevum.build/learn/architecture/#barriers): Crisis · Classification ceiling · Consent · Audit immutability · Provenance
 - [Five functions](https://aevum.build/learn/architecture/#functions): ingest (RELATE) · query (NAVIGATE) · review (GOVERN) · commit (REMEMBER) · replay
