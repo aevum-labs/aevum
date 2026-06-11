@@ -348,3 +348,25 @@ class DualSigner:
             ok = verifier.verify(data, mldsa65_sig, mldsa65_pub)
         if not ok:
             raise SignatureError("ML-DSA-65 signature invalid")
+
+
+def load_or_generate_ed25519_signer(keys_dir: Path) -> Signer:
+    """Load (or generate) the persisted Ed25519 identity without requiring liboqs.
+
+    Reads keys_dir/ed25519.key (raw 32-byte seed — the same file DualSigner writes).
+    Generates and persists a new key if absent. Returns a _PrimarySignerAdapter that
+    can be used as the sole signer in a classical-only Sigchain.
+
+    Shares identity with the hybrid path: if ed25519.key already exists (written by a
+    prior DualSigner.save()), this function loads it unchanged, giving the classical-only
+    kernel the same stable key_id as the hybrid kernel would have.
+    """
+    key_path = keys_dir / DualSigner._ED25519_KEYFILE
+    if key_path.exists():
+        sk = nacl.signing.SigningKey(key_path.read_bytes())
+    else:
+        keys_dir.mkdir(parents=True, exist_ok=True)
+        sk = nacl.signing.SigningKey.generate()
+        key_path.write_bytes(bytes(sk))
+        key_path.chmod(0o600)
+    return _PrimarySignerAdapter(sk)
