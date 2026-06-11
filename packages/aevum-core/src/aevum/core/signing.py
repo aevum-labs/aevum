@@ -47,6 +47,8 @@ import nacl.encoding
 import nacl.exceptions
 import nacl.signing
 
+from aevum.core.audit.signer import Signer
+
 _oqs_module: Any = None  # oqs module when available, None otherwise
 _OQS_AVAILABLE: bool = False
 try:
@@ -103,6 +105,39 @@ class DualSignature:
             ed25519_pub=bytes.fromhex(d["ed25519_pub"]),
             mldsa65_pub=bytes.fromhex(d["mldsa65_pub"]),
         )
+
+
+class _PrimarySignerAdapter(Signer):
+    """Thin Signer adapter that shares the persisted Ed25519 key from a DualSigner.
+
+    This bridges pynacl (nacl.signing.SigningKey) to the Signer ABC used by Sigchain.
+    The same 32-byte key is used — no new key is generated. This makes the Sigchain's
+    primary Ed25519 signature stable across process restarts (eliminates the ephemeral-key
+    defect where each process boot produced an unverifiable independent key).
+
+    Signing semantics are identical to InProcessSigner: sign(digest) where digest is
+    SHA3-256(canonical_payload). pynacl's Ed25519 and cryptography's Ed25519 both implement
+    RFC 8032 — signatures from either library verify against public keys from the other.
+    """
+
+    def __init__(self, signing_key: nacl.signing.SigningKey) -> None:
+        self._signing_key = signing_key
+        # Stable key_id = hex of the Ed25519 public key (32 bytes, 64 hex chars)
+        self._key_id = bytes(signing_key.verify_key).hex()
+
+    def sign(self, digest: bytes) -> bytes:
+        return bytes(self._signing_key.sign(digest).signature)
+
+    def public_key_bytes(self) -> bytes:
+        return bytes(self._signing_key.verify_key)
+
+    @property
+    def key_id(self) -> str:
+        return self._key_id
+
+    @property
+    def provenance(self) -> str:
+        return "in-process"
 
 
 class DualSigner:
@@ -213,6 +248,16 @@ class DualSigner:
         pk_path = state_dir / self._MLDSA65_PK_FILE
         pk_path.write_bytes(self._mldsa65_pk)
         pk_path.chmod(0o644)
+
+    def as_primary_signer(self) -> Signer:
+        """Return a Signer adapter that shares this DualSigner's persisted Ed25519 key.
+
+        The returned adapter implements the Signer ABC and uses the same pynacl SigningKey
+        that DualSigner holds — no new key is generated. This is the bridge used by
+        Kernel.local() to give Sigchain a stable primary signer backed by the persisted key
+        rather than an ephemeral per-process InProcessSigner.
+        """
+        return _PrimarySignerAdapter(self._ed25519_sk)
 
     def sign(self, data: bytes) -> DualSignature:
         """Sign data with Ed25519 (RFC 8032) and ML-DSA-65 (FIPS 204). Returns DualSignature.

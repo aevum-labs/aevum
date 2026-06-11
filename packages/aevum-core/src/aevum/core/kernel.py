@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from aevum.core.audit.sigchain import Sigchain
 from aevum.core.canary import CanarySuite
 from aevum.core.principles import Principles, PrinciplesVerifier
 from aevum.core.signing import DualSigner
@@ -49,6 +50,13 @@ class Kernel:
         self._principles = principles
         self._signer = signer
         self._tsa_client = tsa_client
+        # Canonical sigchain: persisted Ed25519 key as primary + DualSigner for hybrid entries.
+        # The as_primary_signer() adapter shares the persisted key — no ephemeral key generated.
+        self._sigchain = Sigchain(
+            signer=signer.as_primary_signer(),
+            dual_signer=signer,
+            tsa_client=tsa_client,
+        )
 
     @property
     def principles(self) -> Principles:
@@ -61,6 +69,20 @@ class Kernel:
     @property
     def tsa_client(self) -> TSAClient:
         return self._tsa_client
+
+    @property
+    def sigchain(self) -> Sigchain:
+        """The kernel's canonical append-only sigchain backed by the persisted Ed25519 key."""
+        return self._sigchain
+
+    def engine(self, **kwargs: object) -> object:
+        """Create an Engine wired to this kernel's canonical sigchain.
+
+        All keyword arguments are forwarded to Engine(). The sigchain= parameter is
+        pre-filled with kernel.sigchain; passing sigchain= explicitly raises TypeError.
+        """
+        from aevum.core.engine import Engine  # local import avoids circular dependency
+        return Engine(sigchain=self._sigchain, **kwargs)  # type: ignore[arg-type]
 
     @classmethod
     def local(

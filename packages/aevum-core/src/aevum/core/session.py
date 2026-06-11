@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     ed25519_pub         TEXT,
     mldsa65_pub         TEXT,
     tsa_token           TEXT,
-    sigchain_entry_id   INTEGER
+    sigchain_entry_id   TEXT
 )
 """
 
@@ -197,16 +197,19 @@ class Session:
                     logger.warning("REMEMBER: TSA failed for session %s: %s", self._session_id, exc)
 
             # 7. Write to SQLite sessions + session_events tables
-            entry_id = self._write_session_record(record, dual_sig, tsa_hex)
+            self._write_session_record(record, dual_sig, tsa_hex)
 
             # 8. Append to sigchain (optional — uses kernel if available)
-            self._append_to_sigchain(record, dual_sig, tsa_hex)
+            sigchain_event_id = self._append_to_sigchain(record, dual_sig, tsa_hex)
+
+            # 9. Update sigchain_entry_id now that we have the canonical chain entry id
+            if sigchain_event_id is not None:
+                self._update_sigchain_entry_id(record.session_id, sigchain_event_id)
 
             logger.info(
                 "REMEMBER: session=%s commit_type=%s events=%d merkle=%s...",
                 self._session_id, commit_type, len(events), merkle_root[:8],
             )
-            _ = entry_id  # used for gate report; could be None if no db_path
 
         except Exception as exc:  # noqa: BLE001
             logger.error(
@@ -288,10 +291,14 @@ class Session:
         record: Any,
         dual_sig: Any,
         tsa_hex: str | None,
-    ) -> None:
-        """Append session commit event to the kernel sigchain if available."""
+    ) -> str | None:
+        """Append session commit event to the kernel sigchain if available.
+
+        Returns the AuditEvent.event_id of the appended entry (for sigchain_entry_id),
+        or None if no sigchain is configured or the append fails.
+        """
         if self.kernel is None:
-            return
+            return None
         try:
             payload: dict[str, Any] = {
                 "session_id": record.session_id,
@@ -299,19 +306,38 @@ class Session:
                 "merkle_root": record.merkle_root,
                 "event_count": len(record.events),
             }
-            if hasattr(self.kernel, "_sigchain") or hasattr(self.kernel, "sigchain"):
-                sigchain = getattr(self.kernel, "_sigchain", None) or getattr(self.kernel, "sigchain", None)
-                if sigchain is not None:
-                    sigchain.new_event(
-                        event_type="session.committed",
-                        payload=payload,
-                        actor=self._principal,
-                        episode_id=self._session_id,
-                    )
+            sigchain = getattr(self.kernel, "sigchain", None)
+            if sigchain is not None:
+                event = sigchain.new_event(
+                    event_type="session.committed",
+                    payload=payload,
+                    actor=self._principal,
+                    episode_id=self._session_id,
+                )
+                return str(event.event_id)
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "REMEMBER: sigchain append failed for session %s: %s",
                 self._session_id, exc,
+            )
+        return None
+
+    def _update_sigchain_entry_id(self, session_id: str, sigchain_event_id: str) -> None:
+        """Update the sigchain_entry_id column for an already-written session row."""
+        if self.db_path is None:
+            return
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            conn.execute(
+                "UPDATE sessions SET sigchain_entry_id = ? WHERE session_id = ?",
+                (sigchain_event_id, session_id),
+            )
+            conn.commit()
+            conn.close()
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "REMEMBER: sigchain_entry_id update failed for session %s: %s",
+                session_id, exc,
             )
 
     # ── Event recording ───────────────────────────────────────────────────────
