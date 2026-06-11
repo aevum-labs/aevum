@@ -9,11 +9,15 @@ except (ImportError, OSError, SystemExit):
     pytest.skip("liboqs native library not available — skipping oqs-dependent tests", allow_module_level=True)
 
 from aevum.core.canary import CanaryError, CanaryResult, CanarySuite
+from aevum.core.signing import DualSigner
 
 
 class TestCanarySuite:
     def _make_suite(self) -> CanarySuite:
         kernel = MagicMock()
+        # Give the mock kernel a real DualSigner so isinstance(kernel.signer, DualSigner)
+        # is True and the dual-sig canary actually exercises its code path (not skipped).
+        kernel.signer = DualSigner.generate()
         return CanarySuite(kernel)
 
     def test_run_all_passes_on_valid_setup(self):

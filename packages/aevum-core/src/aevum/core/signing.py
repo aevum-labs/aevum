@@ -178,6 +178,11 @@ class DualSigner:
         """Raw Ed25519 public key bytes (32 bytes)."""
         return bytes(self._ed25519_sk.verify_key)
 
+    def public_key_bytes(self) -> bytes:
+        """Ed25519 public key bytes — unifies the pubkey accessor with Signer
+        so DualSigner | Signer callers don't need isinstance narrowing."""
+        return self.ed25519_public_key
+
     @property
     def mldsa65_public_key(self) -> bytes:
         """ML-DSA-65 public key bytes (1,952 bytes)."""
