@@ -3,14 +3,10 @@
 """
 Dual-signature engine for the Aevum sigchain.
 
-`Kernel.local()` uses `DualSigner` as its default signing implementation. When liboqs is
-present (`aevum-core[pqc]`), `DualSigner` signs with both Ed25519 (RFC 8032) and ML-DSA-65
-(FIPS 204) simultaneously. When liboqs is absent, `DualSigner.generate()` falls back to
-Ed25519-only and emits a loud `logger.warning` — this is an interim state for v0.7.5; v0.8.0
-enforces fail-closed (see ADR-012).
-
-`InProcessSigner` is the reference implementation of the `Signer` ABC for classical Ed25519
-use (ADR-004). It is not the default for `Kernel.local()`.
+DualSigner requires both Ed25519 (RFC 8032) and ML-DSA-65 (FIPS 204). Both algorithms
+sign the same canonical bytes — hybrid mode is the only supported posture (ADR-012).
+The [pqc] extra (liboqs-python) must be installed; if it is absent, generate() and
+load() raise SignerUnavailableError with an actionable message.
 
 Both algorithms sign the same canonical bytes — the caller (sigchain.new_event) is responsible
 for applying RFC 8785 JCS serialisation before calling sign(), so that the bytes are identical
@@ -34,8 +30,8 @@ Key sizes (ML-DSA-65):
   Signature:   3,309 bytes
 
 Usage:
-  signer = DualSigner.generate()           # new keypair
-  signer = DualSigner.load(state_dir)     # load from disk
+  signer = DualSigner.generate()           # new keypair (requires liboqs)
+  signer = DualSigner.load(state_dir)     # load from disk (requires liboqs + PQC key files)
   signer.save(state_dir)                  # persist to disk
 
   sigs = signer.sign(data)                # DualSignature
@@ -66,6 +62,14 @@ except (ImportError, OSError, RuntimeError, SystemExit):
 
 class SignatureError(Exception):
     """Raised when signature verification fails."""
+
+
+class SignerUnavailableError(Exception):
+    """Raised when DualSigner cannot operate because liboqs (ML-DSA-65) is unavailable.
+
+    This is a hard error, not a warning. The hybrid posture is non-negotiable in the
+    default configuration. An explicit classical-only opt-in is available in P2 (ADR-012).
+    """
 
 
 @dataclasses.dataclass(frozen=True)
@@ -149,26 +153,23 @@ class DualSigner:
 
     @property
     def has_pq_keys(self) -> bool:
-        """True when ML-DSA-65 keys are present (liboqs was available at key generation)."""
-        return bool(self._mldsa65_sk)
+        """Always True — DualSigner requires ML-DSA-65 keys (ADR-012)."""
+        return True
 
     @classmethod
     def generate(cls) -> DualSigner:
-        """Generate a fresh keypair.
+        """Generate a fresh Ed25519 + ML-DSA-65 keypair.
 
-        When liboqs is available: Ed25519 + ML-DSA-65 (dual-signature mode).
-        When liboqs is absent: Ed25519-only keys are generated with a loud logger.warning
-        (interim — v0.8.0 will fail-closed instead, per ADR-012); sign() raises ImportError.
-        Keys are not persisted automatically; call save() after generate().
+        Raises SignerUnavailableError if liboqs is absent. Keys are not persisted
+        automatically; call save() after generate().
         """
-        ed25519_sk = nacl.signing.SigningKey.generate()
         if not _OQS_AVAILABLE:
-            logger.warning(
-                "ML-DSA-65 (liboqs) is unavailable — operating Ed25519-only (interim). "
-                "This is a degraded signing posture. Install aevum-core[pqc] to enable "
-                "hybrid post-quantum signing. v0.8.0 will make this fail-closed (ADR-012)."
+            raise SignerUnavailableError(
+                "liboqs (ML-DSA-65) is required but not available. "
+                "Install the PQC backend: pip install 'aevum-core[pqc]'\n"
+                "An explicit classical-only mode is available in v0.8.0 (see ADR-012)."
             )
-            return cls(ed25519_sk, b"", b"")
+        ed25519_sk = nacl.signing.SigningKey.generate()
         with _oqs_module.Signature(cls._MLDSA65_ALG) as signer:
             mldsa65_pk = signer.generate_keypair()
             mldsa65_sk = signer.export_secret_key()
@@ -176,40 +177,45 @@ class DualSigner:
 
     @classmethod
     def load(cls, state_dir: Path) -> DualSigner:
-        """Load keypair from state directory. Raises FileNotFoundError if Ed25519 key absent.
+        """Load keypair from state directory.
 
-        ML-DSA-65 key files are optional; when absent (liboqs was unavailable at key
-        generation) the signer operates in Ed25519-only mode and sign() raises ImportError.
+        Raises FileNotFoundError if the Ed25519 key file is absent.
+        Raises SignerUnavailableError if ML-DSA-65 key files are absent (keys were
+        generated before PQC was required — delete the keys directory and run
+        `aevum init` to regenerate in hybrid mode).
         """
         ed25519_key_bytes = (state_dir / cls._ED25519_KEYFILE).read_bytes()
         ed25519_sk = nacl.signing.SigningKey(ed25519_key_bytes)
 
         sk_file = state_dir / cls._MLDSA65_SK_FILE
         pk_file = state_dir / cls._MLDSA65_PK_FILE
-        mldsa65_sk = sk_file.read_bytes() if sk_file.exists() else b""
-        mldsa65_pk = pk_file.read_bytes() if pk_file.exists() else b""
+        if not sk_file.exists() or not pk_file.exists():
+            raise SignerUnavailableError(
+                f"ML-DSA-65 key files not found in {state_dir}. "
+                "Keys were generated before hybrid mode was required. "
+                "Delete the keys directory and run `aevum init` to regenerate. "
+                "Install the PQC backend first: pip install 'aevum-core[pqc]'\n"
+                "An explicit classical-only mode is available in v0.8.0 (see ADR-012)."
+            )
+        mldsa65_sk = sk_file.read_bytes()
+        mldsa65_pk = pk_file.read_bytes()
 
         return cls(ed25519_sk, mldsa65_sk, mldsa65_pk)
 
     def save(self, state_dir: Path) -> None:
-        """Persist keys to state directory. Creates directory if needed.
-
-        ML-DSA-65 key files are only written when keys are present (i.e. liboqs
-        was available at generate() time). Ed25519-only signers omit those files.
-        """
+        """Persist keys to state directory. Creates directory if needed."""
         state_dir.mkdir(parents=True, exist_ok=True)
         # Ed25519 secret key (32 raw bytes)
         ed25519_key_path = state_dir / self._ED25519_KEYFILE
         ed25519_key_path.write_bytes(bytes(self._ed25519_sk))
         ed25519_key_path.chmod(0o600)
-        # ML-DSA-65 keys (absent when liboqs was unavailable at key generation)
-        if self._mldsa65_sk:
-            sk_path = state_dir / self._MLDSA65_SK_FILE
-            sk_path.write_bytes(self._mldsa65_sk)
-            sk_path.chmod(0o600)
-            pk_path = state_dir / self._MLDSA65_PK_FILE
-            pk_path.write_bytes(self._mldsa65_pk)
-            pk_path.chmod(0o644)
+        # ML-DSA-65 keys
+        sk_path = state_dir / self._MLDSA65_SK_FILE
+        sk_path.write_bytes(self._mldsa65_sk)
+        sk_path.chmod(0o600)
+        pk_path = state_dir / self._MLDSA65_PK_FILE
+        pk_path.write_bytes(self._mldsa65_pk)
+        pk_path.chmod(0o644)
 
     def sign(self, data: bytes) -> DualSignature:
         """Sign data with Ed25519 (RFC 8032) and ML-DSA-65 (FIPS 204). Returns DualSignature.
@@ -223,16 +229,10 @@ class DualSigner:
         key corruption or liboqs library bugs at signing time rather than at audit time.
         """
         if not _OQS_AVAILABLE:
-            raise ImportError(
-                "liboqs-python is required for ML-DSA-65 signing. "
-                "Install: pip install liboqs-python\n"
-                "If already installed, ensure the native library path is set:\n"
-                "  LD_LIBRARY_PATH=$HOME/_oqs/lib:$LD_LIBRARY_PATH"
-            )
-        if not self._mldsa65_sk:
-            raise ImportError(
-                "ML-DSA-65 keys were not generated (liboqs was absent at key generation). "
-                "Regenerate keys by removing the keys directory and running `aevum init`."
+            raise SignerUnavailableError(
+                "liboqs (ML-DSA-65) is required but not available. "
+                "Install the PQC backend: pip install 'aevum-core[pqc]'\n"
+                "An explicit classical-only mode is available in v0.8.0 (see ADR-012)."
             )
         # Ed25519 via PyNaCl
         signed = self._ed25519_sk.sign(data)
@@ -264,7 +264,7 @@ class DualSigner:
         Raises:
             SignatureError: If the Ed25519 signature is invalid.
             SignatureError: If the ML-DSA-65 signature is invalid.
-            ImportError: If liboqs-python is not installed (required for ML-DSA-65 verify).
+            SignerUnavailableError: If liboqs is not installed (required for ML-DSA-65 verify).
         """
         # Verify Ed25519
         try:
@@ -275,9 +275,10 @@ class DualSigner:
 
         # Verify ML-DSA-65
         if not _OQS_AVAILABLE:
-            raise ImportError(
-                "liboqs-python is required for ML-DSA-65 verification. "
-                "Install: pip install liboqs-python"
+            raise SignerUnavailableError(
+                "liboqs (ML-DSA-65) is required but not available. "
+                "Install the PQC backend: pip install 'aevum-core[pqc]'\n"
+                "An explicit classical-only mode is available in v0.8.0 (see ADR-012)."
             )
         with _oqs_module.Signature("ML-DSA-65") as verifier:
             ok = verifier.verify(data, dual_sig.mldsa65_sig, dual_sig.mldsa65_pub)
