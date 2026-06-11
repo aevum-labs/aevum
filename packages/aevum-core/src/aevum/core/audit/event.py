@@ -93,6 +93,10 @@ class AuditEvent:
     # Valid values: "ed25519" (current default) | "ed25519+ml-dsa-65" (future hybrid).
     # Envelopes without this field (written before Phase C) are treated as "ed25519".
     key_scheme: str = "ed25519"
+    # P2a: version marker for the signing_fields set. None = legacy (pre-P2a, 16 fields);
+    # 1 = this format (18 fields: adds key_scheme + sig_format_version to the signed set).
+    # verify_chain dispatches on presence of this field, NOT on schema_version.
+    sig_format_version: int | None = None
     # Phase 1A: COSE_Sign1 receipt bytes (None when no encoder is configured).
     receipt_cbor: bytes | None = None
 

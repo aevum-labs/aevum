@@ -235,6 +235,7 @@ class Sigchain:
         ts = hlc_now()
         payload_hash = AuditEvent.hash_payload(payload)
         prior = self._prior_hash
+        scheme = "ed25519+ml-dsa-65" if self._dual_signer is not None else "ed25519"
 
         signing_fields: dict[str, Any] = {
             "event_id": event_id,
@@ -253,6 +254,8 @@ class Sigchain:
             "payload_hash": payload_hash,
             "prior_hash": prior,
             "signer_key_id": self._signer.key_id,
+            "key_scheme": scheme,
+            "sig_format_version": 1,
         }
         # RFC 8785 JCS: sort_keys=True + compact separators ensure identical canonical bytes
         # across all Python versions and platforms regardless of dict insertion order.
@@ -321,7 +324,8 @@ class Sigchain:
             mldsa65_pub=mldsa65_pub_hex,
             tsa_url=tsa_url,
             tsa_token=tsa_token_hex,
-            key_scheme="ed25519",
+            key_scheme=scheme,
+            sig_format_version=1,
         )
         self._prior_hash = AuditEvent.hash_event_for_chain(event)
 
@@ -413,7 +417,10 @@ class Sigchain:
                 return False
             if AuditEvent.hash_payload(event.payload) != event.payload_hash:
                 return False
-            signing_fields: dict[str, Any] = {
+
+            fmt = getattr(event, "sig_format_version", None)
+
+            base_fields: dict[str, Any] = {
                 "event_id": event.event_id,
                 "episode_id": event.episode_id,
                 "sequence": event.sequence,
@@ -431,30 +438,58 @@ class Sigchain:
                 "prior_hash": event.prior_hash,
                 "signer_key_id": event.signer_key_id,
             }
+
+            if fmt is None:
+                signing_fields = base_fields
+            elif fmt == 1:
+                signing_fields = {
+                    **base_fields,
+                    "key_scheme": event.key_scheme,
+                    "sig_format_version": 1,
+                }
+            else:
+                return False  # unknown future format: fail closed, don't guess
+
             canonical = json.dumps(
                 signing_fields, sort_keys=True, separators=(",", ":")
             ).encode()
-            # Verify against SHA3-256 digest of canonical bytes
             digest = hashlib.sha3_256(canonical).digest()
-            # Phase C-1: key_scheme selects the verifier. "ed25519" is the only
-            # active scheme; "ed25519+ml-dsa-65" is reserved for the future hybrid
-            # implementation. Envelopes without the field default to "ed25519".
-            scheme = getattr(event, "key_scheme", "ed25519")
-            if scheme not in ("ed25519", "ed25519+ml-dsa-65"):
-                logger.warning("Unknown key_scheme %r — falling back to ed25519", scheme)
+
             try:
                 sig_bytes = base64.urlsafe_b64decode(event.signature + "==")
                 public_key.verify(sig_bytes, digest)
             except Exception:
                 return False
 
-            # Phase 1: verify dual-sig if present on this entry
-            if event.mldsa65_sig is not None and self._dual_signer is not None:
-                try:
-                    from aevum.core.signing import DualSignature, DualSigner
-                    if (event.ed25519_sig is not None
-                            and event.ed25519_pub is not None
-                            and event.mldsa65_pub is not None):
+            if fmt is None:
+                # Legacy path: ML-DSA optional, keyed on signer presence (unchanged behaviour)
+                if event.mldsa65_sig is not None and self._dual_signer is not None:
+                    try:
+                        from aevum.core.signing import DualSignature, DualSigner
+                        if (event.ed25519_sig is not None
+                                and event.ed25519_pub is not None
+                                and event.mldsa65_pub is not None):
+                            dual_sig = DualSignature(
+                                ed25519_sig=bytes.fromhex(event.ed25519_sig),
+                                mldsa65_sig=bytes.fromhex(event.mldsa65_sig),
+                                ed25519_pub=bytes.fromhex(event.ed25519_pub),
+                                mldsa65_pub=bytes.fromhex(event.mldsa65_pub),
+                            )
+                            DualSigner.verify(canonical, dual_sig)
+                    except Exception:
+                        return False
+            else:
+                # fmt == 1: dispatch on the bound key_scheme value
+                ks = event.key_scheme
+                if ks == "ed25519":
+                    pass  # primary Ed25519 already verified above
+                elif ks == "ed25519+ml-dsa-65":
+                    # All four dual-sig fields must be present; absence = tamper/downgrade
+                    if (event.mldsa65_sig is None or event.ed25519_sig is None
+                            or event.ed25519_pub is None or event.mldsa65_pub is None):
+                        return False
+                    try:
+                        from aevum.core.signing import DualSignature, DualSigner
                         dual_sig = DualSignature(
                             ed25519_sig=bytes.fromhex(event.ed25519_sig),
                             mldsa65_sig=bytes.fromhex(event.mldsa65_sig),
@@ -462,8 +497,10 @@ class Sigchain:
                             mldsa65_pub=bytes.fromhex(event.mldsa65_pub),
                         )
                         DualSigner.verify(canonical, dual_sig)
-                except Exception:
-                    return False
+                    except Exception:
+                        return False  # liboqs absent or invalid sig → fail closed
+                else:
+                    return False  # unknown scheme on a versioned entry: no warn-and-fallback
 
             expected_prior = AuditEvent.hash_event_for_chain(event)
         return True
