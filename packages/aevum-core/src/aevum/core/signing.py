@@ -40,8 +40,11 @@ Usage:
 from __future__ import annotations
 
 import dataclasses
+import logging
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 import nacl.encoding
 import nacl.exceptions
