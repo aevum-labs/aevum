@@ -59,7 +59,8 @@ class TestKernelOwnsSigchain:
             f"Expected hybrid scheme, got {event.key_scheme!r}"
         )
         assert event.mldsa65_sig is not None, "mldsa65_sig must be populated"
-        assert event.ed25519_sig is not None, "ed25519_sig must be populated"
+        # P2b-2: ed25519_sig is no longer persisted; primary signature field is the Ed25519 proof
+        assert event.ed25519_sig is None, "ed25519_sig must be None (redundant — removed in P2b-2)"
 
     def test_primary_signature_verifies_under_persisted_key(self, tmp_path):
         """The primary Ed25519 signature in the chain entry verifies under the kernel's key."""

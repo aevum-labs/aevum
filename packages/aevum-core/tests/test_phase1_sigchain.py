@@ -37,27 +37,26 @@ class TestSigchainFacade:
 
 class TestSigchainDualSig:
     def test_sigchain_with_dual_signer_stores_fields(self):
+        """P2b-2: only ML-DSA-65 fields are persisted; ed25519_sig/ed25519_pub are dropped."""
         dual_signer = DualSigner.generate()
         tsa_client = TSAClient(enabled=False)
         chain = Sigchain(dual_signer=dual_signer, tsa_client=tsa_client)
         event = chain.new_event(event_type="test.e", payload={}, actor="test")
 
-        assert event.ed25519_sig is not None
+        # ed25519_sig/ed25519_pub no longer stored — primary signature field is the Ed25519 proof
+        assert event.ed25519_sig is None
+        assert event.ed25519_pub is None
         assert event.mldsa65_sig is not None
-        assert event.ed25519_pub is not None
         assert event.mldsa65_pub is not None
 
     def test_sigchain_with_dual_signer_sig_lengths(self):
+        """P2b-2: only ML-DSA-65 signature fields are stored."""
         dual_signer = DualSigner.generate()
         chain = Sigchain(dual_signer=dual_signer)
         event = chain.new_event(event_type="test.e", payload={}, actor="test")
 
-        # ed25519_sig: 64 bytes -> 128 hex chars
-        assert len(event.ed25519_sig) == 128
         # mldsa65_sig: 3309 bytes -> 6618 hex chars
         assert len(event.mldsa65_sig) == 6618
-        # ed25519_pub: 32 bytes -> 64 hex chars
-        assert len(event.ed25519_pub) == 64
         # mldsa65_pub: 1952 bytes -> 3904 hex chars
         assert len(event.mldsa65_pub) == 3904
 

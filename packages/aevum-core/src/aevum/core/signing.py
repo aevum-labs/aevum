@@ -326,3 +326,25 @@ class DualSigner:
             ok = verifier.verify(data, dual_sig.mldsa65_sig, dual_sig.mldsa65_pub)
         if not ok:
             raise SignatureError("ML-DSA-65 signature invalid")
+
+    @staticmethod
+    def verify_mldsa(data: bytes, mldsa65_sig: bytes, mldsa65_pub: bytes) -> None:
+        """Verify only the ML-DSA-65 signature over data.
+
+        Used by verify_chain for fmt==1 hybrid entries where the Ed25519 proof is already
+        covered by the primary signature field — no need to verify a redundant ed25519_sig.
+
+        Raises:
+            SignatureError: If the ML-DSA-65 signature is invalid.
+            SignerUnavailableError: If liboqs is not installed.
+        """
+        if not _OQS_AVAILABLE:
+            raise SignerUnavailableError(
+                "liboqs (ML-DSA-65) is required but not available. "
+                "Install the PQC backend: pip install 'aevum-core[pqc]'\n"
+                "An explicit classical-only mode is available in v0.8.0 (see ADR-012)."
+            )
+        with _oqs_module.Signature("ML-DSA-65") as verifier:
+            ok = verifier.verify(data, mldsa65_sig, mldsa65_pub)
+        if not ok:
+            raise SignatureError("ML-DSA-65 signature invalid")
