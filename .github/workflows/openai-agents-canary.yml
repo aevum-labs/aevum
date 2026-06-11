@@ -52,7 +52,7 @@ jobs:
 
       - name: Install workspace + pre-release openai-agents
         run: |
-          uv sync --frozen --python ${{ matrix.python }}
+          uv sync --frozen --extra pqc --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} \
             --pre "openai-agents>=0.0.12"
 

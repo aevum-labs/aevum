@@ -62,48 +62,48 @@ jobs:
 
       - name: Install workspace (no Cedar)
         if: matrix.install-extra == 'no-cedar'
-        run: uv sync --frozen --python ${{ matrix.python }}
+        run: uv sync --frozen --extra pqc --python ${{ matrix.python }}
 
       - name: Install workspace (with Cedar)
         if: matrix.install-extra == 'with-cedar'
         run: |
-          uv sync --frozen --python ${{ matrix.python }}
+          uv sync --frozen --extra pqc --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} "cedarpy>=4.8.1"
 
       - name: Install workspace (openai-agents)
         if: matrix.install-extra == 'openai-agents'
         run: |
-          uv sync --frozen --python ${{ matrix.python }}
+          uv sync --frozen --extra pqc --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} "openai-agents>=0.0.12,<1.0"
 
       - name: Install workspace (langgraph)
         if: matrix.install-extra == 'langgraph'
         run: |
-          uv sync --frozen --python ${{ matrix.python }}
+          uv sync --frozen --extra pqc --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} "langgraph-checkpoint>=4.1.0"
 
       - name: Install workspace (crewai)
         if: matrix.install-extra == 'crewai'
         run: |
-          uv sync --frozen --python ${{ matrix.python }}
+          uv sync --frozen --extra pqc --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} "crewai>=0.80.0"
 
       - name: Install workspace (anthropic)
         if: matrix.install-extra == 'anthropic'
         run: |
-          uv sync --frozen --python ${{ matrix.python }}
+          uv sync --frozen --extra pqc --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} "anthropic>=0.50.0"
 
       - name: Install workspace (langchain)
         if: matrix.install-extra == 'langchain'
         run: |
-          uv sync --frozen --python ${{ matrix.python }}
+          uv sync --frozen --extra pqc --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} "langchain-core>=0.2.0"
 
       - name: Install workspace (adk)
         if: matrix.install-extra == 'adk'
         run: |
-          uv sync --frozen --python ${{ matrix.python }}
+          uv sync --frozen --extra pqc --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} "google-adk>=2.2,<3"
 
       - name: Verify liboqs is loadable (fail loud, not as a buried signing error)
@@ -146,7 +146,7 @@ jobs:
       - name: Install workspace (maf)
         if: matrix.install-extra == 'maf'
         run: |
-          uv sync --frozen --python ${{ matrix.python }}
+          uv sync --frozen --extra pqc --python ${{ matrix.python }}
           uv pip install --python ${{ matrix.python }} "agent-framework-core>=1.0.0"
 
       - name: Run MAF adapter snapshot tests

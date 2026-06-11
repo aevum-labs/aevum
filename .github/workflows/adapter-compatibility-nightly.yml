@@ -54,7 +54,7 @@ jobs:
       - name: Install with latest upstream
         timeout-minutes: 30
         run: |
-          uv sync --frozen
+          uv sync --frozen --extra pqc
           case "${{ matrix.adapter }}" in
             openai-agents)  uv pip install "openai-agents" ;;
             adk)            uv pip install "google-adk" ;;

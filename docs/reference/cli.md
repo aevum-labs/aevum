@@ -50,10 +50,10 @@ Initialize the Aevum state directory and verify the signed principles file.
 
 Creates the state directory, generates signing keys, and verifies `signed_principles.yaml`.
 
-When `aevum-core[pqc]` is installed (liboqs available): generates Ed25519 + ML-DSA-65 hybrid
-keys (the intended default per ADR-012). When liboqs is absent: generates Ed25519-only keys
-and emits a loud warning — this is an interim degraded posture for v0.7.5; v0.8.0 will refuse
-to start without the PQC backend (fail-closed, see [ADR-012](../adrs/adr-012-signing-posture.md)).
+With `aevum-core[pqc]` installed (liboqs available): generates Ed25519 + ML-DSA-65 hybrid
+keys (the default, per ADR-012). **Without the PQC backend: `aevum init` fails closed — it
+raises a clear error and does not generate Ed25519-only keys.** See
+[ADR-012](../adrs/adr-012-signing-posture.md).
 
 ```bash
 aevum init [OPTIONS]
