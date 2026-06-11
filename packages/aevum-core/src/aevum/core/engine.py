@@ -97,6 +97,7 @@ class Engine:
         consent_ledger: ConsentLedgerProtocol | None = None,
         ledger: AuditLedgerProtocol | None = None,
         policy_engine: PolicyEngine | None = None,
+        signing_posture: str | None = None,
     ) -> None:
         from aevum.core.dev_mode import (
             DevModeConsentLedger,
@@ -135,6 +136,19 @@ class Engine:
         self._manifest_validator = ManifestValidator()
         self._conflict_detector = ConflictDetector()
         self._webhook_registry = WebhookRegistry(ledger=self._ledger)
+
+        if signing_posture == "classical-only":
+            self._ledger.append(
+                event_type="posture.attestation",
+                payload={
+                    "signing_posture": "classical-only",
+                    "scheme": "ed25519",
+                    "post_quantum": False,
+                    "reason": "explicit operator opt-in via AEVUM_SIGNING_POSTURE=classical-only",
+                    "note": "Ed25519-only — no ML-DSA-65 / no post-quantum protection on this chain.",
+                },
+                actor="aevum-core",
+            )
 
         self._write_session_start()
 

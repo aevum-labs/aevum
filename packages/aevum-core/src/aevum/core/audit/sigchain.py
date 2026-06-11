@@ -411,6 +411,20 @@ class Sigchain:
         pub_key_bytes = self._signer.public_key_bytes()
         public_key = Ed25519PublicKey.from_public_bytes(pub_key_bytes)
 
+        # Homogeneity check (D-S3 downgrade/splice defence): all fmt==1 entries must share
+        # the same key_scheme. A mixed chain (some ed25519 + some ed25519+ml-dsa-65) is the
+        # fingerprint of a downgrade or splice attack.
+        # fmt==None (legacy pre-P2a) entries carry no bound key_scheme and are exempt.
+        # Known limitation: mid-chain posture transitions are not supported in v0.8.0 —
+        # homogeneous chains only; signed posture-change transitions are deferred to a later phase.
+        fmt1_schemes = {
+            event.key_scheme
+            for event in events
+            if getattr(event, "sig_format_version", None) == 1
+        }
+        if len(fmt1_schemes) > 1:
+            return False
+
         expected_prior = GENESIS_HASH
         for event in events:
             if event.prior_hash != expected_prior:
