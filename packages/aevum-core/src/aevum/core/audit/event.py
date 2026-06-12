@@ -70,7 +70,9 @@ def _message_representative(fields: Mapping[str, Any]) -> bytes:
 
 @dataclasses.dataclass(frozen=True)
 class AuditEvent:
-    """Immutable episodic ledger entry. Core 18 fields + 6 optional Phase 1 dual-sig fields.
+    """Immutable episodic ledger entry. 19 signed fields (16 base + key_scheme +
+    sig_format_version + hash_alg) plus optional Phase 1 dual-sig attachment fields
+    (mldsa65_sig, mldsa65_pub, tsa_url, tsa_token, receipt_cbor).
 
     Frozen so that field values cannot change after construction — hash_event_for_chain()
     must produce identical bytes every time for chain verification to hold.

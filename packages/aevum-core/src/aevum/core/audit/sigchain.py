@@ -12,9 +12,11 @@ Cryptographic primitives used throughout this module:
   SHA3-256 (FIPS 202) — both the per-entry payload hash and the chain-linkage hash.
                         SHA3 is based on the Keccak sponge, independent of SHA-2;
                         a SHA-2 collision would not compromise the chain hash.
-  RFC 8785 JCS        — JSON Canonicalization Scheme: sort_keys=True + compact separators
-                        produce identical bytes on every platform regardless of dict
-                        insertion order, making signatures reproducible and verifiable.
+  RFC 8785 JCS        — JSON Canonicalization Scheme via the rfc8785 library (not json.dumps):
+                        UTF-8 with minimal Unicode escaping; floats forbidden; integers
+                        > 2^53 forbidden; system_time serialised as a string (see signing_fields
+                        in new_event). Produces identical bytes on every platform regardless
+                        of dict insertion order, making signatures reproducible and verifiable.
 
 Signing modes (see ADR-004 for trust-boundary analysis):
   InProcessSigner (default) — Ed25519 key lives in the same process as the agent.
@@ -393,7 +395,7 @@ class Sigchain:
           2. prior_hash matches the expected value (GENESIS_HASH for entry #1, or the chain
              hash of the preceding entry for all subsequent entries).
           3. payload_hash matches SHA3-256(canonical_payload).
-          4. The Ed25519 signature verifies against SHA3-256(18-field signing_fields).
+          4. The Ed25519 signature verifies against SHA3-256(19-field signing_fields).
           5. key_scheme dispatch: "ed25519" → Ed25519 only; "ed25519+ml-dsa-65" → Ed25519
              AND ML-DSA-65 both required (absence = tamper/downgrade, fail closed).
           6. Homogeneity (D-S3): all entries share the same key_scheme; a mixed chain is the
