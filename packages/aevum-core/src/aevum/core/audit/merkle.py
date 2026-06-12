@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Merkle tree and Signed Tree Head (STH) for the Aevum episodic ledger.
+"""Merkle tree, Signed Tree Head (STH), inclusion + consistency proofs.
 
 RFC 6962-style Merkle tree over the append-only sigchain, using SHA3-256 (consistent
 with the rest of Aevum). The base verify_chain (linear) is untouched — this is an
@@ -22,7 +22,9 @@ an STH signature and vice versa.
 Ed25519 signs sha3_256(representative); ML-DSA-65 signs representative directly.
 This mirrors the signing pattern in sigchain.new_event().
 
-Inclusion and consistency proofs are NOT implemented here — they are the next pass (P2h-2).
+Inclusion proofs (RFC 6962 §2.1.1): PATH algorithm; verified by verify_inclusion().
+Consistency proofs (RFC 6962 §2.1.2): SUBPROOF/PROOF algorithm; verified by
+verify_consistency(). Both standalone verifiers are independent of MerkleTree._mth.
 """
 
 from __future__ import annotations
@@ -103,6 +105,146 @@ class MerkleTree:
             return nodes[0]
         k = 1 << ((n - 1).bit_length() - 1)  # largest power of two < n
         return node_hash(MerkleTree._mth(nodes[:k]), MerkleTree._mth(nodes[k:]))
+
+    # ------------------------------------------------------------------
+    # Inclusion proof (RFC 6962 §2.1.1)
+    # ------------------------------------------------------------------
+
+    def inclusion_proof(self, index: int) -> list[bytes]:
+        """RFC 6962 §2.1.1 PATH: sibling hashes leaf→root for the entry at index."""
+        if index >= self.size:
+            raise ValueError(f"index {index} out of range for tree size {self.size}")
+        return self._path(index, self._leaves)
+
+    @staticmethod
+    def _path(m: int, nodes: list[bytes]) -> list[bytes]:
+        n = len(nodes)
+        if n == 1:
+            return []
+        k = 1 << ((n - 1).bit_length() - 1)
+        if m < k:
+            return MerkleTree._path(m, nodes[:k]) + [MerkleTree._mth(nodes[k:])]
+        return MerkleTree._path(m - k, nodes[k:]) + [MerkleTree._mth(nodes[:k])]
+
+    # ------------------------------------------------------------------
+    # Consistency proof (RFC 6962 §2.1.2)
+    # ------------------------------------------------------------------
+
+    def consistency_proof(self, old_size: int) -> list[bytes]:
+        """RFC 6962 §2.1.2 PROOF(old_size, self.size): append-only consistency proof."""
+        if old_size <= 0 or old_size > self.size:
+            raise ValueError(f"old_size {old_size} out of range [1, {self.size}]")
+        if old_size == self.size:
+            return []
+        return self._subproof(old_size, self._leaves, b=True)
+
+    @staticmethod
+    def _subproof(m: int, nodes: list[bytes], b: bool) -> list[bytes]:
+        n = len(nodes)
+        if m == n:
+            return [] if b else [MerkleTree._mth(nodes)]
+        k = 1 << ((n - 1).bit_length() - 1)
+        if m <= k:
+            return MerkleTree._subproof(m, nodes[:k], b) + [MerkleTree._mth(nodes[k:])]
+        return MerkleTree._subproof(m - k, nodes[k:], False) + [MerkleTree._mth(nodes[:k])]
+
+
+# ---------------------------------------------------------------------------
+# Standalone proof verifiers — independent of MerkleTree._mth
+# ---------------------------------------------------------------------------
+
+def verify_inclusion(
+    leaf_hash_value: bytes,
+    index: int,
+    tree_size: int,
+    proof: list[bytes],
+    root: bytes,
+) -> bool:
+    """RFC 6962 §2.1.1 inclusion verifier.
+
+    Recomputes the root from leaf_hash_value + proof using only node_hash().
+    Never calls MerkleTree._mth — fully independent of the tree implementation.
+    Returns True iff the recomputed root matches root and index < tree_size.
+    """
+    if index >= tree_size:
+        return False
+    fn = index
+    sn = tree_size - 1
+    r = leaf_hash_value
+    for step in proof:
+        if fn & 1 or fn == sn:
+            r = node_hash(step, r)
+            while fn != 0 and not (fn & 1):
+                fn >>= 1
+                sn >>= 1
+        else:
+            r = node_hash(r, step)
+        fn >>= 1
+        sn >>= 1
+    return r == root and sn == 0
+
+
+def verify_consistency(
+    old_size: int,
+    new_size: int,
+    old_root: bytes,
+    new_root: bytes,
+    proof: list[bytes],
+) -> bool:
+    """RFC 6962 §2.1.2 consistency verifier (append-only / fork-detection check).
+
+    Recomputes BOTH old_root and new_root from the proof using only node_hash().
+    Never calls MerkleTree._mth — fully independent of the tree implementation.
+    Returns True iff the log only grew (no history rewritten) between old and new.
+
+    Edge cases: m==0 → True (empty tree is consistent with anything);
+    m==n → True iff old_root==new_root and proof is empty; m>n → False.
+    """
+    if old_size > new_size:
+        return False
+    if old_size == 0:
+        return True
+    if old_size == new_size:
+        return old_root == new_root and len(proof) == 0
+
+    fn = old_size - 1
+    sn = new_size - 1
+
+    # Advance past the shared right-chain (levels where old and new split the same way)
+    while fn & 1:
+        fn >>= 1
+        sn >>= 1
+
+    proof_iter = iter(proof)
+
+    if fn == 0:
+        # old_size is a power of 2: old tree is exactly a left subtree of the new tree
+        fr = old_root
+        sr = old_root
+    else:
+        first = next(proof_iter, None)
+        if first is None:
+            return False
+        fr = first
+        sr = first
+
+    for c in proof_iter:
+        if sn == 0:
+            return False
+        if (fn & 1) or (fn == sn):
+            fr = node_hash(c, fr)
+            sr = node_hash(c, sr)
+            while fn != 0 and not (fn & 1):
+                fn >>= 1
+                sn >>= 1
+        else:
+            sr = node_hash(sr, c)
+        fn >>= 1
+        sn >>= 1
+
+    if sn != 0:
+        return False
+    return fr == old_root and sr == new_root
 
 
 # ---------------------------------------------------------------------------
