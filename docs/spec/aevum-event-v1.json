@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://aevum.build/spec/aevum-event-v1.json",
   "title": "Aevum AuditEvent v1",
-  "description": "Schema for a single Aevum episodic ledger entry as returned by Engine.get_ledger_entries(). All 19 fields are always present; fields typed [T, null] may carry a null value. The signing specification (aevum-signing-v1.md) defines how to verify the signature field.",
+  "description": "Schema for a single Aevum episodic ledger entry as returned by Engine.get_ledger_entries(). The entry shape is dataclasses.asdict(AuditEvent) plus a derived 'audit_id' field added by the engine. Core fields are always present and non-null; nullable fields are typed [T, null]; Phase 1 dual-sig and TSA fields are optional (null when no DualSigner / TSA client is configured). The signing specification (aevum-signing-v1.md) defines how to verify the signature and chain-linkage fields.",
   "type": "object",
   "required": [
     "event_id",
@@ -23,6 +23,9 @@
     "prior_hash",
     "signature",
     "signer_key_id",
+    "key_scheme",
+    "sig_format_version",
+    "hash_alg",
     "audit_id"
   ],
   "additionalProperties": false,
@@ -62,7 +65,7 @@
     "system_time": {
       "type": "integer",
       "minimum": 0,
-      "description": "Hybrid Logical Clock timestamp in nanoseconds. Monotonically non-decreasing within a chain. Provides causal ordering; NOT a substitute for UTC-traceable timestamps in regulated contexts."
+      "description": "Hybrid Logical Clock timestamp in nanoseconds. Monotonically non-decreasing within a chain. Provides causal ordering; NOT a substitute for UTC-traceable timestamps in regulated contexts. Note: in the signing field set this value is encoded as a string (str(system_time)) because HLC values may exceed the RFC 8785 safe integer domain (2^53-1). The JSON entry carries the raw integer."
     },
     "causation_id": {
       "type": ["string", "null"],
@@ -97,21 +100,55 @@
     "prior_hash": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$",
-      "description": "SHA3-256 hex digest of the previous event's signing fields (canonical form). For sequence=1 (session.start): the genesis hash constant sha3_256('aevum:genesis')."
+      "description": "SHA3-256 hex digest of the previous event's signing representative (DOMAIN_PREFIX + rfc8785.dumps(19 signing fields)). For sequence=1 (session.start): the genesis hash constant sha3_256('aevum:genesis')."
     },
     "signature": {
       "type": "string",
-      "description": "Base64url-encoded (no padding) Ed25519 signature over SHA3-256(JCS-canonical signing fields). See aevum-signing-v1.md for the exact field set and canonicalization procedure."
+      "description": "Base64url-encoded (no padding) Ed25519 signature over SHA3-256(DOMAIN_PREFIX + rfc8785.dumps(19 signing fields)). See aevum-signing-v1.md for the exact field set, encoding rules, and verification procedure."
     },
     "signer_key_id": {
       "type": "string",
       "minLength": 1,
-      "description": "Stable identifier for the signing key. For InProcessSigner: a UUID v4. For VaultTransitSigner: the Vault key URL. Must remain constant across the lifetime of a signing key."
+      "description": "Informational identifier for the signing key. For InProcessSigner: a UUID v4. For VaultTransitSigner: the Vault key URL. Included in the signing field set; part of the signed digest. NOT a key-identity anchor — the verifier's anchor is the published public key supplied out-of-band."
+    },
+    "key_scheme": {
+      "type": "string",
+      "description": "Algorithm posture. 'ed25519' for classical entries; 'ed25519+ml-dsa-65' for hybrid post-quantum entries. All entries in a chain must share the same key_scheme (homogeneity requirement). Included in the signing field set."
+    },
+    "sig_format_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Signing field-set version. Always 1 for entries produced by the current engine. Included in the signing field set; verify_chain rejects any entry where this is not 1."
+    },
+    "hash_alg": {
+      "type": "string",
+      "const": "sha3-256",
+      "description": "Hash algorithm used for the signed digest and chain hash. Always 'sha3-256'. Bound into the signing field set so that changing the algorithm changes the signature."
+    },
+    "mldsa65_sig": {
+      "type": ["string", "null"],
+      "description": "Hex-encoded ML-DSA-65 (CRYSTALS-Dilithium, FIPS 204) signature over the message representative (DOMAIN_PREFIX + rfc8785.dumps(19 signing fields)). Approximately 6618 hex characters (~3309 bytes). Present only on hybrid entries (key_scheme='ed25519+ml-dsa-65'); null on classical entries. Absence on a hybrid entry is a verification failure."
+    },
+    "mldsa65_pub": {
+      "type": ["string", "null"],
+      "description": "Hex-encoded ML-DSA-65 public key. Approximately 3904 hex characters (~1952 bytes). Present only on hybrid entries. Must equal the pinned ML-DSA public key supplied out-of-band; a mismatch is a verification failure."
+    },
+    "tsa_url": {
+      "type": ["string", "null"],
+      "description": "URL of the RFC 3161 Timestamp Authority that issued tsa_token. Null when no TSA client is configured or when the TSA request failed (TSA outages are non-blocking)."
+    },
+    "tsa_token": {
+      "type": ["string", "null"],
+      "description": "Hex-encoded RFC 3161 timestamp token (DER bytes) over the message representative. Null when no TSA client is configured. Independent of the self-asserted system_time — provides an externally verifiable timestamp anchor."
+    },
+    "receipt_cbor": {
+      "type": ["string", "null"],
+      "description": "Hex-encoded COSE_Sign1 receipt bytes (Phase 1A transparency receipt). Null when no receipt encoder is configured. When present, provides a verifiable log receipt binding this entry to a transparency log."
     },
     "audit_id": {
       "type": "string",
       "pattern": "^urn:aevum:audit:[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-      "description": "URN-encoded audit identifier. Format: urn:aevum:audit:{event_id}. Derived field; not part of the signing field set."
+      "description": "URN-encoded audit identifier. Format: urn:aevum:audit:{event_id}. Derived field added by Engine.get_ledger_entries(); not part of the signing field set and not present in the raw dataclasses.asdict(AuditEvent) output."
     }
   },
   "allOf": [
