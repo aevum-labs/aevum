@@ -1,6 +1,6 @@
 [project]
 name = "aevum-server"
-version = "0.7.4"
+version = "0.8.0"
 description = "Aevum HTTP API server — wraps the five functions for any consumer."
 readme = "README.md"
 requires-python = ">=3.11"

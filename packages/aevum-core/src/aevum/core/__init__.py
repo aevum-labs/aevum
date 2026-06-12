@@ -19,7 +19,7 @@ from aevum.core.exceptions import (
     ProvenanceRequiredError,
 )
 
-__version__ = "0.7.4"
+__version__ = "0.8.0"
 
 __all__ = [
     "Engine",

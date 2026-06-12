@@ -20,7 +20,7 @@ Usage:
 from aevum.agent.interceptor import AevumA2AInterceptor, SignedAgentCard, SignedTask
 from aevum.agent.types import A2ATask, AgentCapability, AgentCard, TaskStatus
 
-__version__ = "0.7.4"
+__version__ = "0.8.0"
 __all__ = [
     "A2ATask",
     "AgentCard",

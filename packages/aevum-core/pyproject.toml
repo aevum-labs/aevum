@@ -1,6 +1,6 @@
 [project]
 name = "aevum-core"
-version = "0.7.4"
+version = "0.8.0"
 description = "Aevum — the sealed movement. Replay-first, policy-governed context kernel."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -94,6 +94,7 @@ dev = [
     "types-PyYAML>=6.0",
     "inline-snapshot>=0.13",
     "dirty-equals>=0.7",
+    "jsonschema>=4.23",  # P2k schema-regression guard — pinned for reproducible CI
 ]
 
 [project.urls]

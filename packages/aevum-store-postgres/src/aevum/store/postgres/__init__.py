@@ -26,6 +26,6 @@ from aevum.store.postgres.consent import PostgresConsentLedger
 from aevum.store.postgres.ledger import PostgresLedger
 from aevum.store.postgres.store import PostgresStore
 
-__version__ = "0.7.4"
+__version__ = "0.8.0"
 
 __all__ = ["PostgresStore", "PostgresConsentLedger", "PostgresLedger"]
