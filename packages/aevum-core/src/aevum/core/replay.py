@@ -115,9 +115,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     fact_count          INTEGER NOT NULL,
     checkpoint_count    INTEGER NOT NULL,
     merkle_root         TEXT NOT NULL,
-    ed25519_sig         TEXT,
     mldsa65_sig         TEXT,
-    ed25519_pub         TEXT,
     mldsa65_pub         TEXT,
     tsa_token           TEXT,
     sigchain_entry_id   INTEGER
@@ -349,7 +347,7 @@ class ReplayEngine:
         """Write a fork session record to the sessions table."""
         self._conn.execute(
             "INSERT OR REPLACE INTO sessions VALUES "
-            "(?,?,?,?,?,?,?,?,?,?,NULL,NULL,NULL,NULL,NULL,NULL)",
+            "(?,?,?,?,?,?,?,?,?,?,NULL,NULL,NULL,NULL)",
             (
                 record.session_id,
                 record.commit_type.value,

@@ -1,18 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
-"""P2a tests: sig_format_version binding, verify_chain path splits, and back-compat."""
+"""P2a tests: sig_format_version binding and verify_chain rejection of non-v1 entries.
+
+After P2f there is a single verify path: sig_format_version must be 1.
+Any other value (None, 2, 99, ...) is rejected immediately — no legacy fallback.
+"""
 from __future__ import annotations
 
-import base64
 import dataclasses
-import datetime
-import hashlib
-import json
 
 import pytest
 
-from aevum.core.audit.event import AuditEvent
-from aevum.core.audit.hlc import now as hlc_now
-from aevum.core.audit.sigchain import GENESIS_HASH, Sigchain, _uuid7
+from aevum.core.audit.sigchain import Sigchain
 
 try:
     import oqs as _oqs_check  # noqa: F401
@@ -21,73 +19,6 @@ except (ImportError, OSError, SystemExit):
     _HAS_LIBOQS = False
 
 needs_liboqs = pytest.mark.skipif(not _HAS_LIBOQS, reason="liboqs not available")
-
-
-def _build_legacy_event(
-    chain: Sigchain,
-    *,
-    sequence: int,
-    prior_hash: str,
-    event_type: str = "legacy.event",
-    payload: dict | None = None,
-    actor: str = "tester",
-) -> AuditEvent:
-    """Synthetic pre-P2a entry: signed over exactly the original 16 fields.
-
-    Mimics new_event() as it existed before P2a — no key_scheme or sig_format_version
-    in signing_fields, and sig_format_version=None on the resulting AuditEvent.
-    """
-    if payload is None:
-        payload = {}
-    event_id = _uuid7()
-    ep_id = _uuid7()
-    vf = datetime.datetime.now(datetime.UTC).isoformat()
-    ts = hlc_now()
-    payload_hash = AuditEvent.hash_payload(payload)
-    signing_fields = {
-        "event_id": event_id,
-        "episode_id": ep_id,
-        "sequence": sequence,
-        "event_type": event_type,
-        "schema_version": "1.0",
-        "valid_from": vf,
-        "valid_to": None,
-        "system_time": ts,
-        "causation_id": None,
-        "correlation_id": None,
-        "actor": actor,
-        "trace_id": None,
-        "span_id": None,
-        "payload_hash": payload_hash,
-        "prior_hash": prior_hash,
-        "signer_key_id": chain._signer.key_id,
-    }
-    canonical = json.dumps(signing_fields, sort_keys=True, separators=(",", ":")).encode()
-    digest = hashlib.sha3_256(canonical).digest()
-    sig_bytes = chain._signer.sign(digest)
-    signature = base64.urlsafe_b64encode(sig_bytes).rstrip(b"=").decode()
-    return AuditEvent(
-        event_id=event_id,
-        episode_id=ep_id,
-        sequence=sequence,
-        event_type=event_type,
-        schema_version="1.0",
-        valid_from=vf,
-        valid_to=None,
-        system_time=ts,
-        causation_id=None,
-        correlation_id=None,
-        actor=actor,
-        trace_id=None,
-        span_id=None,
-        payload=payload,
-        payload_hash=payload_hash,
-        prior_hash=prior_hash,
-        signature=signature,
-        signer_key_id=chain._signer.key_id,
-        sig_format_version=None,
-        # key_scheme defaults to "ed25519"
-    )
 
 
 class TestClassicalSigFormatVersion:
@@ -111,12 +42,26 @@ class TestClassicalSigFormatVersion:
         ]
         assert chain.verify_chain(events) is True
 
-    def test_strip_sig_format_version_fails(self) -> None:
-        """Setting sig_format_version=None downgrades to legacy path; signing_fields mismatch → False."""
+    def test_strip_sig_format_version_rejected(self) -> None:
+        """sig_format_version=None is not 1 → rejected immediately by verify_chain."""
         chain = Sigchain()
         event = chain.new_event(event_type="t", payload={}, actor="a")
         stripped = dataclasses.replace(event, sig_format_version=None)
         assert chain.verify_chain([stripped]) is False
+
+    def test_sig_format_version_2_rejected(self) -> None:
+        """sig_format_version=2 is unknown to this verifier → rejected (fail closed)."""
+        chain = Sigchain()
+        event = chain.new_event(event_type="t", payload={}, actor="a")
+        future = dataclasses.replace(event, sig_format_version=2)
+        assert chain.verify_chain([future]) is False
+
+    def test_unknown_sig_format_version_fails(self) -> None:
+        """Future format version (e.g. 99) must fail closed — this verifier cannot validate it."""
+        chain = Sigchain()
+        event = chain.new_event(event_type="t", payload={}, actor="a")
+        future = dataclasses.replace(event, sig_format_version=99)
+        assert chain.verify_chain([future]) is False
 
     def test_mutate_key_scheme_fails(self) -> None:
         """key_scheme is bound in signing_fields; mutation → canonical mismatch → False."""
@@ -131,45 +76,6 @@ class TestClassicalSigFormatVersion:
         event = chain.new_event(event_type="t", payload={}, actor="a")
         mutated = dataclasses.replace(event, key_scheme="rsa-4096")
         assert chain.verify_chain([mutated]) is False
-
-    def test_unknown_sig_format_version_fails(self) -> None:
-        """Future format version (e.g. 99) must fail closed — this verifier cannot validate it."""
-        chain = Sigchain()
-        event = chain.new_event(event_type="t", payload={}, actor="a")
-        future = dataclasses.replace(event, sig_format_version=99)
-        assert chain.verify_chain([future]) is False
-
-
-class TestSyntheticLegacyBackCompat:
-    """D-C: synthetic pre-P2a entries (sig_format_version=None) must still verify."""
-
-    def test_single_legacy_event_verifies(self) -> None:
-        chain = Sigchain()
-        event = _build_legacy_event(chain, sequence=1, prior_hash=GENESIS_HASH)
-        assert chain.verify_chain([event]) is True
-
-    def test_legacy_event_has_sig_format_version_none(self) -> None:
-        chain = Sigchain()
-        event = _build_legacy_event(chain, sequence=1, prior_hash=GENESIS_HASH)
-        assert event.sig_format_version is None
-
-    def test_multiple_legacy_events_verify(self) -> None:
-        chain = Sigchain()
-        events: list[AuditEvent] = []
-        prior = GENESIS_HASH
-        for i in range(1, 4):
-            e = _build_legacy_event(
-                chain, sequence=i, prior_hash=prior, payload={"i": i}
-            )
-            prior = AuditEvent.hash_event_for_chain(e)
-            events.append(e)
-        assert chain.verify_chain(events) is True
-
-    def test_tampered_legacy_payload_fails(self) -> None:
-        chain = Sigchain()
-        event = _build_legacy_event(chain, sequence=1, prior_hash=GENESIS_HASH, payload={"ok": True})
-        tampered = dataclasses.replace(event, payload={"ok": False})
-        assert chain.verify_chain([tampered]) is False
 
 
 @needs_liboqs
@@ -221,12 +127,19 @@ class TestHybridSigFormatVersion:
         mutated = dataclasses.replace(event, mldsa65_sig=zeroed)
         assert chain.verify_chain([mutated]) is False
 
-    def test_strip_sig_format_version_fails(self) -> None:
-        """Stripping sig_format_version → legacy path, 16-field signing_fields ≠ 18-field signed bytes → False."""
+    def test_strip_sig_format_version_rejected(self) -> None:
+        """sig_format_version=None is not 1 → rejected immediately by verify_chain."""
         chain = self._hybrid_chain()
         event = chain.new_event(event_type="t", payload={}, actor="a")
         stripped = dataclasses.replace(event, sig_format_version=None)
         assert chain.verify_chain([stripped]) is False
+
+    def test_sig_format_version_2_rejected(self) -> None:
+        """sig_format_version=2 is unknown to this verifier → rejected (fail closed)."""
+        chain = self._hybrid_chain()
+        event = chain.new_event(event_type="t", payload={}, actor="a")
+        future = dataclasses.replace(event, sig_format_version=2)
+        assert chain.verify_chain([future]) is False
 
     def test_hybrid_without_liboqs_fails_closed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Verifying a hybrid entry when liboqs is absent must fail closed (not silently succeed)."""

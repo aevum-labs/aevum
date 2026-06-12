@@ -18,8 +18,8 @@ def _create_test_db(tmp_path: Path) -> Path:
             session_id TEXT PRIMARY KEY, commit_type TEXT, principal TEXT,
             purpose TEXT, started_at TEXT, closed_at TEXT,
             event_count INTEGER, fact_count INTEGER, checkpoint_count INTEGER,
-            merkle_root TEXT, ed25519_sig TEXT, mldsa65_sig TEXT,
-            ed25519_pub TEXT, mldsa65_pub TEXT, tsa_token TEXT,
+            merkle_root TEXT, mldsa65_sig TEXT,
+            mldsa65_pub TEXT, tsa_token TEXT,
             sigchain_entry_id INTEGER
         );
         CREATE TABLE session_events (
@@ -31,7 +31,7 @@ def _create_test_db(tmp_path: Path) -> Path:
     now = datetime.now(UTC).isoformat()
     h = "a" * 64
     conn.execute(
-        "INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,NULL,NULL,NULL,NULL,NULL,1)",
+        "INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,NULL,NULL,NULL,1)",
         ("sess-test", "complete", "alice", "support", now, now, 2, 1, 0, h),
     )
     conn.execute(
@@ -56,8 +56,8 @@ def _create_empty_session_db(tmp_path: Path) -> Path:
             session_id TEXT PRIMARY KEY, commit_type TEXT, principal TEXT,
             purpose TEXT, started_at TEXT, closed_at TEXT,
             event_count INTEGER, fact_count INTEGER, checkpoint_count INTEGER,
-            merkle_root TEXT, ed25519_sig TEXT, mldsa65_sig TEXT,
-            ed25519_pub TEXT, mldsa65_pub TEXT, tsa_token TEXT,
+            merkle_root TEXT, mldsa65_sig TEXT,
+            mldsa65_pub TEXT, tsa_token TEXT,
             sigchain_entry_id INTEGER
         );
         CREATE TABLE session_events (
@@ -69,7 +69,7 @@ def _create_empty_session_db(tmp_path: Path) -> Path:
     now = datetime.now(UTC).isoformat()
     h = "b" * 64
     conn.execute(
-        "INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,NULL,NULL,NULL,NULL,NULL,NULL)",
+        "INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,NULL,NULL,NULL,NULL)",
         ("sess-empty", "timeout", "bob", "research", now, now, 0, 0, 0, h),
     )
     conn.commit()

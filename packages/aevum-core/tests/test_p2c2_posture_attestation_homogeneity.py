@@ -12,11 +12,9 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-from test_p2a_sig_format_versioning import _build_legacy_event
 from test_phase1_principles import make_test_principles_file
 
-from aevum.core.audit.event import AuditEvent
-from aevum.core.audit.sigchain import GENESIS_HASH, Sigchain
+from aevum.core.audit.sigchain import Sigchain
 
 try:
     import oqs as _oqs_check  # noqa: F401
@@ -217,18 +215,6 @@ class TestHomogeneityEnforcement:
             for i in range(3)
         ]
         assert all(e.key_scheme == "ed25519+ml-dsa-65" for e in events)
-        assert chain.verify_chain(events) is True
-
-    def test_legacy_fmt_none_chain_exempt_from_homogeneity(self):
-        """fmt==None (pre-P2a legacy) entries carry no bound key_scheme → exempt; chain passes."""
-        chain = Sigchain()
-        events: list[AuditEvent] = []
-        prior = GENESIS_HASH
-        for i in range(1, 4):
-            e = _build_legacy_event(chain, sequence=i, prior_hash=prior, payload={"i": i})
-            prior = AuditEvent.hash_event_for_chain(e)
-            events.append(e)
-        assert all(e.sig_format_version is None for e in events)
         assert chain.verify_chain(events) is True
 
     def test_classical_engine_chain_homogeneity_passes(self, tmp_path):

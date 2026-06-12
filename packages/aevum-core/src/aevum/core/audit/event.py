@@ -79,20 +79,16 @@ class AuditEvent:
     # so that historical entries can still be verified using the correct archived public key.
     signature: str
     signer_key_id: str
-    # Phase 1: dual-sig fields (nullable — absent on pre-Phase-1 entries)
-    ed25519_sig: str | None = None   # hex, 128 chars
-    mldsa65_sig: str | None = None   # hex, 6618 chars
-    ed25519_pub: str | None = None   # hex, 64 chars
-    mldsa65_pub: str | None = None   # hex, 3904 chars
+    # Phase 1: dual-sig fields (nullable — absent on classical entries)
+    mldsa65_sig: str | None = None   # hex, ~6618 chars
+    mldsa65_pub: str | None = None   # hex, ~3904 chars
     tsa_url: str | None = None
     tsa_token: str | None = None     # hex of DER bytes
-    # Phase C-1: algorithm selector read by verify_chain to dispatch to the correct verifier.
-    # Valid values: "ed25519" (current default) | "ed25519+ml-dsa-65" (future hybrid).
-    # Envelopes without this field (written before Phase C) are treated as "ed25519".
+    # Algorithm selector; "ed25519" (classical) | "ed25519+ml-dsa-65" (hybrid).
     key_scheme: str = "ed25519"
-    # P2a: version marker for the signing_fields set. None = legacy (pre-P2a, 16 fields);
-    # 1 = this format (18 fields: adds key_scheme + sig_format_version to the signed set).
-    # verify_chain dispatches on presence of this field, NOT on schema_version.
+    # P2a: version marker for the signing_fields set.
+    # Always 1 for entries produced by new_event; verify_chain rejects any entry where this
+    # is not 1 (including None). Kept as a forward-evolution signal (P2g may introduce 2).
     sig_format_version: int | None = None
     # Phase 1A: COSE_Sign1 receipt bytes (None when no encoder is configured).
     receipt_cbor: bytes | None = None
@@ -117,28 +113,13 @@ class AuditEvent:
     def hash_event_for_chain(event: AuditEvent) -> str:
         """Compute the SHA3-256 chain hash for an event — stored as prior_hash in the next entry.
 
-        The chain hash covers the entry's full signing-field set, making the chain hash
-        identical to the signed digest (the "compute once" property):
-          - fmt==1 (v1.1, sig_format_version=1): 18 fields — 16 base fields plus key_scheme
-            and sig_format_version, matching new_event()'s signing_fields exactly.
-          - legacy (sig_format_version=None): 16 base fields (unchanged pre-P2a behaviour).
-        Altering any signed field — including the algorithm declaration (key_scheme) — breaks
-        both the signature proof and the chain-link proof simultaneously.
+        Covers the same 18 fields as new_event()'s signing_fields (the "compute once" property):
+        chain-link hash == signed digest, so altering any signed field breaks both proofs at once.
 
-        The signature field itself is always excluded: including it would create a circular
-        dependency. The chain and the signature remain independent proofs — the chain can be
-        traversed without the signing key, and the signature can be verified without
-        traversing the chain.
+        The signature field is excluded to avoid a circular dependency; chain traversal and
+        signature verification remain independent proofs.
 
-        Serialisation follows the RFC 8785 JCS approach: sort_keys=True + compact separators
-        produce deterministic bytes on every platform regardless of dict insertion order,
-        making the hash reproducible and identical across all verifiers.
-
-        Args:
-            event: The AuditEvent whose chain hash should be computed.
-
-        Returns:
-            Lowercase hex-encoded SHA3-256 (FIPS 202) digest — always 64 characters.
+        Serialisation: RFC 8785 JCS (sort_keys=True + compact separators) for determinism.
         """
         fields = {
             "event_id": event.event_id,
@@ -157,14 +138,9 @@ class AuditEvent:
             "payload_hash": event.payload_hash,
             "prior_hash": event.prior_hash,
             "signer_key_id": event.signer_key_id,
+            "key_scheme": event.key_scheme,
+            "sig_format_version": 1,
         }
-        fmt = event.sig_format_version
-        if fmt == 1:
-            fields["key_scheme"] = event.key_scheme
-            fields["sig_format_version"] = 1
-        # fmt is None → legacy 16-field baseline (unchanged).
-        # Other non-1 values are rejected upstream by verify_chain; hash value is moot,
-        # but we keep the function total by falling through to the 16-field baseline.
         canonical = json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha3_256(canonical).hexdigest()
 
