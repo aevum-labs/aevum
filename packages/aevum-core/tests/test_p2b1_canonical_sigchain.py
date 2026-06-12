@@ -64,9 +64,10 @@ class TestKernelOwnsSigchain:
     def test_primary_signature_verifies_under_persisted_key(self, tmp_path):
         """The primary Ed25519 signature in the chain entry verifies under the kernel's key."""
         import hashlib
-        import json
 
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+        from aevum.core.audit.event import _message_representative
 
         sp_path, _ = make_test_principles_file(tmp_path)
         kernel = _boot_kernel(tmp_path, sp_path)
@@ -77,7 +78,7 @@ class TestKernelOwnsSigchain:
             actor="test-suite",
         )
 
-        # Reconstruct the signing_fields exactly as Sigchain.new_event builds them
+        # Reconstruct signing_fields (19 fields) exactly as Sigchain.new_event builds them.
         signing_fields = {
             "event_id": event.event_id,
             "episode_id": event.episode_id,
@@ -86,7 +87,7 @@ class TestKernelOwnsSigchain:
             "schema_version": event.schema_version,
             "valid_from": event.valid_from,
             "valid_to": event.valid_to,
-            "system_time": event.system_time,
+            "system_time": str(event.system_time),  # HLC int > 2^53; string in signed fields
             "causation_id": event.causation_id,
             "correlation_id": event.correlation_id,
             "actor": event.actor,
@@ -97,9 +98,10 @@ class TestKernelOwnsSigchain:
             "signer_key_id": event.signer_key_id,
             "key_scheme": event.key_scheme,
             "sig_format_version": event.sig_format_version,
+            "hash_alg": event.hash_alg,
         }
-        canonical = json.dumps(signing_fields, sort_keys=True, separators=(",", ":")).encode()
-        digest = hashlib.sha3_256(canonical).digest()
+        representative = _message_representative(signing_fields)
+        digest = hashlib.sha3_256(representative).digest()
 
         sig_bytes = base64.urlsafe_b64decode(event.signature + "==")
 

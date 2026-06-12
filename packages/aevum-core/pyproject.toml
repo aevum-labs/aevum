@@ -27,6 +27,7 @@ dependencies = [
     "rdflib>=7.0.0",
     "oxrdflib>=0.4.0",
     "cbor2>=6.1.1",  # CVE-2026-26209 — max_depth added, depth-limit DoS fixed
+    "rfc8785>=0.1.2",  # RFC 8785 JSON Canonicalization Scheme — true deterministic bytes for signing
 ]
 
 [project.optional-dependencies]
