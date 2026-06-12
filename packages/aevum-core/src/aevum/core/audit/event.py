@@ -3,9 +3,9 @@
 AuditEvent — the canonical episodic ledger entry format. Spec Section 06.2.
 
 Every entry written to the sigchain is an AuditEvent. It is immutable (frozen dataclass),
-cryptographically signed, and chained to its predecessor via prior_hash. The 18 core fields
-are always present; the 6 optional Phase 1 fields carry dual-sig and TSA data and are
-nullable on pre-Phase-1 entries to preserve backward compatibility across versions.
+cryptographically signed, and chained to its predecessor via prior_hash. The 19 core fields
+(18 original + hash_alg added in P2g) are always present; the optional Phase 1 fields carry
+dual-sig and TSA data and are nullable on pre-Phase-1 entries.
 
 An investigator reading a serialised AuditEvent can determine, without trusting the operator:
   WHO caused the event   (actor, signer_key_id)
@@ -20,7 +20,52 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+from collections.abc import Mapping
 from typing import Any
+
+import rfc8785
+
+# Byte-level domain separator bound into every signed representative (P2g).
+# Binds the protocol name and wire-format version into the signed bytes even for
+# contexts that parse the JSON differently. \x00 separates the ASCII prefix from
+# the RFC 8785 JSON body so there is no ambiguity about the boundary.
+# sig_format_version handles field-set evolution; this prefix handles protocol/wire-format domain.
+DOMAIN_PREFIX: bytes = b"aevum-sigchain-v1\x00"
+
+
+_JSON_SAFE_INT_MAX = 2**53 - 1  # RFC 8785 §3.2.2.3: integers outside this range are not safe
+
+
+def _canonicalize(fields: Mapping[str, Any]) -> bytes:
+    """RFC 8785-canonicalize a dict to bytes.
+
+    Floats are forbidden (non-deterministic representation across platforms).
+    Integers must be within the safe JSON integer domain ([-2^53+1, 2^53-1]).
+    HLC system_time values exceed 2^53 — callers must convert them to strings first.
+    """
+    for k, v in fields.items():
+        if isinstance(v, float):
+            raise ValueError(f"float in signed field {k!r} is forbidden (use int or str)")
+        if isinstance(v, int) and not isinstance(v, bool) and abs(v) > _JSON_SAFE_INT_MAX:
+            raise ValueError(
+                f"integer in signed field {k!r} ({v}) exceeds RFC 8785 safe domain "
+                f"(2^53-1); convert to str before signing"
+            )
+    return rfc8785.dumps(fields)
+
+
+def _message_representative(fields: Mapping[str, Any]) -> bytes:
+    """Produce the canonical byte string that ALL signing and hashing operations are applied to.
+
+    Returns DOMAIN_PREFIX + RFC-8785-canonical-JSON(fields).
+    This single function is the linchpin of the compute-once property:
+      - Ed25519 signed digest = sha3_256(_message_representative(19 fields))
+      - ML-DSA input          = _message_representative(19 fields)
+      - chain hash            = sha3_256(_message_representative(19 fields)).hexdigest()
+    All three are derived from the same bytes, so altering any signed field breaks all
+    three proofs simultaneously.
+    """
+    return DOMAIN_PREFIX + _canonicalize(fields)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -88,8 +133,11 @@ class AuditEvent:
     key_scheme: str = "ed25519"
     # P2a: version marker for the signing_fields set.
     # Always 1 for entries produced by new_event; verify_chain rejects any entry where this
-    # is not 1 (including None). Kept as a forward-evolution signal (P2g may introduce 2).
+    # is not 1 (including None).
     sig_format_version: int | None = None
+    # P2g: hash algorithm used for the signed digest and chain hash. Always "sha3-256".
+    # Bound into the signed field set so that changing the hash algorithm changes the signature.
+    hash_alg: str = "sha3-256"
     # Phase 1A: COSE_Sign1 receipt bytes (None when no encoder is configured).
     receipt_cbor: bytes | None = None
 
@@ -113,15 +161,14 @@ class AuditEvent:
     def hash_event_for_chain(event: AuditEvent) -> str:
         """Compute the SHA3-256 chain hash for an event — stored as prior_hash in the next entry.
 
-        Covers the same 18 fields as new_event()'s signing_fields (the "compute once" property):
-        chain-link hash == signed digest, so altering any signed field breaks both proofs at once.
+        Covers the same 19 fields as new_event()'s signing_fields (the "compute once" property):
+        chain hash = sha3_256(DOMAIN_PREFIX + rfc8785.dumps(19 fields)).hexdigest()
+                   = Ed25519 signed digest (as hex)
 
-        The signature field is excluded to avoid a circular dependency; chain traversal and
-        signature verification remain independent proofs.
-
-        Serialisation: RFC 8785 JCS (sort_keys=True + compact separators) for determinism.
+        The signature field is excluded to avoid circular dependency; chain traversal and
+        signature verification are independent proofs that converge on the same digest.
         """
-        fields = {
+        fields: dict[str, Any] = {
             "event_id": event.event_id,
             "episode_id": event.episode_id,
             "sequence": event.sequence,
@@ -129,7 +176,8 @@ class AuditEvent:
             "schema_version": event.schema_version,
             "valid_from": event.valid_from,
             "valid_to": event.valid_to,
-            "system_time": event.system_time,
+            # system_time is a HLC integer that may exceed 2^53; encode as string for RFC 8785.
+            "system_time": str(event.system_time),
             "causation_id": event.causation_id,
             "correlation_id": event.correlation_id,
             "actor": event.actor,
@@ -140,9 +188,9 @@ class AuditEvent:
             "signer_key_id": event.signer_key_id,
             "key_scheme": event.key_scheme,
             "sig_format_version": 1,
+            "hash_alg": event.hash_alg,
         }
-        canonical = json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()
-        return hashlib.sha3_256(canonical).hexdigest()
+        return hashlib.sha3_256(_message_representative(fields)).hexdigest()
 
     def audit_id(self) -> str:
         return f"urn:aevum:audit:{self.event_id}"

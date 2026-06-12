@@ -31,7 +31,6 @@ from __future__ import annotations
 import base64
 import datetime
 import hashlib
-import json
 import logging
 import os
 import time
@@ -41,9 +40,12 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
-from aevum.core.audit.event import AuditEvent
+from aevum.core.audit.event import AuditEvent, _message_representative
 from aevum.core.audit.hlc import now as hlc_now
 from aevum.core.audit.signer import InProcessSigner, Signer
+
+# ML-DSA level suffix → OQS algorithm name. ml-dsa-87 is a one-line future add.
+_MLDSA_LEVEL_MAP: dict[str, str] = {"ml-dsa-65": "ML-DSA-65"}
 
 if TYPE_CHECKING:
     from aevum.publish.encoder import ReceiptEncoder
@@ -190,10 +192,9 @@ class Sigchain:
         self._sequence, self._prior_hash = checkpoint
 
     def _sign(self, fields: dict[str, Any]) -> str:
-        """RFC 8785 JCS-canonicalize fields, SHA3-256 hash, Ed25519-sign; return url-safe base64."""
-        canonical = json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()
-        # Sign SHA3-256(canonical) — enables prehashed external signing
-        digest = hashlib.sha3_256(canonical).digest()
+        """Canonicalize fields to message representative, SHA3-256, Ed25519-sign; return url-safe base64."""
+        representative = _message_representative(fields)
+        digest = hashlib.sha3_256(representative).digest()
         sig_bytes = self._signer.sign(digest)
         return base64.urlsafe_b64encode(sig_bytes).rstrip(b"=").decode()
 
@@ -235,7 +236,8 @@ class Sigchain:
         ts = hlc_now()
         payload_hash = AuditEvent.hash_payload(payload)
         prior = self._prior_hash
-        scheme = "ed25519+ml-dsa-65" if self._dual_signer is not None else "ed25519"
+        # Derive scheme from signer — no literal "65" hardcoded here.
+        scheme = f"ed25519+{self._dual_signer.scheme_suffix}" if self._dual_signer is not None else "ed25519"
 
         signing_fields: dict[str, Any] = {
             "event_id": event_id,
@@ -245,7 +247,8 @@ class Sigchain:
             "schema_version": "1.0",
             "valid_from": vf,
             "valid_to": valid_to,
-            "system_time": ts,
+            # system_time is a HLC integer that may exceed 2^53; encode as string for RFC 8785.
+            "system_time": str(ts),
             "causation_id": causation_id,
             "correlation_id": correlation_id,
             "actor": actor,
@@ -256,15 +259,15 @@ class Sigchain:
             "signer_key_id": self._signer.key_id,
             "key_scheme": scheme,
             "sig_format_version": 1,
+            "hash_alg": "sha3-256",
         }
-        # RFC 8785 JCS: sort_keys=True + compact separators ensure identical canonical bytes
-        # across all Python versions and platforms regardless of dict insertion order.
-        # SHA3-256 (FIPS 202) is then applied to those bytes, and the digest is Ed25519-signed
-        # (RFC 8032). Signing the hash rather than the raw payload enables prehashed external
-        # signing via HSMs or Vault transit without exposing the full canonical payload.
-        canonical = json.dumps(signing_fields, sort_keys=True, separators=(",", ":")).encode()
+        # True RFC 8785 canonicalization + domain prefix → message representative.
+        # sha3_256(representative) is the Ed25519 signed digest AND the chain hash input —
+        # compute-once: altering any signed field breaks signature verification and chain
+        # linkage simultaneously.
+        representative = _message_representative(signing_fields)
         signature = base64.urlsafe_b64encode(
-            self._signer.sign(hashlib.sha3_256(canonical).digest())
+            self._signer.sign(hashlib.sha3_256(representative).digest())
         ).rstrip(b"=").decode()
 
         # Phase 1: dual-sig + TSA (belt-and-suspenders, non-blocking)
@@ -276,8 +279,9 @@ class Sigchain:
         if self._dual_signer is not None:
             try:
                 from aevum.core.signing import DualSigner
-                dual_sig = self._dual_signer.sign(canonical)
-                DualSigner.verify(canonical, dual_sig)  # belt-and-suspenders at write time
+                # ML-DSA signs the representative directly (not its hash).
+                dual_sig = self._dual_signer.sign(representative)
+                DualSigner.verify(representative, dual_sig)  # belt-and-suspenders at write time
                 mldsa65_sig_hex = dual_sig.mldsa65_sig.hex()
                 mldsa65_pub_hex = dual_sig.mldsa65_pub.hex()
             except Exception as exc:
@@ -288,7 +292,7 @@ class Sigchain:
             # without a timestamp token if the RFC 3161 authority is unreachable or rate-limited.
             if self._tsa_client is not None:
                 try:
-                    tsa_token = self._tsa_client.timestamp(canonical)
+                    tsa_token = self._tsa_client.timestamp(representative)
                     if tsa_token is not None:
                         tsa_url = tsa_token.tsa_url
                         tsa_token_hex = tsa_token.token_bytes.hex()
@@ -320,6 +324,7 @@ class Sigchain:
             tsa_token=tsa_token_hex,
             key_scheme=scheme,
             sig_format_version=1,
+            hash_alg="sha3-256",
         )
         self._prior_hash = AuditEvent.hash_event_for_chain(event)
 
@@ -425,7 +430,8 @@ class Sigchain:
                 "schema_version": event.schema_version,
                 "valid_from": event.valid_from,
                 "valid_to": event.valid_to,
-                "system_time": event.system_time,
+                # system_time is a HLC integer that may exceed 2^53; encode as string for RFC 8785.
+                "system_time": str(event.system_time),
                 "causation_id": event.causation_id,
                 "correlation_id": event.correlation_id,
                 "actor": event.actor,
@@ -436,12 +442,11 @@ class Sigchain:
                 "signer_key_id": event.signer_key_id,
                 "key_scheme": event.key_scheme,
                 "sig_format_version": 1,
+                "hash_alg": event.hash_alg,
             }
 
-            canonical = json.dumps(
-                signing_fields, sort_keys=True, separators=(",", ":")
-            ).encode()
-            digest = hashlib.sha3_256(canonical).digest()
+            representative = _message_representative(signing_fields)
+            digest = hashlib.sha3_256(representative).digest()
 
             try:
                 sig_bytes = base64.urlsafe_b64decode(event.signature + "==")
@@ -452,16 +457,24 @@ class Sigchain:
             ks = event.key_scheme
             if ks == "ed25519":
                 pass  # primary Ed25519 already verified above
-            elif ks == "ed25519+ml-dsa-65":
-                # ML-DSA-65 presence is REQUIRED — absence = tamper/downgrade attack.
+            elif ks.startswith("ed25519+"):
+                # Parse ML-DSA level from key_scheme suffix for level agility.
+                # Unknown level → fail closed; never warn-and-fallback.
+                level_suffix = ks[len("ed25519+"):]
+                mldsa_alg = _MLDSA_LEVEL_MAP.get(level_suffix)
+                if mldsa_alg is None:
+                    return False  # unknown ML-DSA level
+                # ML-DSA presence is REQUIRED — absence = tamper/downgrade attack.
                 if event.mldsa65_sig is None or event.mldsa65_pub is None:
                     return False
                 try:
                     from aevum.core.signing import DualSigner
+                    # ML-DSA verifies against the representative (not its hash).
                     DualSigner.verify_mldsa(
-                        canonical,
+                        representative,
                         bytes.fromhex(event.mldsa65_sig),
                         bytes.fromhex(event.mldsa65_pub),
+                        alg=mldsa_alg,
                     )
                 except Exception:
                     return False  # liboqs absent or invalid sig → fail closed

@@ -9,11 +9,10 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
-import json
 
 import pytest
 
-from aevum.core.audit.event import AuditEvent
+from aevum.core.audit.event import AuditEvent, _message_representative
 from aevum.core.audit.sigchain import Sigchain
 
 try:
@@ -25,8 +24,8 @@ except (ImportError, OSError, SystemExit):
 needs_liboqs = pytest.mark.skipif(not _HAS_LIBOQS, reason="liboqs not available")
 
 
-def _signing_fields_18(event: AuditEvent) -> dict:
-    """Reconstruct the 18-field canonical dict independently — mirrors new_event()'s signing_fields."""
+def _signing_fields_19(event: AuditEvent) -> dict:
+    """Reconstruct the 19-field canonical dict — mirrors new_event()'s signing_fields (P2g)."""
     return {
         "event_id": event.event_id,
         "episode_id": event.episode_id,
@@ -35,7 +34,7 @@ def _signing_fields_18(event: AuditEvent) -> dict:
         "schema_version": event.schema_version,
         "valid_from": event.valid_from,
         "valid_to": event.valid_to,
-        "system_time": event.system_time,
+        "system_time": str(event.system_time),  # HLC int > 2^53; string in signed fields
         "causation_id": event.causation_id,
         "correlation_id": event.correlation_id,
         "actor": event.actor,
@@ -46,12 +45,12 @@ def _signing_fields_18(event: AuditEvent) -> dict:
         "signer_key_id": event.signer_key_id,
         "key_scheme": event.key_scheme,
         "sig_format_version": 1,
+        "hash_alg": event.hash_alg,
     }
 
 
-def _canonical_hex(fields: dict) -> str:
-    canonical = json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha3_256(canonical).hexdigest()
+def _representative_hex(fields: dict) -> str:
+    return hashlib.sha3_256(_message_representative(fields)).hexdigest()
 
 
 class TestComputeOnceProperty:
@@ -62,7 +61,7 @@ class TestComputeOnceProperty:
         event = chain.new_event(event_type="p2e.test", payload={"x": 1}, actor="a")
         assert event.sig_format_version == 1
 
-        expected = _canonical_hex(_signing_fields_18(event))
+        expected = _representative_hex(_signing_fields_19(event))
         assert AuditEvent.hash_event_for_chain(event) == expected
 
     @needs_liboqs
@@ -73,7 +72,7 @@ class TestComputeOnceProperty:
         assert event.sig_format_version == 1
         assert event.key_scheme == "ed25519+ml-dsa-65"
 
-        expected = _canonical_hex(_signing_fields_18(event))
+        expected = _representative_hex(_signing_fields_19(event))
         assert AuditEvent.hash_event_for_chain(event) == expected
 
     def test_compute_once_holds_for_multi_event_chain(self) -> None:
@@ -84,7 +83,7 @@ class TestComputeOnceProperty:
         ]
         for event in events:
             assert event.sig_format_version == 1
-            expected = _canonical_hex(_signing_fields_18(event))
+            expected = _representative_hex(_signing_fields_19(event))
             assert AuditEvent.hash_event_for_chain(event) == expected
 
 
@@ -137,9 +136,9 @@ class TestEndToEndChainVerification:
         assert chain.verify_chain(events) is True
 
     def test_prior_hash_linkage_uses_updated_chain_hash(self) -> None:
-        """Second event's prior_hash must equal hash_event_for_chain of the first (18-field)."""
+        """Second event's prior_hash must equal hash_event_for_chain of the first (19-field)."""
         chain = Sigchain()
         e1 = chain.new_event(event_type="t.1", payload={}, actor="a")
         e2 = chain.new_event(event_type="t.2", payload={}, actor="a")
         assert e2.prior_hash == AuditEvent.hash_event_for_chain(e1)
-        assert e2.prior_hash == _canonical_hex(_signing_fields_18(e1))
+        assert e2.prior_hash == _representative_hex(_signing_fields_19(e1))

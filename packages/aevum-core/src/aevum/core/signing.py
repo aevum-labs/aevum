@@ -193,6 +193,20 @@ class DualSigner:
         """Always True — DualSigner requires ML-DSA-65 keys (ADR-012)."""
         return True
 
+    @property
+    def scheme_suffix(self) -> str:
+        """Lower-case scheme suffix used when constructing the key_scheme string.
+
+        Returns "ml-dsa-65". Combined with the primary signer to form "ed25519+ml-dsa-65".
+        When ML-DSA-87 keys are added in a future phase, override to "ml-dsa-87".
+        """
+        return "ml-dsa-65"
+
+    @property
+    def mldsa_alg(self) -> str:
+        """OQS algorithm name for this signer's ML-DSA variant. Used to select the verifier."""
+        return self._MLDSA65_ALG
+
     @classmethod
     def generate(cls) -> DualSigner:
         """Generate a fresh Ed25519 + ML-DSA-65 keypair.
@@ -333,14 +347,21 @@ class DualSigner:
             raise SignatureError("ML-DSA-65 signature invalid")
 
     @staticmethod
-    def verify_mldsa(data: bytes, mldsa65_sig: bytes, mldsa65_pub: bytes) -> None:
-        """Verify only the ML-DSA-65 signature over data.
+    def verify_mldsa(
+        data: bytes,
+        mldsa65_sig: bytes,
+        mldsa65_pub: bytes,
+        *,
+        alg: str = "ML-DSA-65",
+    ) -> None:
+        """Verify an ML-DSA signature over data.
 
-        Used by verify_chain for fmt==1 hybrid entries where the Ed25519 proof is already
-        covered by the primary signature field — no need to verify a redundant ed25519_sig.
+        Used by verify_chain for hybrid entries where the Ed25519 proof is already covered
+        by the primary signature field. The `alg` parameter enables level agility — pass
+        the OQS algorithm name parsed from key_scheme (e.g. "ML-DSA-65", future "ML-DSA-87").
 
         Raises:
-            SignatureError: If the ML-DSA-65 signature is invalid.
+            SignatureError: If the ML-DSA signature is invalid.
             SignerUnavailableError: If liboqs is not installed.
         """
         if not _OQS_AVAILABLE:
@@ -349,10 +370,10 @@ class DualSigner:
                 "Install the PQC backend: pip install 'aevum-core[pqc]'\n"
                 "An explicit classical-only mode is available in v0.8.0 (see ADR-012)."
             )
-        with _oqs_module.Signature("ML-DSA-65") as verifier:
+        with _oqs_module.Signature(alg) as verifier:
             ok = verifier.verify(data, mldsa65_sig, mldsa65_pub)
         if not ok:
-            raise SignatureError("ML-DSA-65 signature invalid")
+            raise SignatureError(f"{alg} signature invalid")
 
 
 def load_or_generate_ed25519_signer(keys_dir: Path) -> Signer:
