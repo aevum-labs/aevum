@@ -1,6 +1,6 @@
 [project]
 name = "aevum-spiffe"
-version = "0.7.4"
+version = "0.8.0"
 description = "Aevum — SPIFFE/SPIRE cryptographic agent identity complication."
 readme = "README.md"
 requires-python = ">=3.11"

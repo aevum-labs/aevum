@@ -30,5 +30,5 @@ from aevum.otel.bridge import AevumOTelBridge
 from aevum.otel.foqa_bridge import FOQABridge
 from aevum.otel.gatekeeper import GatekeeperFilter
 
-__version__ = "0.7.4"
+__version__ = "0.8.0"
 __all__ = ["AevumOTelBridge", "FOQABridge", "GatekeeperFilter"]

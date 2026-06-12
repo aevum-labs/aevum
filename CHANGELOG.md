@@ -8,6 +8,35 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-06-12
+
+### Added
+
+- **Frozen self-describing signed format.** Each event is canonicalized with RFC 8785
+  (JCS), domain-separated, and signed under a self-describing scheme (`key_scheme`,
+  `hash_alg`, `sig_format_version`). Hybrid Ed25519 + ML-DSA-65 (NIST FIPS 204)
+  signatures, fail-closed, with level agility for future ML-DSA-87 upgrade.
+- **Merkle verifiable-log (RFC 6962-style, SHA3-256).** Signed Tree Heads (STH)
+  with inclusion and consistency proofs — O(log n) verification and detection of
+  any historical rewrite (fork/equivocation).
+- **RFC 3161 TSA anchoring.** Timestamps are applied over the tree-head root,
+  distinct from the self-asserted event timestamp, providing independent time
+  evidence.
+- **Standalone independent verifier (`aevum-verify`).** Re-implements verification
+  from the spec — entry signatures, the sigchain, the Merkle root,
+  inclusion/consistency proofs, tree-head signatures, and TSA certificate-chain
+  validation — all anchored to pinned, out-of-band keys. Ships with a CLI.
+- **Accurate, load-bearing spec + compliance mapping.** The event schema validates
+  real entries; the signing spec documents the exact procedure and trust model;
+  a control mapping traces requirements (incl. SEC 17a-4(f)(2)(i)(A)) to shipped
+  code.
+
+### Changed
+
+- All packages bumped to `0.8.0`.
+- `jsonschema>=4.23` pinned in `aevum-core[dev]` extras for reproducible P2k
+  schema-regression guard in CI.
+
 ## [0.7.4] — 2026-06-07
 
 ### Fixed
