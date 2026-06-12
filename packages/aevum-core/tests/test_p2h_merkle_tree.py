@@ -12,12 +12,19 @@ Test inventory:
   MerkleLog without dual_signer — RuntimeError on signed_tree_head
   STH root matches independent MerkleTree computation
   base regression — verify_chain (linear) still passes unchanged
+  P2i TSA anchor — tsa_token populated when client provided (mocked, no real network)
+  P2i TSA anchor — tsa_token None when client absent or failing
+  P2i TSA anchor — verify_sth_tsa imprint matches root (mocked decode)
+  P2i TSA anchor — verify_sth_tsa None when no token; False on wrong imprint
+  P2i TSA anchor — hybrid signature valid regardless of tsa_token presence
+  P2i TSA anchor — sth.timestamp and sth.tsa_token are independent fields
 """
 from __future__ import annotations
 
 import base64
 import dataclasses
 import hashlib
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -27,12 +34,15 @@ from aevum.core.audit.merkle import (
     STH_DOMAIN,
     MerkleLog,
     MerkleTree,
+    SignedTreeHead,
     _sth_fields,
     leaf_hash,
     node_hash,
     sth_representative,
+    verify_sth_tsa,
 )
 from aevum.core.audit.sigchain import Sigchain
+from aevum.core.tsa import TSAToken
 
 try:
     import oqs as _oqs_check  # noqa: F401
@@ -438,3 +448,251 @@ class TestBaseRegression:
         tree = MerkleTree(digests)
         assert tree.size == 1
         assert tree.root() == leaf_hash(digests[0])
+
+
+# ---------------------------------------------------------------------------
+# P2i: STH TSA anchor — RFC 3161 timestamp over the Merkle root
+# All tests mock the TSA client or decode_timestamp_response; no real network
+# request is ever made (confirmed by using MagicMock instead of TSAClient).
+# ---------------------------------------------------------------------------
+
+def _make_mock_tsa(token_bytes: bytes) -> MagicMock:
+    """Return a mock TSAClient whose .timestamp() returns a TSAToken with token_bytes."""
+    mock_tsa = MagicMock()
+    mock_tsa.timestamp.return_value = TSAToken(tsa_url="mock://tsa", token_bytes=token_bytes)
+    return mock_tsa
+
+
+def _make_failing_mock_tsa() -> MagicMock:
+    """Return a mock TSAClient whose .timestamp() returns None (simulates TSA failure)."""
+    mock_tsa = MagicMock()
+    mock_tsa.timestamp.return_value = None
+    return mock_tsa
+
+
+def _mock_decode_response(root_bytes: bytes, algo: str = "sha512") -> MagicMock:
+    """Build a mock decode_timestamp_response return value for verify_sth_tsa tests."""
+    expected_hash = hashlib.new(algo, root_bytes).digest()
+    oid_map = {"sha512": "2.16.840.1.101.3.4.2.3", "sha256": "2.16.840.1.101.3.4.2.1"}
+
+    mock_imprint = MagicMock()
+    mock_imprint.hash_algorithm.dotted_string = oid_map[algo]
+    mock_imprint.message = expected_hash
+
+    mock_response = MagicMock()
+    mock_response.tst_info.message_imprint = mock_imprint
+    return mock_response
+
+
+class TestSTHTSAToken:
+    """P2i gate tests for STH TSA anchoring."""
+
+    _FAKE_TOKEN_BYTES = b"\x30\x82\x01\x00" + bytes(100)  # opaque fake DER
+
+    @needs_liboqs
+    def test_tsa_token_populated_when_client_provided(self) -> None:
+        """signed_tree_head with tsa_client must attach tsa_token (mock — no real TSA)."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        chain = Sigchain(signer=signer, dual_signer=ds)
+        events = [chain.new_event(event_type="tsa.anchor", payload={}, actor="a")]
+        log = MerkleLog(signer=signer, dual_signer=ds)
+
+        mock_tsa = _make_mock_tsa(self._FAKE_TOKEN_BYTES)
+        sth = log.signed_tree_head(events, tsa_client=mock_tsa)
+
+        assert sth.tsa_token == self._FAKE_TOKEN_BYTES.hex()
+        # Confirm mock was called with the raw Merkle root bytes (32 bytes)
+        called_data = mock_tsa.timestamp.call_args[0][0]
+        assert len(called_data) == 32
+        assert called_data == bytes.fromhex(sth.root_hash)
+
+    @needs_liboqs
+    def test_tsa_token_none_when_no_client(self) -> None:
+        """signed_tree_head without tsa_client → tsa_token is None."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        log = MerkleLog(signer=signer, dual_signer=ds)
+        sth = log.signed_tree_head([])
+        assert sth.tsa_token is None
+
+    @needs_liboqs
+    def test_tsa_token_none_when_client_returns_none(self) -> None:
+        """TSA failure (client returns None) → tsa_token None, STH still produced."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        log = MerkleLog(signer=signer, dual_signer=ds)
+        sth = log.signed_tree_head([], tsa_client=_make_failing_mock_tsa())
+        assert sth.tsa_token is None
+
+    @needs_liboqs
+    def test_tsa_token_none_when_client_raises(self) -> None:
+        """Unexpected TSA exception is caught; tsa_token None, STH still returned."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        log = MerkleLog(signer=signer, dual_signer=ds)
+
+        mock_tsa = MagicMock()
+        mock_tsa.timestamp.side_effect = RuntimeError("boom")
+        sth = log.signed_tree_head([], tsa_client=mock_tsa)
+        assert sth.tsa_token is None
+
+    @needs_liboqs
+    def test_sth_verify_still_valid_with_tsa_token(self) -> None:
+        """verify_sth must return True even when tsa_token is present."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        chain = Sigchain(signer=signer, dual_signer=ds)
+        events = [chain.new_event(event_type="tsa.valid", payload={}, actor="a")]
+        log = MerkleLog(signer=signer, dual_signer=ds)
+
+        sth = log.signed_tree_head(events, tsa_client=_make_mock_tsa(self._FAKE_TOKEN_BYTES))
+        assert sth.tsa_token is not None
+        assert log.verify_sth(sth) is True
+
+    @needs_liboqs
+    def test_sth_verify_still_valid_without_tsa_token(self) -> None:
+        """verify_sth must return True when tsa_token is absent (graceful degradation)."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        log = MerkleLog(signer=signer, dual_signer=ds)
+        sth = log.signed_tree_head([])
+        assert sth.tsa_token is None
+        assert log.verify_sth(sth) is True
+
+    @needs_liboqs
+    def test_timestamp_and_tsa_token_are_independent(self) -> None:
+        """sth.timestamp (self-asserted) and sth.tsa_token (external) are both present."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        log = MerkleLog(signer=signer, dual_signer=ds)
+
+        sth = log.signed_tree_head([], tsa_client=_make_mock_tsa(self._FAKE_TOKEN_BYTES))
+        assert isinstance(sth.timestamp, int)   # self-asserted Unix seconds
+        assert sth.tsa_token is not None        # external RFC 3161 attestation
+        # They are distinct fields; neither collapses the other
+        assert sth.timestamp != sth.tsa_token
+
+    def test_verify_sth_tsa_returns_none_when_no_token(self) -> None:
+        """verify_sth_tsa must return None when tsa_token is absent."""
+        # Build a minimal STH with all required fields and tsa_token=None
+        sth = SignedTreeHead(
+            tree_size=0,
+            root_hash="a" * 64,
+            timestamp=1000000,
+            log_id="b" * 64,
+            hash_alg="sha3-256",
+            key_scheme="ed25519+ml-dsa-65",
+            ed25519_sig="c" * 86,
+            mldsa65_sig="d" * 6618,
+            mldsa65_pub="e" * 3904,
+            ed25519_pub="f" * 64,
+            tsa_token=None,
+        )
+        assert verify_sth_tsa(sth) is None
+
+    @needs_liboqs
+    def test_verify_sth_tsa_imprint_matches_root(self) -> None:
+        """verify_sth_tsa returns True when mock imprint matches root hash bytes."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        log = MerkleLog(signer=signer, dual_signer=ds)
+
+        sth = log.signed_tree_head([], tsa_client=_make_mock_tsa(self._FAKE_TOKEN_BYTES))
+        assert sth.tsa_token is not None
+
+        root_bytes = bytes.fromhex(sth.root_hash)
+        mock_response = _mock_decode_response(root_bytes, algo="sha512")
+
+        with patch("aevum.core.audit.merkle.decode_timestamp_response", return_value=mock_response):
+            result = verify_sth_tsa(sth)
+
+        assert result is True
+
+    @needs_liboqs
+    def test_verify_sth_tsa_wrong_imprint_returns_false(self) -> None:
+        """verify_sth_tsa returns False when the message imprint does not match the root."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        log = MerkleLog(signer=signer, dual_signer=ds)
+
+        sth = log.signed_tree_head([], tsa_client=_make_mock_tsa(self._FAKE_TOKEN_BYTES))
+        assert sth.tsa_token is not None
+
+        # Build a mock response where the message imprint is all zeros (wrong hash)
+        mock_imprint = MagicMock()
+        mock_imprint.hash_algorithm.dotted_string = "2.16.840.1.101.3.4.2.3"  # sha512
+        mock_imprint.message = bytes(64)  # wrong — not sha512(root_bytes)
+
+        mock_response = MagicMock()
+        mock_response.tst_info.message_imprint = mock_imprint
+
+        with patch("aevum.core.audit.merkle.decode_timestamp_response", return_value=mock_response):
+            result = verify_sth_tsa(sth)
+
+        assert result is False
+
+    @needs_liboqs
+    def test_verify_sth_tsa_sha256_imprint(self) -> None:
+        """verify_sth_tsa handles SHA-256 OID as well as SHA-512."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        log = MerkleLog(signer=signer, dual_signer=ds)
+
+        sth = log.signed_tree_head([], tsa_client=_make_mock_tsa(self._FAKE_TOKEN_BYTES))
+        assert sth.tsa_token is not None
+
+        root_bytes = bytes.fromhex(sth.root_hash)
+        mock_response = _mock_decode_response(root_bytes, algo="sha256")
+
+        with patch("aevum.core.audit.merkle.decode_timestamp_response", return_value=mock_response):
+            result = verify_sth_tsa(sth)
+
+        assert result is True
+
+    @needs_liboqs
+    def test_verify_sth_tsa_unknown_oid_returns_false(self) -> None:
+        """verify_sth_tsa returns False for an unrecognised hash algorithm OID."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        log = MerkleLog(signer=signer, dual_signer=ds)
+
+        sth = log.signed_tree_head([], tsa_client=_make_mock_tsa(self._FAKE_TOKEN_BYTES))
+        assert sth.tsa_token is not None
+
+        mock_imprint = MagicMock()
+        mock_imprint.hash_algorithm.dotted_string = "1.2.3.4.5.99"  # unknown OID
+        mock_imprint.message = bytes(32)
+
+        mock_response = MagicMock()
+        mock_response.tst_info.message_imprint = mock_imprint
+
+        with patch("aevum.core.audit.merkle.decode_timestamp_response", return_value=mock_response):
+            result = verify_sth_tsa(sth)
+
+        assert result is False
+
+    @needs_liboqs
+    def test_no_real_tsa_network_request_in_tests(self) -> None:
+        """Confirm that no real httpx.post is made when using the mock TSA client."""
+        from aevum.core.signing import DualSigner
+        ds = DualSigner.generate()
+        signer = ds.as_primary_signer()
+        log = MerkleLog(signer=signer, dual_signer=ds)
+
+        with patch("aevum.core.tsa.httpx.post") as mock_http:
+            sth = log.signed_tree_head([], tsa_client=_make_mock_tsa(self._FAKE_TOKEN_BYTES))
+            mock_http.assert_not_called()
+
+        assert sth.tsa_token == self._FAKE_TOKEN_BYTES.hex()

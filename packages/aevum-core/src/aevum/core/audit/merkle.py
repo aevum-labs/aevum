@@ -25,6 +25,13 @@ This mirrors the signing pattern in sigchain.new_event().
 Inclusion proofs (RFC 6962 §2.1.1): PATH algorithm; verified by verify_inclusion().
 Consistency proofs (RFC 6962 §2.1.2): SUBPROOF/PROOF algorithm; verified by
 verify_consistency(). Both standalone verifiers are independent of MerkleTree._mth.
+
+STH TSA anchoring (RFC 3161): signed_tree_head() accepts an optional tsa_client;
+if supplied, it timestamps the raw 32-byte Merkle root after signing and attaches
+the DER token as sth.tsa_token (hex). This is independent of the self-asserted
+sth.timestamp — both claims coexist. A TSA outage never blocks the STH (tenet 3).
+verify_sth_tsa() checks the message imprint in the token against the root hash.
+Full TSA cert-chain validation is deferred to the standalone verifier pass.
 """
 
 from __future__ import annotations
@@ -32,14 +39,27 @@ from __future__ import annotations
 import base64
 import dataclasses
 import hashlib
+import logging
 import time
 from typing import TYPE_CHECKING, Any
+
+from rfc3161_client import decode_timestamp_response
 
 from aevum.core.audit.event import AuditEvent, _canonicalize
 from aevum.core.audit.signer import Signer
 
 if TYPE_CHECKING:
     from aevum.core.signing import DualSigner
+    from aevum.core.tsa import TSAClient
+
+logger = logging.getLogger(__name__)
+
+# SHA OID → hashlib algorithm name (covers the two OIDs that rfc3161-client uses)
+_SHA_OID_TO_ALGO: dict[str, str] = {
+    "2.16.840.1.101.3.4.2.1": "sha256",
+    "2.16.840.1.101.3.4.2.2": "sha384",
+    "2.16.840.1.101.3.4.2.3": "sha512",
+}
 
 # ---------------------------------------------------------------------------
 # Leaf / node domain bytes (RFC 6962 §2.1)
@@ -274,6 +294,11 @@ class SignedTreeHead:
     mldsa65_sig: str  # hex, ML-DSA-65 over representative directly
     mldsa65_pub: str  # hex, ML-DSA-65 public key (1952 bytes)
     ed25519_pub: str  # hex, Ed25519 public key (32 bytes)
+    # RFC 3161 TSA token over the Merkle root bytes — independent time attestation.
+    # Hex-encoded DER TimeStampResponse; None when no TSA client was provided or TSA
+    # was unavailable (non-blocking — the hybrid signature is the integrity guarantee).
+    # Distinct from self-asserted `timestamp`: both claims are kept, never collapsed.
+    tsa_token: str | None = None
 
 
 def _sth_fields(
@@ -327,13 +352,22 @@ class MerkleLog:
         self._signer = signer
         self._dual_signer = dual_signer
 
-    def signed_tree_head(self, events: list[AuditEvent]) -> SignedTreeHead:
+    def signed_tree_head(
+        self,
+        events: list[AuditEvent],
+        *,
+        tsa_client: TSAClient | None = None,
+    ) -> SignedTreeHead:
         """Build the Merkle tree over events and return a hybrid-signed STH.
 
         Entry digest per event: bytes.fromhex(AuditEvent.hash_event_for_chain(event)).
         STH fields canonicalized with STH_DOMAIN for cross-type domain separation.
         Ed25519 signs sha3_256(representative); ML-DSA-65 signs representative directly.
         ML-DSA-65 is belt-and-suspenders verified immediately after signing.
+
+        If tsa_client is provided, the raw 32-byte Merkle root is timestamped via RFC 3161
+        after the hybrid signatures are produced. A TSA failure is non-blocking: the STH
+        is returned with tsa_token=None. The TSA token is independent of sth.timestamp.
 
         Raises:
             RuntimeError: if dual_signer was not provided.
@@ -373,6 +407,16 @@ class MerkleLog:
         # Belt-and-suspenders: verify ML-DSA-65 at write time
         DualSigner.verify_mldsa(representative, dual_sig.mldsa65_sig, dual_sig.mldsa65_pub)
 
+        # RFC 3161 TSA anchor over the raw Merkle root bytes — after signing,
+        # non-blocking. The tsa_token is independent of the self-asserted timestamp.
+        tsa_token_hex: str | None = None
+        if tsa_client is not None:
+            try:
+                tok = tsa_client.timestamp(root)
+                tsa_token_hex = tok.token_bytes.hex() if tok else None
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("STH TSA timestamp failed (non-blocking): %s", exc)
+
         return SignedTreeHead(
             tree_size=tree.size,
             root_hash=root.hex(),
@@ -384,6 +428,7 @@ class MerkleLog:
             mldsa65_sig=dual_sig.mldsa65_sig.hex(),
             mldsa65_pub=dual_sig.mldsa65_pub.hex(),
             ed25519_pub=self._signer.public_key_bytes().hex(),
+            tsa_token=tsa_token_hex,
         )
 
     def verify_sth(self, sth: SignedTreeHead) -> bool:
@@ -427,3 +472,37 @@ class MerkleLog:
             return False
 
         return True
+
+
+def verify_sth_tsa(sth: SignedTreeHead) -> bool | None:
+    """Verify the RFC 3161 message imprint in sth.tsa_token against the STH root.
+
+    Decodes the DER TimeStampResponse stored in sth.tsa_token and checks that its
+    message imprint equals hashlib.<algo>(bytes.fromhex(sth.root_hash)), where <algo>
+    is determined from the OID embedded in the token.
+
+    Returns:
+        None   — sth.tsa_token is absent (no TSA attestation was attached).
+        True   — the message imprint matches the root hash bytes.
+        False  — the token is present but the imprint does not match, the hash
+                 algorithm OID is unrecognised, or the token cannot be decoded.
+
+    Full TSA certificate-chain validation is deferred to the standalone verifier pass.
+    """
+    if sth.tsa_token is None:
+        return None
+    try:
+        token_bytes = bytes.fromhex(sth.tsa_token)
+        response = decode_timestamp_response(token_bytes)
+        imprint = response.tst_info.message_imprint
+        oid = imprint.hash_algorithm.dotted_string
+        algo = _SHA_OID_TO_ALGO.get(oid)
+        if algo is None:
+            logger.warning("STH TSA token uses unrecognised hash OID: %s", oid)
+            return False
+        root_bytes = bytes.fromhex(sth.root_hash)
+        expected = hashlib.new(algo, root_bytes).digest()
+        return imprint.message == expected
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("STH TSA token verification failed: %s", exc)
+        return False
