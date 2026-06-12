@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to (re)publish, e.g. v0.8.0 (publishes only packages not already on PyPI via skip-existing)"
+        required: true
+        type: string
 
 jobs:
   build-and-publish:
@@ -15,7 +21,7 @@ jobs:
       contents: write     # Required for GitHub release creation
       attestations: write # Required for attest-build-provenance
     env:
-      RELEASE_TAG: ${{ github.ref_name }}
+      RELEASE_TAG: ${{ github.event.inputs.version || github.ref_name }}
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
@@ -111,8 +117,10 @@ jobs:
         with:
           packages-dir: dist/
           attestations: true
+          skip-existing: true          # re-publish-safe; skips versions already on PyPI
 
       - name: Create GitHub Release
+        if: github.event_name == 'push'      # only on tag push, skip on manual dispatch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
