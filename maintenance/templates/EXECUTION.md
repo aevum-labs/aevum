@@ -47,6 +47,57 @@ baseline, treat it as a blocking issue requiring an ADR before proceeding.
 
 ---
 
+## Phase 0.5 — Seat-Rotation Pre-flight (authoring-side, before the handoff ships)
+
+**Rule:** every claim in a handoff is either (a) verified against source/primary
+reference this session, or (b) explicitly tagged `UNVERIFIED — confirm before
+use`. No claim ships as confident prose from memory. If you cannot name how a
+seat below would attack the handoff, you have not occupied it.
+
+Rotate through the seats the change touches. Not all apply to every pass — name
+the ones that do, and record the check.
+
+- [ ] **Implementer** — *"What does this field/function/symbol actually contain?"*
+      Read it from source, do not infer from its name.
+      › *Would have caught P2j:* `signer_key_id` is a UUID, not the pubkey hex.
+
+- [ ] **Release engineer** — *"What breaks at the repo/monorepo level, not the
+      file level?"* Namespace collisions, test-collection basenames, version
+      bumps across all `packages/*`, PyPI presence, CI job scope.
+      › *Would have caught the collision:* two `test_cli.py` basenames.
+
+- [ ] **Adversary** — *"How would I forge a pass / defeat this control?"* For any
+      verification, signing, or trust boundary: what does a malicious input
+      supply, and does the check trust something the artifact carries about
+      itself? (Trust anchors must be pinned out-of-band.)
+      › *Did catch P2j by design:* embedded `mldsa65_pub` → circular verify.
+
+- [ ] **Re-implementer** — *"Could a third party build a conformant component
+      from the spec/handoff alone, in another language?"* Any gap or error in a
+      load-bearing doc becomes their failed verification of our valid records.
+      › *Spec-accuracy pass:* the fake `json.dumps` JCS would mismatch on non-ASCII.
+
+- [ ] **Regulator / auditor's counsel** — *(compliance/regulatory artifacts)*
+      Every citation verified against **primary source** (eCFR, OJ, NIST release),
+      not a secondary blog. Claims are capability-framed, never compliance
+      verdicts. Subsection numbers drift — pin them.
+      › *P2L:* a vendor blog's "(f)(2)(ii)(A)" was wrong; codified is (f)(2)(i)(A).
+
+- [ ] **Future maintainer** — *"In 12 months, does this still mean what it says?"*
+      `UNVERIFIED` tags still gated, hedged dates still hedged, deferred items
+      tracked in the plan (not in memory), no claim that silently went stale.
+
+- [ ] **liboqs reality check** — *(any hybrid/PQC-touching pass)* Hybrid tests
+      run **with liboqs built** (0.14.0 from source) or the gate is marked
+      `pending CI`. A skipped test proves nothing.
+
+**Output of Phase 0.5:** a one-line note per applicable seat in the handoff's
+pre-flight section ("Implementer: read `signing.py:242` — confirmed 19 fields"),
+so the executor and maintainer can see which seats were occupied and which
+claims rest on verification vs. flag.
+
+---
+
 ## Phase 1 — Apply fixes from Research Report
 
 Apply each fix identified in the Research Report. For each:
