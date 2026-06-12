@@ -1,0 +1,57 @@
+# .github/workflows/publish-aevum-verify.yml
+#
+# ONE-OFF recovery workflow — publishes ONLY aevum-verify to PyPI.
+# Reason: aevum-verify (new in v0.8.0) had no pending publisher at release time,
+# so the main release.yml publish step 400'd before uploading it. The other 13
+# public packages published 0.8.0 successfully.
+#
+# Run AFTER:
+#   1. aevum-verify pending publisher is registered on PyPI (done).
+#   2. This file is merged to main.
+# Trigger: Actions tab -> "Publish aevum-verify (one-off)" -> Run workflow (from main).
+#
+# SAFE TO DELETE after aevum-verify 0.8.0 is live on PyPI.
+
+name: Publish aevum-verify (one-off)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  publish-aevum-verify:
+    name: Build and publish aevum-verify to PyPI
+    runs-on: ubuntu-latest
+    environment: release          # MUST match the pending-publisher's environment
+    permissions:
+      id-token: write             # Trusted Publishing (OIDC)
+      attestations: write         # build provenance attestation
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: pip install "hatchling>=1.21" "build>=1.0"
+
+      - name: Build ONLY aevum-verify
+        run: |
+          mkdir -p dist
+          python -m build packages/aevum-verify/ --outdir dist/
+          echo "Built:"
+          ls dist/
+          # sanity: confirm it is 0.8.0, nothing else snuck in
+          ls dist/ | grep -q "aevum_verify-0.8.0" || { echo "ERROR: aevum-verify 0.8.0 not in dist"; exit 1; }
+          ls dist/ | grep -v "aevum_verify-0.8.0" && { echo "ERROR: unexpected artifacts in dist"; exit 1; } || true
+
+      - name: Publish aevum-verify to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # release/v1
+        with:
+          packages-dir: dist/
+          attestations: true
+          skip-existing: true     # idempotent: a re-run won't error if it's already up
