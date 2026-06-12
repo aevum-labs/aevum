@@ -268,9 +268,7 @@ class Sigchain:
         ).rstrip(b"=").decode()
 
         # Phase 1: dual-sig + TSA (belt-and-suspenders, non-blocking)
-        ed25519_sig_hex: str | None = None
         mldsa65_sig_hex: str | None = None
-        ed25519_pub_hex: str | None = None
         mldsa65_pub_hex: str | None = None
         tsa_url: str | None = None
         tsa_token_hex: str | None = None
@@ -280,8 +278,6 @@ class Sigchain:
                 from aevum.core.signing import DualSigner
                 dual_sig = self._dual_signer.sign(canonical)
                 DualSigner.verify(canonical, dual_sig)  # belt-and-suspenders at write time
-                # fmt==1: primary signature (event.signature) is the Ed25519 proof.
-                # Only the ML-DSA-65 half is persisted; ed25519_sig/ed25519_pub are redundant.
                 mldsa65_sig_hex = dual_sig.mldsa65_sig.hex()
                 mldsa65_pub_hex = dual_sig.mldsa65_pub.hex()
             except Exception as exc:
@@ -318,9 +314,7 @@ class Sigchain:
             prior_hash=prior,
             signature=signature,
             signer_key_id=self._signer.key_id,
-            ed25519_sig=ed25519_sig_hex,
             mldsa65_sig=mldsa65_sig_hex,
-            ed25519_pub=ed25519_pub_hex,
             mldsa65_pub=mldsa65_pub_hex,
             tsa_url=tsa_url,
             tsa_token=tsa_token_hex,
@@ -390,39 +384,30 @@ class Sigchain:
         """Verify the entire chain from genesis. Returns True only if every entry is intact.
 
         An entry is "intact" when all of the following hold:
-          1. prior_hash matches the expected value (GENESIS_HASH for the first entry, or the
-             chain hash of the preceding entry for all subsequent entries).
-          2. payload_hash matches SHA3-256(canonical_payload) — the payload was not modified.
-          3. The Ed25519 signature (RFC 8032) verifies against SHA3-256(signing_fields).
-          4. If DualSigner is present and the entry carries mldsa65_sig: the ML-DSA-65
-             signature also verifies. Both must pass when present.
+          1. sig_format_version == 1 (any other value, including None, is rejected).
+          2. prior_hash matches the expected value (GENESIS_HASH for entry #1, or the chain
+             hash of the preceding entry for all subsequent entries).
+          3. payload_hash matches SHA3-256(canonical_payload).
+          4. The Ed25519 signature verifies against SHA3-256(18-field signing_fields).
+          5. key_scheme dispatch: "ed25519" → Ed25519 only; "ed25519+ml-dsa-65" → Ed25519
+             AND ML-DSA-65 both required (absence = tamper/downgrade, fail closed).
+          6. Homogeneity (D-S3): all entries share the same key_scheme; a mixed chain is the
+             fingerprint of a downgrade or splice attack.
 
-        A modification to any entry breaks the chain from that point forward because the
-        next entry's prior_hash will no longer match. The verifier returns False as soon as
-        any check fails — it does not attempt to isolate or skip the broken entry.
-
-        Args:
-            events: Ordered list of AuditEvent entries beginning at sequence=1.
-
-        Returns:
-            True if every entry passes every integrity check; False on first failure.
+        Returns False on the first failing check — does not skip or isolate broken entries.
         """
-        # Obtain public key bytes and reconstruct Ed25519PublicKey for verification
         pub_key_bytes = self._signer.public_key_bytes()
         public_key = Ed25519PublicKey.from_public_bytes(pub_key_bytes)
 
-        # Homogeneity check (D-S3 downgrade/splice defence): all fmt==1 entries must share
-        # the same key_scheme. A mixed chain (some ed25519 + some ed25519+ml-dsa-65) is the
-        # fingerprint of a downgrade or splice attack.
-        # fmt==None (legacy pre-P2a) entries carry no bound key_scheme and are exempt.
-        # Known limitation: mid-chain posture transitions are not supported in v0.8.0 —
-        # homogeneous chains only; signed posture-change transitions are deferred to a later phase.
-        fmt1_schemes = {
-            event.key_scheme
-            for event in events
-            if getattr(event, "sig_format_version", None) == 1
-        }
-        if len(fmt1_schemes) > 1:
+        # Pre-pass 1: every entry must be sig_format_version == 1. None or any other value
+        # is rejected immediately — no fallback, no legacy path.
+        if not all(getattr(e, "sig_format_version", None) == 1 for e in events):
+            return False
+
+        # Pre-pass 2: homogeneity — all entries must share the same key_scheme.
+        # Known limitation: mid-chain posture transitions are not supported in v0.8.0;
+        # signed posture-change transitions are deferred to a later phase.
+        if len({event.key_scheme for event in events}) > 1:
             return False
 
         expected_prior = GENESIS_HASH
@@ -432,9 +417,7 @@ class Sigchain:
             if AuditEvent.hash_payload(event.payload) != event.payload_hash:
                 return False
 
-            fmt = getattr(event, "sig_format_version", None)
-
-            base_fields: dict[str, Any] = {
+            signing_fields: dict[str, Any] = {
                 "event_id": event.event_id,
                 "episode_id": event.episode_id,
                 "sequence": event.sequence,
@@ -451,18 +434,9 @@ class Sigchain:
                 "payload_hash": event.payload_hash,
                 "prior_hash": event.prior_hash,
                 "signer_key_id": event.signer_key_id,
+                "key_scheme": event.key_scheme,
+                "sig_format_version": 1,
             }
-
-            if fmt is None:
-                signing_fields = base_fields
-            elif fmt == 1:
-                signing_fields = {
-                    **base_fields,
-                    "key_scheme": event.key_scheme,
-                    "sig_format_version": 1,
-                }
-            else:
-                return False  # unknown future format: fail closed, don't guess
 
             canonical = json.dumps(
                 signing_fields, sort_keys=True, separators=(",", ":")
@@ -475,46 +449,24 @@ class Sigchain:
             except Exception:
                 return False
 
-            if fmt is None:
-                # Legacy path: ML-DSA optional, keyed on signer presence (unchanged behaviour)
-                if event.mldsa65_sig is not None and self._dual_signer is not None:
-                    try:
-                        from aevum.core.signing import DualSignature, DualSigner
-                        if (event.ed25519_sig is not None
-                                and event.ed25519_pub is not None
-                                and event.mldsa65_pub is not None):
-                            dual_sig = DualSignature(
-                                ed25519_sig=bytes.fromhex(event.ed25519_sig),
-                                mldsa65_sig=bytes.fromhex(event.mldsa65_sig),
-                                ed25519_pub=bytes.fromhex(event.ed25519_pub),
-                                mldsa65_pub=bytes.fromhex(event.mldsa65_pub),
-                            )
-                            DualSigner.verify(canonical, dual_sig)
-                    except Exception:
-                        return False
+            ks = event.key_scheme
+            if ks == "ed25519":
+                pass  # primary Ed25519 already verified above
+            elif ks == "ed25519+ml-dsa-65":
+                # ML-DSA-65 presence is REQUIRED — absence = tamper/downgrade attack.
+                if event.mldsa65_sig is None or event.mldsa65_pub is None:
+                    return False
+                try:
+                    from aevum.core.signing import DualSigner
+                    DualSigner.verify_mldsa(
+                        canonical,
+                        bytes.fromhex(event.mldsa65_sig),
+                        bytes.fromhex(event.mldsa65_pub),
+                    )
+                except Exception:
+                    return False  # liboqs absent or invalid sig → fail closed
             else:
-                # fmt == 1: dispatch on the bound key_scheme value
-                ks = event.key_scheme
-                if ks == "ed25519":
-                    pass  # primary Ed25519 already verified above
-                elif ks == "ed25519+ml-dsa-65":
-                    # Primary Ed25519 already verified above (event.signature).
-                    # ML-DSA-65 presence is REQUIRED — absence = tamper/downgrade attack.
-                    # ed25519_sig/ed25519_pub are not required (removed in P2b-2);
-                    # old entries that still carry them are silently ignored.
-                    if event.mldsa65_sig is None or event.mldsa65_pub is None:
-                        return False
-                    try:
-                        from aevum.core.signing import DualSigner
-                        DualSigner.verify_mldsa(
-                            canonical,
-                            bytes.fromhex(event.mldsa65_sig),
-                            bytes.fromhex(event.mldsa65_pub),
-                        )
-                    except Exception:
-                        return False  # liboqs absent or invalid sig → fail closed
-                else:
-                    return False  # unknown scheme on a versioned entry: no warn-and-fallback
+                return False  # unknown scheme: no warn-and-fallback
 
             expected_prior = AuditEvent.hash_event_for_chain(event)
         return True

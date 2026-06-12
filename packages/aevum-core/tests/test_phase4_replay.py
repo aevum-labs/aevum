@@ -40,7 +40,7 @@ def _write_session(
     events = tuple(_make_event(i, session_id) for i in range(n_events))
     root = SessionRecord.compute_merkle_root(events)
     engine._conn.execute(
-        "INSERT OR REPLACE INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,NULL,NULL,NULL,NULL,NULL,NULL)",
+        "INSERT OR REPLACE INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,NULL,NULL,NULL,NULL)",
         (session_id, commit_type.value, "agent", "test",
          now.isoformat(), now.isoformat(), len(events), 0, 0, root),
     )

@@ -49,9 +49,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     fact_count          INTEGER NOT NULL,
     checkpoint_count    INTEGER NOT NULL,
     merkle_root         TEXT NOT NULL,
-    ed25519_sig         TEXT,
     mldsa65_sig         TEXT,
-    ed25519_pub         TEXT,
     mldsa65_pub         TEXT,
     tsa_token           TEXT,
     sigchain_entry_id   TEXT
@@ -232,14 +230,12 @@ class Session:
             conn.execute(_CREATE_SESSIONS)
             conn.execute(_CREATE_SESSION_EVENTS)
 
-            ed25519_sig = dual_sig.ed25519_sig.hex() if dual_sig else None
             mldsa65_sig = dual_sig.mldsa65_sig.hex() if dual_sig else None
-            ed25519_pub = dual_sig.ed25519_pub.hex() if dual_sig else None
             mldsa65_pub = dual_sig.mldsa65_pub.hex() if dual_sig else None
 
             cursor = conn.execute(
                 "INSERT OR REPLACE INTO sessions VALUES "
-                "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     record.session_id,
                     record.commit_type.value,
@@ -251,9 +247,7 @@ class Session:
                     len(record.fact_ids),
                     len(record.checkpoint_ids),
                     record.merkle_root,
-                    ed25519_sig,
                     mldsa65_sig,
-                    ed25519_pub,
                     mldsa65_pub,
                     tsa_hex,
                     None,  # sigchain_entry_id populated after sigchain append

@@ -37,15 +37,14 @@ class TestSigchainFacade:
 
 class TestSigchainDualSig:
     def test_sigchain_with_dual_signer_stores_fields(self):
-        """P2b-2: only ML-DSA-65 fields are persisted; ed25519_sig/ed25519_pub are dropped."""
+        """P2f: AuditEvent stores only ML-DSA-65 fields; ed25519_sig/ed25519_pub removed."""
         dual_signer = DualSigner.generate()
         tsa_client = TSAClient(enabled=False)
         chain = Sigchain(dual_signer=dual_signer, tsa_client=tsa_client)
         event = chain.new_event(event_type="test.e", payload={}, actor="test")
 
-        # ed25519_sig/ed25519_pub no longer stored — primary signature field is the Ed25519 proof
-        assert event.ed25519_sig is None
-        assert event.ed25519_pub is None
+        assert not hasattr(event, "ed25519_sig"), "ed25519_sig must not exist on AuditEvent (P2f)"
+        assert not hasattr(event, "ed25519_pub"), "ed25519_pub must not exist on AuditEvent (P2f)"
         assert event.mldsa65_sig is not None
         assert event.mldsa65_pub is not None
 
@@ -64,9 +63,7 @@ class TestSigchainDualSig:
         chain = Sigchain()
         event = chain.new_event(event_type="test.e", payload={}, actor="test")
 
-        assert event.ed25519_sig is None
         assert event.mldsa65_sig is None
-        assert event.ed25519_pub is None
         assert event.mldsa65_pub is None
 
     def test_sigchain_tsa_disabled_stores_none(self):
