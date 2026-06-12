@@ -24,6 +24,7 @@ members = [
     "aevum-spiffe",
     "aevum-store-oxigraph",
     "aevum-store-postgres",
+    "aevum-verify",
 ]
 constraints = [
     { name = "python-multipart", specifier = ">=0.0.27" },
@@ -38,6 +39,7 @@ dev = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "hypothesis", specifier = ">=6.100" },
     { name = "inline-snapshot", specifier = ">=0.13" },
+    { name = "liboqs-python", specifier = ">=0.14.1" },
     { name = "mypy", specifier = ">=1.10" },
     { name = "pip-audit", specifier = ">=2.6" },
     { name = "pytest", specifier = ">=8.0" },
@@ -477,6 +479,40 @@ requires-dist = [
     { name = "aevum-core", editable = "packages/aevum-core" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.1,<4.0" },
 ]
+
+[[package]]
+name = "aevum-verify"
+version = "0.8.0"
+source = { editable = "packages/aevum-verify" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "rfc8785" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "aevum-core" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+pqc = [
+    { name = "liboqs-python" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aevum-core", marker = "extra == 'dev'", editable = "packages/aevum-core" },
+    { name = "cryptography", specifier = ">=42.0" },
+    { name = "liboqs-python", marker = "extra == 'pqc'", specifier = ">=0.14.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.9" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "rfc8785", specifier = ">=0.1.2" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
+]
+provides-extras = ["pqc", "dev"]
 
 [[package]]
 name = "agent-framework-core"
