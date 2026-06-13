@@ -1,0 +1,65 @@
+name: Diag Demo Routing (read-only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  http_dns:
+    runs-on: ubuntu-latest
+    steps:
+      - name: DNS resolution
+        run: |
+          python3 - <<'PY'
+          import socket
+          for h in ["demo.aevum.build","aevum-maintainer.fly.dev","aevum-demo.fly.dev"]:
+              try: print(h, "=>", socket.gethostbyname_ex(h))
+              except Exception as e: print(h, "ERROR", e)
+          PY
+      - name: HTTP fingerprint + routing headers
+        run: |
+          for H in demo.aevum.build aevum-maintainer.fly.dev aevum-demo.fly.dev; do
+            echo "===== $H ====="
+            curl -s -m 15 -D - -o /dev/null "https://$H/" \
+              | grep -iE "^(server|fly-request-id|via|x-served-by|cf-ray|location):" \
+              || echo "(no distinctive headers)"
+            curl -s -m 15 "https://$H/openapi.json" \
+              | python3 -c 'import sys,json;d=json.load(sys.stdin);i=d.get("info",{});print("openapi title:",i.get("title"),"version:",i.get("version"))' \
+              2>/dev/null || echo "openapi: (non-JSON or unreachable)"
+            curl -s -m 15 -o /dev/null -w "health: %{http_code}\n" "https://$H/health"
+          done
+      - name: aevum-maintainer sigchain data
+        run: curl -s -m 15 "https://aevum-maintainer.fly.dev/v1/sigchain/recent" | head -c 600; echo
+  fly_state:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: FLY token presence (no value printed)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN_DEMO: ${{ secrets.FLY_API_TOKEN_DEMO }}
+        run: |
+          [ -n "$FLY_API_TOKEN" ] && echo "FLY_API_TOKEN: set (len ${#FLY_API_TOKEN})" || echo "FLY_API_TOKEN: MISSING"
+          [ -n "$FLY_API_TOKEN_DEMO" ] && echo "FLY_API_TOKEN_DEMO: set (len ${#FLY_API_TOKEN_DEMO})" || echo "FLY_API_TOKEN_DEMO: MISSING"
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Read-only Fly state, main token (NO mutations)
+        continue-on-error: true
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set +e
+          echo "--- whoami ---";                   flyctl auth whoami
+          echo "--- apps list ---";                flyctl apps list
+          echo "--- maintainer status ---";        flyctl status -a aevum-maintainer
+          echo "--- maintainer volumes ---";       flyctl volumes list -a aevum-maintainer
+          echo "--- certs on aevum-maintainer ---";flyctl certs list -a aevum-maintainer
+          echo "--- certs on aevum-demo ---";      flyctl certs list -a aevum-demo
+      - name: aevum-demo certs, demo token (NO mutations)
+        continue-on-error: true
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_DEMO }}
+        run: |
+          set +e
+          echo "--- demo-token whoami ---";          flyctl auth whoami
+          echo "--- demo-token apps list ---";       flyctl apps list
+          echo "--- demo-token certs aevum-demo ---";flyctl certs list -a aevum-demo
