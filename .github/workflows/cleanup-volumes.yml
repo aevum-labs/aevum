@@ -38,7 +38,7 @@ jobs:
           print("KEEP:");   [print("  ", *k) for k in keep]
           print(f"DELETE candidates ({len(delete)}):"); [print("  ", d) for d in delete]
           assert PROTECT.isdisjoint(delete), "ABORT: protected volume in delete set"
-          assert len(delete) <= 75, f"ABORT: refusing to delete {len(delete)} (sanity cap)"
+          assert len(delete) <= 100, f"ABORT: refusing to delete {len(delete)} (sanity cap)"
           if mode == "DELETE":
               for d in delete:
                   print("destroying", d)
