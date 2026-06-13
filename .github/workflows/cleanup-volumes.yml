@@ -1,0 +1,49 @@
+name: Cleanup orphan volumes (gated)
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dryrun = list only; DELETE = actually destroy unattached volumes"
+        required: true
+        default: "dryrun"
+        type: choice
+        options: [dryrun, DELETE]
+permissions: { contents: read }
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Prune unattached aevum_maintainer_data volumes
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          flyctl volumes list -a aevum-maintainer --json > vols.json
+          python3 - <<'PY'
+          import json, os, subprocess
+          mode = os.environ["MODE"]
+          PROTECT = {"vol_vgnnl2n7xjyyy584"}   # live sigchain — never delete
+          vols = json.load(open("vols.json"))
+          keep, delete = [], []
+          for v in vols:
+              vid, name = v.get("id"), v.get("name")
+              attached = bool(v.get("attached_machine_id") or v.get("attached_alloc_id") or v.get("attached_machine"))
+              if name == "aevum_maintainer_data" and not attached and vid not in PROTECT:
+                  delete.append(vid)
+              else:
+                  keep.append((vid, name, "ATTACHED" if attached else "kept"))
+          print("KEEP:");   [print("  ", *k) for k in keep]
+          print(f"DELETE candidates ({len(delete)}):"); [print("  ", d) for d in delete]
+          assert PROTECT.isdisjoint(delete), "ABORT: protected volume in delete set"
+          assert len(delete) <= 75, f"ABORT: refusing to delete {len(delete)} (sanity cap)"
+          if mode == "DELETE":
+              for d in delete:
+                  print("destroying", d)
+                  subprocess.run(["flyctl","volumes","destroy",d,"-y"], check=False)
+              print(f"Done. Destroyed {len(delete)}.")
+          else:
+              print("DRYRUN only — nothing destroyed. Re-run with mode=DELETE.")
+          PY
