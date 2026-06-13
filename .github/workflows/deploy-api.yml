@@ -34,16 +34,18 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           MAINTENANCE_INGEST_TOKEN: ${{ secrets.MAINTENANCE_INGEST_TOKEN }}
 
-      - name: Ensure persistent volume exists
-        run: |
-          flyctl volumes create aevum_maintainer_data \
-            --region iad \
-            --size 1 \
-            --app aevum-maintainer \
-            --yes 2>/dev/null \
-            || echo "Volume already exists — skipping"
+      - name: Ensure persistent volume exists (only if missing)
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          count=$(flyctl volumes list -a aevum-maintainer --json \
+            | python3 -c 'import sys,json;print(sum(1 for v in json.load(sys.stdin) if v.get("name")=="aevum_maintainer_data"))')
+          if [ "$count" -ge 1 ]; then
+            echo "Volume aevum_maintainer_data already exists (count=$count) — skipping create"
+          else
+            flyctl volumes create aevum_maintainer_data --region iad --size 1 --app aevum-maintainer --yes
+          fi
 
       - name: Deploy to Fly.io
         env:
