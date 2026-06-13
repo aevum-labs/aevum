@@ -1,0 +1,34 @@
+name: Diag DNS (read-only)
+on: { workflow_dispatch: {} }
+permissions: { contents: read }
+jobs:
+  dns:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dig
+        run: sudo apt-get update -y && sudo apt-get install -y dnsutils
+      - name: Authoritative + public-resolver A records
+        run: |
+          set +e
+          echo "===== Zone / authoritative NS for aevum.build ====="
+          dig +short NS aevum.build
+          echo "===== CNAME chain on demo.aevum.build ====="
+          dig +short CNAME demo.aevum.build
+          echo "===== A records per public resolver ====="
+          for R in 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222; do
+            echo "--- resolver $R ---"
+            dig +short @$R A demo.aevum.build
+          done
+          echo "===== A records from AUTHORITATIVE nameserver (ground truth) ====="
+          NS=$(dig +short NS aevum.build | head -1)
+          echo "authoritative NS = $NS"
+          dig +short @"$NS" A demo.aevum.build
+          dig +short @"$NS" A api.demo.aevum.build
+          echo "===== What each Fly IP serves right now ====="
+          for IP in 66.241.124.38 66.241.124.164; do
+            echo "--- $IP (Host: demo.aevum.build) ---"
+            curl -s -m 15 --resolve demo.aevum.build:443:$IP \
+              "https://demo.aevum.build/openapi.json" \
+              | python3 -c 'import sys,json;d=json.load(sys.stdin);i=d.get("info",{});print("title:",i.get("title"),"version:",i.get("version"))' 2>/dev/null \
+              || echo "(non-JSON/unreachable)"
+          done
