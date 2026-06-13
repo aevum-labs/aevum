@@ -7,7 +7,7 @@ on:
       - "packages/**"
       - "fly.toml"
       - "Dockerfile"
-      - "demo/**"
+      - "demo/src/**"
   workflow_dispatch:
 
 jobs:
