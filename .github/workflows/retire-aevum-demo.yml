@@ -1,0 +1,105 @@
+name: Retire aevum-demo (Phase B — ONE-WAY)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dryrun = list state only; DESTROY = remove certs then destroy app"
+        required: true
+        default: "dryrun"
+        type: choice
+        options: [dryrun, DESTROY]
+
+permissions:
+  contents: read
+
+jobs:
+  teardown:
+    name: Tear down aevum-demo
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Show current state (dryrun always runs)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_DEMO }}
+        run: |
+          set +e
+          echo "=== aevum-demo status ==="
+          flyctl status -a aevum-demo
+          echo ""
+          echo "=== aevum-demo certs ==="
+          flyctl certs list -a aevum-demo
+          echo ""
+          echo "=== demo.aevum.build health (via aevum-maintainer) ==="
+          curl -s -m 15 -o /dev/null -w "HTTP %{http_code}\n" https://demo.aevum.build/health
+          curl -s -m 15 "https://demo.aevum.build/openapi.json" \
+            | python3 -c 'import sys,json;d=json.load(sys.stdin);i=d.get("info",{});print("title:",i.get("title"),"version:",i.get("version"))' \
+            2>/dev/null || echo "(openapi: non-JSON or unreachable)"
+
+      - name: STOP if dryrun
+        if: inputs.mode == 'dryrun'
+        run: |
+          echo "DRYRUN complete — no changes made. Re-run with mode=DESTROY to proceed."
+          exit 0
+
+      - name: Remove cert demo.aevum.build from aevum-demo
+        if: inputs.mode == 'DESTROY'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_DEMO }}
+        run: |
+          set +e
+          flyctl certs remove demo.aevum.build -a aevum-demo -y \
+            && echo "cert demo.aevum.build removed" \
+            || echo "cert demo.aevum.build removal failed or cert not found (continuing)"
+
+      - name: Remove cert api.demo.aevum.build from aevum-demo
+        if: inputs.mode == 'DESTROY'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_DEMO }}
+        run: |
+          set +e
+          flyctl certs remove api.demo.aevum.build -a aevum-demo -y \
+            && echo "cert api.demo.aevum.build removed" \
+            || echo "cert api.demo.aevum.build removal failed or cert not found (continuing)"
+
+      - name: Verify demo.aevum.build still serves aevum-maintainer BEFORE destroying app
+        if: inputs.mode == 'DESTROY'
+        run: |
+          set -euo pipefail
+          echo "=== GATE CHECK: demo.aevum.build must still respond before app destroy ==="
+          HTTP=$(curl -s -m 20 -o /tmp/health_resp -w "%{http_code}" https://demo.aevum.build/health)
+          cat /tmp/health_resp 2>/dev/null || true
+          echo ""
+          echo "HTTP status: $HTTP"
+          if [ "$HTTP" != "200" ]; then
+            echo "ABORT: demo.aevum.build returned $HTTP — cert may have been on maintainer's TLS config. Investigate before destroying app."
+            exit 1
+          fi
+          VERSION=$(curl -s -m 15 "https://demo.aevum.build/openapi.json" \
+            | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d.get("info",{}).get("version","unknown"))' 2>/dev/null || echo "unknown")
+          echo "Version at demo.aevum.build: $VERSION"
+          echo "Gate passed — demo.aevum.build still serves the maintainer app."
+
+      - name: Destroy aevum-demo app
+        if: inputs.mode == 'DESTROY'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_DEMO }}
+        run: |
+          set -euo pipefail
+          flyctl apps destroy aevum-demo -y
+          echo "aevum-demo destroyed."
+
+      - name: Post-destroy verification
+        if: inputs.mode == 'DESTROY'
+        run: |
+          echo "=== demo.aevum.build health after destroy ==="
+          curl -s -m 20 -o /dev/null -w "HTTP %{http_code}\n" https://demo.aevum.build/health
+          curl -s -m 15 "https://demo.aevum.build/openapi.json" \
+            | python3 -c 'import sys,json;d=json.load(sys.stdin);i=d.get("info",{});print("title:",i.get("title"),"version:",i.get("version"))' \
+            2>/dev/null || echo "(openapi: non-JSON or unreachable)"
+          echo ""
+          echo "=== NEXT STEP (manual) ==="
+          echo "Delete the GitHub secret FLY_API_TOKEN_DEMO via:"
+          echo "  Settings → Secrets and variables → Actions → FLY_API_TOKEN_DEMO → Delete"
