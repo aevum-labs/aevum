@@ -1,73 +1,81 @@
 const ROWS = [
   {
-    risk: 'ASI-01: Prompt Injection',
-    barrier: 'Consent Barrier',
-    how: 'All data ingest requires a ConsentGrant before '
-       + 'entering the governed context. Injected prompts '
-       + 'without a valid grant are blocked at ingest.',
+    risk: 'ASI01: Agent Goal Hijack',
+    barrier: 'Detective',
+    how: 'Aevum does not prevent goal hijack at runtime. Every '
+       + 'resulting action is recorded in the tamper-evident '
+       + 'sigchain, so hijacked behavior is detectable and '
+       + 'reconstructable after the fact.',
   },
   {
-    risk: 'ASI-02: Excessive Agency',
-    barrier: 'Classification Ceiling',
-    how: 'The five governed functions operate within a '
-       + 'classification ceiling. No action above the '
-       + 'ceiling executes without human review approval.',
+    risk: 'ASI02: Tool Misuse and Exploitation',
+    barrier: 'Gate + detective',
+    how: 'Consent and the Classification Ceiling gate governed '
+       + 'actions that lack a valid grant or exceed clearance; '
+       + 'every invocation is recorded. Aevum does not sandbox '
+       + 'tool execution itself.',
   },
   {
-    risk: 'ASI-03: Sensitive Information Disclosure',
-    barrier: 'Consent Enforcement',
-    how: 'Query operations check ConsentGrant scope before '
-       + 'returning any data. Unconsented data is never '
-       + 'returned regardless of agent request.',
+    risk: 'ASI03: Identity and Privilege Abuse',
+    barrier: 'Detective',
+    how: 'Every action records the full principal and delegation '
+       + 'chain, so identity and privilege use is auditable and '
+       + 'tamper-evident. Aevum does not issue or scope agent '
+       + 'identities.',
   },
   {
-    risk: 'ASI-04: Insufficient Monitoring',
-    barrier: 'Audit Immutability',
-    how: 'Every governed action appends a signed, '
-       + 'hash-chained entry to the sigchain. Entries '
-       + 'cannot be modified or deleted after commit.',
+    risk: 'ASI04: Agentic Supply Chain Vulnerabilities',
+    barrier: 'Detective (partial)',
+    how: 'Source-level provenance and chain-of-custody are '
+       + 'recorded for ingested data, so the inputs an agent '
+       + 'acted on are verifiable. Aevum is not a supply-chain '
+       + 'scanner.',
   },
   {
-    risk: 'ASI-05: Unsafe Recursive Delegation',
-    barrier: 'Provenance',
-    how: 'Every sigchain entry records the full principal '
-       + 'chain. Delegation depth and origin are always '
-       + 'verifiable from the audit trail.',
+    risk: 'ASI05: Unexpected Code Execution (RCE)',
+    barrier: 'Not prevented',
+    how: 'Aevum is an evidence and governance layer, not a '
+       + 'code-execution sandbox; it does not prevent RCE. The '
+       + 'action trail supports post-incident forensics.',
   },
   {
-    risk: 'ASI-06: Data / Model Poisoning',
-    barrier: 'Provenance',
-    how: 'Ingest provenance is recorded at the source level. '
-       + 'Chain-of-custody is verifiable for every fact '
-       + 'in the governed context.',
+    risk: 'ASI06: Memory and Context Poisoning',
+    barrier: 'Detective + integrity',
+    how: 'Items entering the governed context are recorded with '
+       + 'provenance and cryptographic integrity, so altered or '
+       + 'poisoned context is detectable. Aevum does not judge '
+       + 'content as malicious at ingest.',
   },
   {
-    risk: 'ASI-07: Misinformation Generation',
-    barrier: 'Verifiable Decision Records',
-    how: 'Commit operations produce a verifiable decision '
-       + 'record. Replay reconstructs exactly what data '
-       + 'and reasoning produced each output.',
+    risk: 'ASI07: Insecure Inter-Agent Communication',
+    barrier: 'Detective (partial)',
+    how: 'Inter-agent actions that pass through the kernel are '
+       + 'recorded in the tamper-evident trail. Aevum does not '
+       + 'encrypt or authenticate the transport itself.',
   },
   {
-    risk: 'ASI-08: Denial of Service',
-    barrier: 'Crisis Detection',
-    how: 'Crisis detection is an unconditional barrier. '
-       + 'Resource exhaustion or safety-critical signals '
-       + 'halt all operations regardless of other grants.',
+    risk: 'ASI08: Cascading Failures',
+    barrier: 'Detective',
+    how: 'The ordered, tamper-evident trail lets investigators '
+       + 'reconstruct how a failure propagated across steps and '
+       + 'agents. Aevum does not provide circuit-breaking '
+       + 'between agents.',
   },
   {
-    risk: 'ASI-09: Agentic Hallucination',
-    barrier: 'Audit Immutability',
-    how: 'Replay of any commit reconstructs the exact '
-       + 'evidence bundle used. Hallucinated reasoning '
-       + 'is detectable by comparing replay output.',
+    risk: 'ASI09: Human-Agent Trust Exploitation',
+    barrier: 'Gate + detective',
+    how: 'The Govern human checkpoint is an auditable approval '
+       + 'gate, and human review and override decisions are '
+       + 'recorded. Aevum does not detect social engineering of '
+       + 'the human reviewer.',
   },
   {
-    risk: 'ASI-10: Unbounded Consumption',
-    barrier: 'Classification Ceiling',
-    how: 'Actions above the classification ceiling are '
-       + 'blocked until explicit human approval is '
-       + 'recorded in the sigchain.',
+    risk: 'ASI10: Rogue Agents',
+    barrier: 'Detective',
+    how: 'Tamper-evident recording of every governed action '
+       + 'makes rogue or out-of-scope behavior detectable and '
+       + 'attributable; the Classification Ceiling blocks '
+       + 'above-clearance actions.',
   },
 ] as const
 
@@ -75,13 +83,19 @@ export default function OWASPCrosswalk() {
   return (
     <section>
       <h2 className="section-title">
-        OWASP Agentic AI Crosswalk
+        OWASP Top 10 for Agentic Applications (2026)
       </h2>
       <div className="callout" style={{ marginBottom: '1.25rem' }}>
-        How each OWASP Top 10 for Agentic AI risk maps to an
-        Aevum unconditional barrier. The five barriers are
-        code-level invariants — they cannot be bypassed in
-        tests or production.
+        This crosswalk maps the OWASP Top 10 for Agentic
+        Applications (2026) to what Aevum actually contributes.
+        Aevum is primarily a detective, evidentiary control — a
+        tamper-evident black box. For most agentic attacks it does
+        not prevent the attack at runtime; it makes the attack
+        detectable, attributable, and reconstructable. A subset of
+        barriers (Consent, Classification Ceiling, Crisis) gate
+        governed actions. Where Aevum does not address a risk, the
+        table says so. "OWASP" is referenced descriptively and
+        does not imply endorsement or certification.
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -89,9 +103,9 @@ export default function OWASPCrosswalk() {
           <table>
             <thead>
               <tr>
-                <th style={{ minWidth: '180px' }}>OWASP Risk</th>
-                <th style={{ minWidth: '160px' }}>Aevum Barrier</th>
-                <th style={{ minWidth: '260px' }}>How</th>
+                <th style={{ minWidth: '180px' }}>OWASP Agentic Risk (2026)</th>
+                <th style={{ minWidth: '160px' }}>Aevum's role</th>
+                <th style={{ minWidth: '260px' }}>What Aevum contributes</th>
               </tr>
             </thead>
             <tbody>
