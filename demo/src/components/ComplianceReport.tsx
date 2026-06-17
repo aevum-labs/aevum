@@ -249,6 +249,43 @@ export default function ComplianceReport({ preselectedSession }: Props) {
               specification rather than from the code that produced the log.
             </p>
 
+            <div style={{
+              marginBottom: '1.25rem',
+              padding: '0.9rem 1rem',
+              border: '1px solid var(--border)',
+              borderLeft: '3px solid var(--accent)',
+              borderRadius: '6px',
+              background: 'rgba(200,169,110,0.06)',
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.4rem' }}>
+                Verify it yourself — independently
+              </div>
+              <p className="muted" style={{ fontSize: '0.82rem', marginBottom: '0.6rem' }}>
+                Below is a <strong>synthetic</strong> sample chain — it contains no
+                real data. Download it with its pinned public key and verify it
+                using the standalone open-source <code>aevum-verify</code> tool,
+                which re-derives the checks from RFC&nbsp;6962 independently of the
+                code that produced the log. This is how an auditor confirms an
+                Aevum record outside our systems.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
+                <a href="/sample-chain.json" download>↓ sample-chain.json</a>
+                <a href="/sample-ed25519-pub.hex" download>↓ sample-ed25519-pub.hex</a>
+              </div>
+              <pre style={{
+                fontSize: '0.74rem', overflowX: 'auto', padding: '0.6rem 0.75rem',
+                background: 'rgba(0,0,0,0.35)', borderRadius: '4px', margin: '0 0 0.5rem',
+              }}>{`pipx run aevum-verify sample-chain.json \\
+  --ed25519-pub "$(cat sample-ed25519-pub.hex)"`}</pre>
+              <p className="muted" style={{ fontSize: '0.78rem', margin: 0 }}>
+                Expected output:{' '}
+                <span style={{ color: 'var(--accent)', fontWeight: 600 }}>VERIFIED — 5 entries intact</span>.
+                Change one byte of the sample and re-run — verification fails.
+                (No <code>pipx</code>? <code>pip install aevum-verify</code>, then{' '}
+                <code>aevum-verify …</code>.)
+              </p>
+            </div>
+
             {entries.length === 0 ? (
               <p className="muted" style={{ fontSize: '0.875rem' }}>
                 No entries found for this session.
