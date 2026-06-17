@@ -26,15 +26,18 @@ from pydantic import BaseModel, Field
 
 class ScanRequest(BaseModel):
     model_config = {"json_schema_extra": {
-        "example": {"host_id": "host-42", "scan_type": "diagnostic"},
+        "example": {"host_id": "ACME-3318", "scan_type": "fund_transfer"},
     }}
     host_id: str = Field(
-        description="The host identifier to scan.",
-        examples=["host-42", "host-7", "host-prod-01"],
+        description="The subject or account the requested action targets.",
+        examples=["ACME-3318", "CUST-7741", "ACCT-0091"],
     )
-    scan_type: Literal["diagnostic", "memory_pressure", "cert_check"] = Field(
-        default="diagnostic",
-        description="Type of scan to perform.",
+    scan_type: Literal[
+        "fund_transfer", "pii_access", "trade_execution",
+        "diagnostic", "memory_pressure", "cert_check",
+    ] = Field(
+        default="fund_transfer",
+        description="The governed action the agent is requesting.",
     )
 
 
@@ -126,16 +129,31 @@ class SandboxState:
     def _seed(self) -> None:
         task = SandboxTask(
             task_id=f"tsk_{secrets.token_urlsafe(12)}",
-            host_id="host-42",
-            finding="Disk utilization at 94% — /var/log partition",
-            severity="HIGH",
-            proposed_action="Rotate and compress logs older than 7 days",
+            host_id="ACME-3318",
+            finding="Agent initiated a $25,000 wire to a newly added beneficiary",
+            severity="CRITICAL",
+            proposed_action="Execute the outbound wire transfer",
         )
         self._tasks[task.task_id] = task
         self._add_sigchain_entry("scan.complete", "sandbox-scanner", task.task_id)
 
     def create_task(self, host_id: str, scan_type: str) -> SandboxTask:
         findings = {
+            "fund_transfer": (
+                "Agent initiated a $25,000 wire to a newly added beneficiary",
+                "CRITICAL",
+                "Execute the outbound wire transfer",
+            ),
+            "pii_access": (
+                "Agent requested a bulk export of 1,240 customer records (PII)",
+                "HIGH",
+                "Release the customer records to the requesting agent",
+            ),
+            "trade_execution": (
+                "Agent submitted a $180,000 equity order outside its mandate bands",
+                "HIGH",
+                "Route the order to the exchange",
+            ),
             "diagnostic": (
                 "Disk utilization at 94% — /var/log partition",
                 "HIGH",

@@ -5,12 +5,12 @@ import './Stepper.css'
 
 type Step = 1 | 2 | 3 | 4
 
-const STEP_LABELS = ['Scan', 'Consent', 'Execute', 'Sigchain']
+const STEP_LABELS = ['Request', 'Consent', 'Execute', 'Sigchain']
 
 const SCAN_TYPES = [
-  { value: 'diagnostic', label: 'diagnostic — disk / log pressure' },
-  { value: 'memory_pressure', label: 'memory_pressure — heap growth' },
-  { value: 'cert_check', label: 'cert_check — TLS expiry' },
+  { value: 'fund_transfer',   label: 'fund_transfer — $25k wire to a new beneficiary' },
+  { value: 'pii_access',      label: 'pii_access — bulk export of customer PII' },
+  { value: 'trade_execution', label: 'trade_execution — equity order outside mandate' },
 ]
 
 interface StepperProps {
@@ -27,8 +27,8 @@ export function Stepper({ onViewApiExplorer }: StepperProps) {
   const [error, setError] = useState<string | null>(null)
   const [denied, setDenied] = useState(false)
 
-  const [hostId, setHostId] = useState('host-42')
-  const [scanType, setScanType] = useState('diagnostic')
+  const [hostId, setHostId] = useState('ACME-3318')
+  const [scanType, setScanType] = useState('fund_transfer')
 
   function completedSteps(): Set<Step> {
     const s = new Set<Step>()
@@ -65,8 +65,8 @@ export function Stepper({ onViewApiExplorer }: StepperProps) {
     setLoading(false)
     setError(null)
     setDenied(false)
-    setHostId('host-42')
-    setScanType('diagnostic')
+    setHostId('ACME-3318')
+    setScanType('fund_transfer')
   }
 
   async function handleScan(e: React.FormEvent) {
@@ -239,22 +239,22 @@ interface Step1Props {
 function Step1Scan({ hostId, scanType, onHostIdChange, onScanTypeChange, onSubmit, loading, error, result }: Step1Props) {
   return (
     <>
-      <h2 className="stepper-title">Step 1 — Scan</h2>
+      <h2 className="stepper-title">Step 1 — Action Request</h2>
       <form onSubmit={onSubmit}>
         <div className="form-group">
-          <label className="form-label" htmlFor="host-id">Host ID</label>
+          <label className="form-label" htmlFor="host-id">Subject / Account ID</label>
           <input
             id="host-id"
             className="form-input"
             type="text"
             value={hostId}
             onChange={e => onHostIdChange(e.target.value)}
-            placeholder="host-42"
+            placeholder="ACME-3318"
             required
           />
         </div>
         <div className="form-group">
-          <label className="form-label" htmlFor="scan-type">Scan Type</label>
+          <label className="form-label" htmlFor="scan-type">Action</label>
           <select
             id="scan-type"
             className="form-input"
@@ -268,7 +268,7 @@ function Step1Scan({ hostId, scanType, onHostIdChange, onScanTypeChange, onSubmi
         </div>
         <div className="btn-row">
           <button className="btn btn-primary" type="submit" disabled={loading}>
-            {loading ? 'Scanning…' : 'Run Scan →'}
+            {loading ? 'Submitting…' : 'Submit Request →'}
           </button>
         </div>
       </form>
