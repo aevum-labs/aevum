@@ -16,6 +16,8 @@ description: "Aevum regulatory alignment — external capability claims derived 
 
 Aevum does not assert that use of this library makes a firm "17a-4 compliant," "SEC-approved," "court-admissible," or compliant with any other regulation. Regulatory compliance is a determination made by the firm's compliance and legal counsel based on their specific deployment, policies, and context — not a property any library can assert.
 
+Aevum Labs has not undergone a SOC 2 examination or a commissioned third-party penetration test, and Aevum is maintained as a solo open-source research project. These are stated plainly so reviewers can weigh them; see the [SOC 2 Evidence Guide](./soc2.md) for how Aevum supports a deployer's own SOC 2 program.
+
 ---
 
 ## SEC Rule 17a-4(f)(2)(i)(A) — Audit-Trail Alternative

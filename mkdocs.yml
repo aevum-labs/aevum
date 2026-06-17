@@ -187,6 +187,7 @@ nav:
       - Finance (SOX): domain-examples/finance.md
       - Legal (GDPR): domain-examples/legal.md
   - Compliance:
+    - Regulatory Alignment: compliance/regulatory-alignment.md
     - NIST AI RMF: compliance/nist-ai-rmf.md
     - HIPAA: compliance/hipaa.md
     - EU AI Act: compliance/eu-ai-act.md
