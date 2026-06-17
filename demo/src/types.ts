@@ -22,7 +22,7 @@ export interface SessionInfo {
   first_seen: string
   entry_count: number
   label: string
-  session_type: 'maintenance' | 'system'
+  session_type: 'maintenance' | 'system' | 'example'
 }
 
 export interface SessionsResponse {

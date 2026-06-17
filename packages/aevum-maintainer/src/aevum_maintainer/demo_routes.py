@@ -236,6 +236,9 @@ def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
             if sid.startswith("maint-"):
                 session_type = "maintenance"
                 type_label = "Maintenance"
+            elif sid.startswith("example-"):
+                session_type = "example"
+                type_label = "Example"
             else:
                 session_type = "system"
                 type_label = "System"
