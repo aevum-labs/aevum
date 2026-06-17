@@ -39,9 +39,10 @@ export default function ComplianceReport({ preselectedSession }: Props) {
       .then((d) => {
         setSessions(d.sessions)
         if (d.sessions.length > 0) {
-          // Default to the richest chain so a multi-entry session is shown first.
+          // Default to the labeled example chain if present; otherwise the richest chain.
+          const example = d.sessions.find((s) => s.session_type === 'example')
           const richest = d.sessions.reduce((a, b) => (b.entry_count > a.entry_count ? b : a))
-          setSessionId(richest.session_id)
+          setSessionId((example ?? richest).session_id)
         }
       })
       .catch((e: unknown) =>
@@ -127,7 +128,7 @@ export default function ComplianceReport({ preselectedSession }: Props) {
                   )}
                   {sessions.map((s) => (
                     <option key={s.session_id} value={s.session_id}>
-                      {s.label} ({s.entry_count}{' '}
+                      {s.session_type === 'example' ? 'Example' : s.label} ({s.entry_count}{' '}
                       {s.entry_count === 1 ? 'entry' : 'entries'})
                     </option>
                   ))}
