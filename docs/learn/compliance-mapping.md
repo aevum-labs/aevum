@@ -141,11 +141,7 @@ compliance review before making regulatory assertions based on this content.*
 | WebhookRegistry dead-letter | Delivery failure visibility | barrier.webhook_failed AuditEvent | ✅ | Ensures review event delivery failures are auditable; supports SOC 2 CC7.4, PCI DSS 10.2.1 |
 | CIS Controls v8.1 #8 (all 12 safeguards) | Audit log management | Sigchain + config | ✅ | 90-day minimum retention (much shorter than financial sector) |
 | HITRUST CSF v11 09.ab | Monitoring system use | Sigchain | ✅ | |
-| OWASP ASI Top 10 ASI05 | Memory/state manipulation | Sigchain + replay() | ✅ | |
-| OWASP ASI Top 10 ASI07 | Sensitive data disclosure | Classification ceiling (Barrier 2) | ✅ | |
-| OWASP ASI Top 10 ASI10 | Insufficient observability | Five functions + sigchain | ✅ | |
-| OWASP ASI Top 10 ASI03 | Identity/privilege abuse | Consent model | 🔧 | SPIFFE agent identity can be implemented via a custom complication |
-| OWASP ASI Top 10 ASI08 | Cascading failure | — | ❌ | SRE/circuit-breaker; out of scope |
+| OWASP Agentic Top 10 (ASI01–ASI10) | Full agentic risk crosswalk | See [OWASP Crosswalk](../owasp_crosswalk.md) | — | Mapped to the official OWASP Top 10 for Agentic Applications (2026) with detective/evidentiary framing |
 
 ---
 

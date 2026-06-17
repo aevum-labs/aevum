@@ -1,102 +1,28 @@
-# OWASP Agentic Security Top 10 — Aevum Crosswalk
+# OWASP Agentic Top 10 — Aevum Crosswalk
 
-AEVUM — OWASP Agentic Security Initiative Top 10 Crosswalk
-=================================================================
-Reference: OWASP GenAI Security Project, Agentic AI Top 10 (published 2025-12-09)
-Identifiers: ASI01 through ASI10
-Last updated: v0.6.0 (2026-05-20)
+**Reference:** OWASP Top 10 for Agentic Applications (2026), identifiers ASI01–ASI10.
 
-✓ ASI01: Prompt Injection / Goal Hijacking
-  Coverage: FULL
-  Barriers: Barrier 1: Crisis, Barrier 5: Provenance
-  • RELATE crisis barrier (Barrier 1) — blocks crisis/injection patterns before graph write
-  • Cedar TaintLabel — tracks READS_UNTRUSTED across session context
-  • GOVERN checkpoint — human review before consequential actions
-  Note: Aevum's trifecta enforcement prevents the composition of READS_UNTRUSTED + READS_PRIVATE + CAN_EXFILTRATE, which is the mechanism by which prompt injection causes data exfiltration.
+Aevum is **primarily a detective, evidentiary control**: for most of these risks it does
+not prevent the attack at runtime — it makes the attack **detectable, attributable, and
+reconstructable** after the fact. A subset of categories are additionally **gated** on the
+governed path by the unconditional barriers (consent, classification ceiling, crisis).
+Aevum does not prevent runtime code execution, sandbox tools, issue agent identities,
+encrypt inter-agent transport, or provide circuit-breaking.
 
-✓ ASI02: Insecure Tool / Plugin Use
-  Coverage: FULL
-  Barriers: Barrier 5: Provenance
-  • Cedar TaintLabel entity — marks tools as CAN_EXFILTRATE
-  • Trifecta Cedar forbid policy — blocks dangerous tool composition
-  • GOVERN checkpoint — approves tool calls before execution
-  Note: Tool calls are Cedar-evaluated before execution. The trifecta policy blocks tool compositions that combine untrusted input access with private data access and exfiltration.
+The authoritative, machine-readable version of this mapping is produced by
+`aevum.core.compliance.owasp_crosswalk.render_crosswalk()` and served at `GET /compliance/owasp`.
 
-✓ ASI03: Excessive Agency / Privilege Escalation
-  Coverage: FULL
-  Barriers: Barrier 5: Provenance
-  • L1–L5 autonomy enforcement via Cedar context attributes
-  • GOVERN checkpoint — non-bypassable for consequential actions
-  • Cedar forbid policies — autonomy.cedar enforces L1/L2 constraints
-  Note: L1-L5 autonomy levels are Cedar context attributes. At L1, every govern_approve requires human_checkpoint_completed. The autonomy level cannot be escalated by the agent itself.
+| ID | Risk (OWASP 2026) | Aevum role | What Aevum does — and does not do |
+|---|---|---|---|
+| ASI01 | Agent Goal Hijack | Detective | Every resulting action is recorded in the tamper-evident sigchain, so hijacked behavior is detectable and reconstructable. Aevum does not prevent goal hijack at runtime. |
+| ASI02 | Tool Misuse and Exploitation | Gate + detective | Consent and the Classification Ceiling gate governed actions lacking a valid grant or exceeding clearance; the trifecta Cedar policy blocks the untrusted-read + private-read + exfiltrate composition; every invocation is recorded. Aevum does not sandbox tool execution. |
+| ASI03 | Identity and Privilege Abuse | Detective | Principal and full delegation chain are recorded on every action, so identity and privilege use is auditable and tamper-evident. Aevum does not issue or scope agent identities. |
+| ASI04 | Agentic Supply Chain Vulnerabilities | Detective (partial) | Source-level provenance and chain-of-custody are recorded for ingested data. Aevum is not a supply-chain scanner. |
+| ASI05 | Unexpected Code Execution (RCE) | Not prevented | Aevum is an evidence and governance layer, not a code-execution sandbox; it does not prevent RCE. The action trail supports post-incident forensics. |
+| ASI06 | Memory and Context Poisoning | Detective + integrity | Items entering the governed context are recorded with provenance and cryptographic integrity, so altered or poisoned context is detectable. Aevum does not judge content as malicious at ingest. |
+| ASI07 | Insecure Inter-Agent Communication | Detective (partial) | Inter-agent actions passing through the kernel are recorded in the tamper-evident trail. Aevum does not encrypt or authenticate the transport itself. |
+| ASI08 | Cascading Failures | Detective | The ordered, tamper-evident trail lets investigators reconstruct how a failure propagated across steps and agents. Aevum does not provide circuit-breaking. |
+| ASI09 | Human-Agent Trust Exploitation | Gate + detective | The Govern human checkpoint is an auditable approval gate; review and override decisions are recorded. Aevum does not detect social engineering of the human reviewer. |
+| ASI10 | Rogue Agents | Detective | Tamper-evident recording of every governed action makes rogue or out-of-scope behavior detectable and attributable; the Classification Ceiling blocks above-clearance actions. |
 
-✓ ASI04: Knowledge Base / Memory Poisoning
-  Coverage: FULL
-  Barriers: Barrier 1: Crisis, Barrier 3: Classification
-  • RELATE crisis barrier — intercepts injected crisis content
-  • pySHACL validation at RELATE time — validates fact structure
-  • Provenance tracking — every fact has a signed source
-  • Cedar ABAC at RELATE — checks classification and taint labels
-  Note: Facts cannot enter the knowledge graph without passing crisis detection, SHACL validation, and Cedar ABAC. Provenance is mandatory and cryptographically signed.
-
-~ ASI05: Cascading Agent Failure / Trust Chain Attacks
-  Coverage: PARTIAL
-  Barriers: Barrier 4: Audit Immutability
-  • Sigchain with dual-sig — every session commit is signed
-  • Session Merkle root — tampering detected across agent handoffs
-  • GOVERN at each consequential step — no silent propagation
-  • v0.6.0: AevumOTelBridge emits one OTel span per sigchain event; distributed
-    tracing across agents surfaces cascading failure chains in any OTLP backend
-    (Grafana Tempo, Langfuse, Jaeger). Privacy-safe by default: only audit_id
-    is emitted unless OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true.
-  Note: Aevum's sigchain detects tampering in replay. Full multi-agent trust chain validation requires A2A integration (Phase 6). OTel spans complement sigchain replay with real-time failure detection.
-
-✓ ASI06: Human-in-the-Loop Bypass
-  Coverage: FULL
-  • GOVERN checkpoint — structurally non-bypassable
-  • Automation bias warning — displayed at every substantive checkpoint
-  • Cedar autonomy policy (L3) — govern_approve forbidden without human_checkpoint_completed
-  • Veto-as-default — timeout = veto, not approval
-  Note: Cedar's autonomy (L3) govern forbid cannot be bypassed by any permit. The human_checkpoint_completed flag is set ONLY by the GOVERN implementation after actual human input is received. Timeout always results in veto, never in approval.
-
-✓ ASI07: Data Exfiltration / Leakage
-  Coverage: FULL
-  Barriers: Barrier 2: Consent, Barrier 3: Classification
-  • Cedar TaintLabel — CAN_EXFILTRATE marks exfiltration-capable tools
-  • Trifecta Cedar forbid — blocks untrusted+private+exfiltrate composition
-  • Consent gate — navigate requires active consent for the purpose
-  • Classification ceiling — Barrier 3 blocks above-ceiling data
-  Note: The trifecta policy (trifecta.cedar) is Aevum's primary defense against the EchoLeak-class exfiltration pattern. All three taint labels must be simultaneously active for the attack to succeed — Cedar prevents this composition.
-
-~ ASI08: Insecure Supply Chain / Dependency Confusion
-  Coverage: PARTIAL
-  • Ed25519-signed principles — verified at boot
-  • Conformance suite — 9 invariants verified on every installation
-  • pip-audit in CI — dependency vulnerability scanning
-  • Trusted Publishing — signed PyPI wheels, no stored API keys
-  • v0.6.0: key_scheme field in every AuditEvent wire format (Phase C-01) makes
-    the signing algorithm explicit in every chain entry. Auditors can verify that
-    the key scheme has not changed unexpectedly across the chain. Valid registry:
-    {"ed25519", "ed25519+ml-dsa-65", "ed25519+vault-transit"}. Conformance layer
-    test_wire_format.py verifies this on every installation.
-  Note: Principle signing + conformance suite address behavioral supply chain. Full SBOM and Trusted Publishing in Phase 9.
-
-~ ASI09: Unbounded Resource Consumption
-  Coverage: PARTIAL
-  Barriers: Barrier 5: Provenance
-  • GOVERN action limits (Cedar context: resource_count, cost_estimate)
-  • Session timeout → CommitType.TIMEOUT → veto-as-default
-  • TSA circuit breaker — TSA failures don't block operations
-  Note: Cedar context can carry resource limits for GOVERN evaluation. Configurable limits are a Phase 7+ enhancement.
-
-~ ASI10: Rogue / Uncontrolled Agent Spawning
-  Coverage: PARTIAL
-  Barriers: Barrier 5: Provenance
-  • L1-L5 autonomy enforcement — spawn requests require govern_approve
-  • A2A v1.0 interceptor — all agent spawns signed and chained (Phase 6)
-  • Sigchain — every agent action recorded and verifiable
-  • v0.6.0: AevumOTelBridge makes agent spawn events visible as OTel spans in
-    real time. Operators can configure span-based alerts in Grafana, Datadog,
-    or Honeycomb to detect unexpected spawn patterns before the sigchain is
-    reviewed post-hoc.
-  Note: L1-L5 enforcement addresses spawn control. Full A2A interception in Phase 6.
+*OWASP® is a registered trademark of the OWASP Foundation, Inc. This page references the OWASP Top 10 for Agentic Applications descriptively; it does not imply endorsement or certification. See [Regulatory Alignment](compliance/regulatory-alignment.md) for what Aevum does and does not claim.*
