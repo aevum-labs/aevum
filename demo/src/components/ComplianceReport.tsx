@@ -240,9 +240,13 @@ export default function ComplianceReport({ preselectedSession }: Props) {
             </div>
 
             <p className="muted" style={{ fontSize: '0.82rem', marginBottom: '1rem' }}>
-              Cryptographic reconstruction of every action in this session,
-              generated automatically when the report is created. Verified
-              by the server against the stored sigchain.
+              Cryptographic reconstruction of the session's recorded actions,
+              generated when the report is created. The hash-chain links are
+              checked in your browser; signatures are verified server-side
+              against the stored sigchain. Aevum exports are designed to be
+              re-verified independently with the open-source aevum-verify
+              tool, which re-derives the verification from the RFC&nbsp;6962
+              specification rather than from the code that produced the log.
             </p>
 
             {entries.length === 0 ? (
@@ -319,7 +323,7 @@ export default function ComplianceReport({ preselectedSession }: Props) {
                               ? 'var(--accent)'
                               : 'var(--danger,#f85149)',
                           }}>
-                            {isLinkValid ? '↓ prior hash verified ✓' : '↓ hash mismatch ✗'}
+                            {isLinkValid ? '↓ prior hash linked ✓' : '↓ hash mismatch ✗'}
                           </span>
                         </div>
                       )}
@@ -338,7 +342,7 @@ export default function ComplianceReport({ preselectedSession }: Props) {
                     : 'var(--danger,#f85149)',
                 }}>
                   {allValid
-                    ? `✓ Chain intact — ${entries.length} of ${entries.length} links verified`
+                    ? `✓ Chain intact — ${entries.length} of ${entries.length} hash links checked`
                     : `✗ Chain broken at entry ${breakAt + 1}`}
                 </div>
               </>
