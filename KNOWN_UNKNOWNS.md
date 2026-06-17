@@ -499,6 +499,62 @@ consistent with the aevum.build color scheme.
 
 ---
 
+## V08-CONSENT-FLOWTHROUGH: Consent Flow-Through to Derived Artifacts (Deferred — toward v1.0)
+
+**Item:** V08-CONSENT-FLOWTHROUGH — was the stated v0.8.0 plan anchor; v0.8.0
+shipped the black-box crypto triad instead. Never tracked here until now.
+
+**Question:** How should a consent revocation reach artifacts *derived* from
+governed data (RAG embeddings, vector representations) that live in an external
+store?
+
+**Why it matters:** Crypto-shredding destroys the subject's DEK, so the source
+plaintext becomes unrecoverable — but an embedding already computed from that
+plaintext is itself plaintext in some vector store, and shredding the DEK does
+not reach it. This is exactly why "revocation-on-retrieval" is required: you
+cannot shred what has already been derived, so retrieval must be gated instead.
+
+**Why deferred (not descoped):** Genuine, defensible differentiator — no
+competitor binds consent to derived artifacts. Deferred because there is no
+embedding/retrieval surface in Aevum to design against yet, and Aevum is the
+governance membrane, not a datastore.
+
+**Shape (intended):** NOT an Aevum-owned vector store and NOT another *Store
+protocol. Unlike GraphStore/ReceiptStore (which Aevum drives), this is inverted:
+the adopter's retrieval path calls *into* Aevum — a barrier/middleware-style
+`consent_check(subject, purpose) -> allow | deny | shred` hook the adopter wires
+in, plus one reference adapter. Bring-your-own-infrastructure, consistent with
+the Protocol-seam architecture (ADR-004 signer, ADR-005 policy).
+
+**Condition for revisitation:** When a concrete RAG/retrieval adopter exists to
+design the contract against. Target: v1.0 differentiator.
+
+**Related:** ADR-003 (OR-Set consent), Barrier 3 (Consent), crypto-shred in
+consent/ledger.py.
+
+---
+
+## V08-WAL-SHRED: SQLite WAL Checkpoint + Secure-Delete on Rotation (Deferred — v0.9.0)
+
+**Item:** V08-WAL-SHRED — code TODO at sqlite_store.py:246, not previously
+tracked here.
+
+**Question:** After rotate_operational() and on the consent crypto-shred path,
+the WAL is not checkpointed/truncated and rows are not secure-deleted, so the
+-wal/-shm sidecars retain plaintext after process exit.
+
+**Why it matters:** Undercuts the deletion-honesty and GDPR crypto-shred
+guarantees — data treated as gone can persist in the sidecar files.
+
+**Fix shape:** PRAGMA wal_checkpoint(TRUNCATE) + secure_delete (or explicit
+VACUUM) on the rotation/shred paths. Small change, but it touches storage and
+carries a security claim — warrants its own gate; expect test churn.
+
+**Condition for revisitation:** v0.9.0 (folded here per maintainer decision
+2026-06-14, in lieu of opening a v0.8.1).
+
+---
+
 ## Conformance Suite
 
 Status: VERIFIED
