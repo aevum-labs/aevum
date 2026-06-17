@@ -22,6 +22,47 @@ const BARRIERS: { key: string; label: string }[] = [
   { key: 'Provenance',            label: 'Provenance' },
 ]
 
+// Build a copy-paste-runnable curl transcript of the exact sandbox call sequence.
+function buildSandboxCurl(
+  hostId: string,
+  scanType: string,
+  scanResult: ScanResult | null,
+  consentResult: ConsentResult | null,
+  denied: boolean,
+): string {
+  const base = (import.meta.env.VITE_API_URL as string | undefined) || window.location.origin
+  const lines: string[] = [
+    '# 1 — Scan: the agent proposes a governed action',
+    `curl -X POST ${base}/sandbox/scan \\`,
+    `  -H 'Content-Type: application/json' \\`,
+    `  -d '${JSON.stringify({ host_id: hostId, scan_type: scanType })}'`,
+  ]
+  if (scanResult) {
+    lines.push(
+      '',
+      '# 2 — Consent: a human approves or denies',
+      `curl -X POST ${base}/sandbox/consent \\`,
+      `  -H 'Content-Type: application/json' \\`,
+      `  -d '${JSON.stringify({ task_id: scanResult.task_id, decision: denied ? 'deny' : 'approve' })}'`,
+    )
+  }
+  if (scanResult && consentResult && !denied) {
+    lines.push(
+      '',
+      '# 3 — Execute: the action runs under the consent token',
+      `curl -X POST ${base}/sandbox/execute \\`,
+      `  -H 'Content-Type: application/json' \\`,
+      `  -d '${JSON.stringify({ task_id: scanResult.task_id, consent_token: consentResult.consent_token })}'`,
+    )
+  }
+  lines.push(
+    '',
+    '# 4 — Inspect the tamper-evident sigchain',
+    `curl ${base}/sandbox/sigchain`,
+  )
+  return lines.join('\n')
+}
+
 interface StepperProps {
   onViewApiExplorer: () => void
 }
@@ -225,6 +266,7 @@ export function Stepper({ onViewApiExplorer }: StepperProps) {
             denied={denied}
             loading={loading}
             error={error}
+            curl={buildSandboxCurl(hostId, scanType, scanResult, consentResult, denied)}
             onViewApiExplorer={onViewApiExplorer}
             onStartOver={startOver}
           />
@@ -445,9 +487,11 @@ interface Step4Props {
   error: string | null
   onViewApiExplorer: () => void
   onStartOver: () => void
+  curl: string
 }
 
-function Step4Sigchain({ result, denied, loading, error, onViewApiExplorer, onStartOver }: Step4Props) {
+function Step4Sigchain({ result, denied, loading, error, onViewApiExplorer, onStartOver, curl }: Step4Props) {
+  const [copied, setCopied] = useState(false)
   return (
     <>
       <h2 className="stepper-title">Step 4 — Inspect Sigchain</h2>
@@ -495,9 +539,26 @@ function Step4Sigchain({ result, denied, loading, error, onViewApiExplorer, onSt
           </table>
         </>
       )}
+      <div className="result-box" style={{ marginTop: '16px' }}>
+        <div className="result-box-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Reproduce this sequence (curl)</span>
+          <button
+            className="btn btn-secondary"
+            style={{ padding: '0.15rem 0.6rem', fontSize: '0.72rem' }}
+            onClick={() => {
+              navigator.clipboard?.writeText(curl)
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1500)
+            }}
+          >
+            {copied ? 'Copied ✓' : 'Copy'}
+          </button>
+        </div>
+        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '0.7rem', margin: '0.5rem 0 0', color: '#8b949e' }}>{curl}</pre>
+      </div>
       <div className="btn-row" style={{ marginTop: '20px' }}>
         <button className="btn btn-secondary" onClick={onViewApiExplorer}>
-          View in API Explorer ↓
+          Open API Reference ↓
         </button>
         <button className="btn btn-secondary" onClick={onStartOver}>
           Start Over
