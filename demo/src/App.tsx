@@ -11,7 +11,7 @@ import './App.css'
 type TabId = 'sandbox' | 'sigchain' | 'compliance' | 'api-explorer' | 'owasp' | 'docs'
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'sandbox',      label: 'Sandbox' },
+  { id: 'sandbox',      label: 'Walkthrough' },
   { id: 'sigchain',     label: 'Sigchain' },
   { id: 'compliance',   label: 'Compliance' },
   { id: 'api-explorer', label: 'API Explorer' },
@@ -66,7 +66,7 @@ export default function App() {
           <h1 className="app-title">AEVUM</h1>
           <ApiStatus />
         </div>
-        <p className="app-tagline">The Black Box for AI Agents — governed context kernel</p>
+        <p className="app-tagline">The independent black box for AI agents</p>
       </header>
 
       <section aria-label="About Aevum" style={{
@@ -81,13 +81,15 @@ export default function App() {
           marginBottom: '0.75rem',
           maxWidth: '680px',
         }}>
-          Aevum is a governed AI agent kernel: every action is{' '}
-          <strong style={{ color: '#e6edf3', fontWeight: 600 }}>signed</strong>,{' '}
-          <strong style={{ color: '#e6edf3', fontWeight: 600 }}>consent-checked</strong>,
-          {' '}and{' '}
-          <strong style={{ color: '#e6edf3', fontWeight: 600 }}>
-            cryptographically chained
-          </strong>. This demo runs against a live Aevum pipeline; the Sandbox uses simulated findings.
+          When an AI agent does something consequential — accesses regulated
+          data, moves money, takes an irreversible action — Aevum produces an{' '}
+          <strong style={{ color: '#e6edf3', fontWeight: 600 }}>independent, tamper-evident</strong>{' '}
+          record that an auditor or a court can{' '}
+          <strong style={{ color: '#e6edf3', fontWeight: 600 }}>verify without trusting the operator</strong>.
+          {' '}It is designed for the record-keeping rules you already face — SEC
+          17a-4, FINRA 4511, EU AI Act Article 12. Under the hood, every action is
+          signed, consent-checked, and SHA3-256 hash-chained. This walkthrough
+          runs against a live Aevum pipeline using simulated findings.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', margin: '0 -0.25rem' }}>
           {PRIMITIVES.map((p, i) => (
