@@ -1,0 +1,97 @@
+name: dependency-refresh
+
+# Clears security advisories frozen in uv.lock by relocking the affected
+# packages and opening a REVIEWABLE PR (never auto-merged). Replaces Dependabot's
+# uv updater, which fails on this multi-member workspace (run /1419382975).
+# security.yml (weekly pip-audit) remains the authoritative detection backstop.
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'      # weekly, Monday 09:00 UTC
+  workflow_dispatch:          # mobile-dispatchable
+
+permissions:
+  contents: write             # push the relock branch
+  pull-requests: write        # open the PR
+
+concurrency:
+  group: dependency-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Relock to clear advisories
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        # NOTE: persist-credentials left at default (true) — this workflow must push.
+
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081  # v5
+
+      - name: Sync (frozen baseline)
+        run: uv sync --frozen
+
+      - name: Audit current lock → list vulnerable packages
+        id: audit
+        run: |
+          set -uo pipefail
+          uv export --no-editable --format requirements-txt \
+            | grep -v "^\./packages/" > /tmp/audit-req.txt
+          uv run pip-audit --format json --ignore-vuln PYSEC-2025-183 \
+            -r /tmp/audit-req.txt > /tmp/audit.json || true
+          PKGS=$(jq -r '.dependencies[]? | select((.vulns // []) | length > 0) | .name' /tmp/audit.json 2>/dev/null | sort -u | tr '\n' ' ' | sed 's/ *$//')
+          echo "pkgs=$PKGS" >> "$GITHUB_OUTPUT"
+          if [ -z "$PKGS" ]; then
+            echo "clean=true"  >> "$GITHUB_OUTPUT"
+            echo "✅ uv.lock has no known advisories — nothing to do."
+          else
+            echo "clean=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️ advisories in: $PKGS"
+          fi
+
+      - name: Relock affected packages
+        if: steps.audit.outputs.clean == 'false'
+        run: |
+          set -euo pipefail
+          for p in ${{ steps.audit.outputs.pkgs }}; do
+            echo "::group::uv lock --upgrade-package $p"
+            uv lock --upgrade-package "$p"
+            echo "::endgroup::"
+          done
+
+      - name: Re-audit (must be clean) + full test suite (gate)
+        if: steps.audit.outputs.clean == 'false'
+        run: |
+          set -euo pipefail
+          uv export --no-editable --format requirements-txt \
+            | grep -v "^\./packages/" > /tmp/audit-req2.txt
+          uv run pip-audit --desc on --ignore-vuln PYSEC-2025-183 -r /tmp/audit-req2.txt
+          uv sync --frozen
+          uv run pytest -q
+
+      - name: Open reviewable PR
+        if: steps.audit.outputs.clean == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- uv.lock; then
+            echo "uv.lock unchanged after relock — no PR."; exit 0
+          fi
+          BRANCH="auto/dep-refresh-$(date -u +%Y%m%d-%H%M%S)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add uv.lock
+          git commit -m "security: relock to clear advisories (${{ steps.audit.outputs.pkgs }})"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "security: relock uv.lock to clear advisories" \
+            --body  "Automated relock of: ${{ steps.audit.outputs.pkgs }}.
+
+          - Re-audit: clean (pip-audit exit 0)
+          - Tests: pass (uv run pytest)
+
+          Self-gated by this workflow. **Review the lockfile diff and merge manually** — merge to main runs full CI. Not auto-merged (it's from github-actions[bot], not dependabot[bot])." \
+            --label dependencies --label security \
+            --head "$BRANCH" --base main
