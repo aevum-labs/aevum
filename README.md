@@ -19,7 +19,7 @@ already run.
 ## Why a black box, and why *independent*
 
 A flight recorder matters not because the airline keeps logs — it matters
-because the recorder is **independent, tamper-evident, and admissible**: an
+because the recorder is **independent, tamper-evident, and defensible**: an
 outside investigator reads it, and it holds up under challenge. Most AI logging
 today is the opposite. Observability tools (OpenTelemetry, Langfuse, Datadog)
 and cloud-native agent logs (Bedrock, Foundry, Vertex) are **mutable,
