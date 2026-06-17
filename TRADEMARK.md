@@ -45,3 +45,11 @@ listed in GOVERNANCE.md.
 
 *This policy is effective as of the date of first publication and may be
 updated as the project evolves.*
+
+## Third-party names and marks
+
+Aevum's documentation references third-party standards, regulations, and frameworks — including OWASP®, the U.S. Securities and Exchange Commission (SEC), FINRA, NIST, ISO/IEC, and the EU AI Act — for descriptive and educational purposes only. Such references are nominative: they identify the standard or requirement under discussion. They do **not** imply certification by, endorsement by, affiliation with, or approval from any standards body, regulator, or organization.
+
+OWASP® is a registered trademark of the OWASP Foundation, Inc. All other product names, logos, and brands are the property of their respective owners.
+
+Aevum has not been certified, audited, or approved under any of these frameworks. Alignment statements in this project are capability descriptions, not certifications. See [Regulatory Alignment](docs/compliance/regulatory-alignment.md) for what Aevum does and does not claim.

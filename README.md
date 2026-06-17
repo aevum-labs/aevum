@@ -179,6 +179,8 @@ The five barriers are enforced as **hardcoded checks in `barriers.py` that run f
 | OWASP ASI04 (memory poisoning) | Sigchain: every entry chained, mutations detectable |
 | NIST AI RMF MAP-1.6 | Structured audit pack exportable for any decision |
 
+**What Aevum does and does not claim.** Aevum is a tool that helps firms meet recordkeeping obligations; it does not itself constitute compliance, and it has not been certified or audited under any framework. For the capability-by-capability mapping (SEC 17a-4(f), FRE 902(13)/(14)) and an explicit list of what Aevum does *not* claim, see [Regulatory Alignment](docs/compliance/regulatory-alignment.md) and [Non-Goals](NON-GOALS.md). Not legal advice.
+
 ## Conformance
 
 Aevum ships a machine-verifiable conformance suite:
