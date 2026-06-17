@@ -269,6 +269,42 @@ class _MaintenanceStore:
         ]
 
 
+_EXAMPLE_SESSION_ID = "example-fund-transfer-review"
+
+
+def _seed_example_session(store: _MaintenanceStore) -> None:
+    """Idempotently seed one labeled, illustrative multi-entry finance session.
+
+    A synthetic demonstration of a reconstructed agent-action lifecycle so the
+    Compliance and Sigchain views show a full multi-entry chain. NOT a real
+    maintenance/dogfood event — the session id and per-entry ``note`` mark it as
+    illustrative. Guarded so restarts do not duplicate it.
+    """
+    if any(e["session_id"] == _EXAMPLE_SESSION_ID for e in store.all()):
+        return
+    note = "Illustrative example — synthetic data, not a real event."
+    entries: list[tuple[str, str, dict[str, Any]]] = [
+        ("agent.action_requested", "demo-agent",
+         {"action": "fund_transfer", "amount_usd": 25000,
+          "beneficiary": "newly added", "subject": "ACME-3318", "note": note}),
+        ("policy.evaluated", "demo-agent",
+         {"classification_ceiling": "ALLOW", "provenance": "ALLOW", "note": note}),
+        ("consent.review_requested", "demo-agent",
+         {"reason": "wire above $10k to a newly added beneficiary", "note": note}),
+        ("consent.approved", "compliance-reviewer",
+         {"decision": "approve", "handoff": "HUMAN_OVERRIDE", "note": note}),
+        ("tool.executed", "demo-agent",
+         {"outcome": "wire submitted", "note": note}),
+    ]
+    for action, principal, payload in entries:
+        store.add(
+            session_id=_EXAMPLE_SESSION_ID,
+            action=action,
+            principal=principal,
+            payload=payload,
+        )
+
+
 def create_app(engine: Engine | None = None) -> FastAPI:
     """Create the maintainer FastAPI application."""
     _engine = engine or Engine()
@@ -283,6 +319,10 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     )
     if _store:
         _log = logging.getLogger(__name__)
+        # Seed the illustrative example session for a real on-disk store only
+        # (never :memory: — keeps the unit-test suite pristine).
+        if _db_path and _db_path != ":memory:":
+            _seed_example_session(_store)
         replayed = 0
         for entry in _store.all():
             try:

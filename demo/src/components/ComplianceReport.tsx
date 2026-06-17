@@ -38,7 +38,11 @@ export default function ComplianceReport({ preselectedSession }: Props) {
     fetchSessions()
       .then((d) => {
         setSessions(d.sessions)
-        if (d.sessions.length > 0) setSessionId(d.sessions[0].session_id)
+        if (d.sessions.length > 0) {
+          // Default to the richest chain so a multi-entry session is shown first.
+          const richest = d.sessions.reduce((a, b) => (b.entry_count > a.entry_count ? b : a))
+          setSessionId(richest.session_id)
+        }
       })
       .catch((e: unknown) =>
         setError(e instanceof Error ? e.message : String(e))
