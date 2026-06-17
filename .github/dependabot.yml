@@ -5,8 +5,11 @@
 
 version: 2
 updates:
-  # Python dependencies — one PR per package, weekly on Mondays
-  - package-ecosystem: pip
+  # Python dependencies (pyproject.toml + uv.lock) — native uv ecosystem.
+  # MUST be "uv", not "pip": the pip ecosystem does not read/update uv.lock,
+  # so frozen-in-lock vulnerable versions go unseen (root cause of the
+  # starlette/python-multipart/cryptography CVEs cleared in HO-SEC-1/2/3).
+  - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
