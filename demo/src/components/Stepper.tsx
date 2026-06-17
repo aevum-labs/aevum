@@ -373,7 +373,7 @@ function Step3Execute({ taskId, consentToken, onExecute, loading, error, result 
         <input className="form-input" value={consentToken} readOnly />
       </div>
       <div className="info-banner">
-        The consent token is cryptographically bound to this task. Execution produces a COSE_Sign1 receipt anchored to Rekor.
+        The consent token is cryptographically bound to this task. Execution produces a COSE_Sign1 receipt; when transparency-log anchoring is available, the receipt is submitted to the Rekor transparency log and its inclusion proof is recorded.
       </div>
       {error && <div className="error-banner">{error}</div>}
       {!result && (
@@ -420,7 +420,7 @@ function Step4Sigchain({ result, denied, loading, error, onViewApiExplorer, onSt
       {denied && (
         <div className="denied-banner">
           <strong>Action denied.</strong>
-          Sigchain records this decision. The denial is part of the cryptographic audit trail — it cannot be erased.
+          Sigchain records this decision. The denial is part of the cryptographic audit trail — it cannot be altered or removed without breaking the chain.
         </div>
       )}
       {loading && <p className="loading-text">Fetching sigchain…</p>}

@@ -87,7 +87,7 @@ export default function App() {
           {' '}and{' '}
           <strong style={{ color: '#e6edf3', fontWeight: 600 }}>
             cryptographically chained
-          </strong>. This demo runs against the live production pipeline.
+          </strong>. This demo runs against a live Aevum pipeline; the Sandbox uses simulated findings.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', margin: '0 -0.25rem' }}>
           {PRIMITIVES.map((p, i) => (
