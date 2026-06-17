@@ -27,31 +27,32 @@ class TestOWASPCrosswalk:
                 entry.coverage = "none"  # type: ignore[misc]
 
     def test_coverage_values_valid(self) -> None:
-        valid = {"full", "partial", "indirect"}
+        valid = {"full", "partial", "none"}
         for entry in OWASP_CROSSWALK:
             assert entry.coverage in valid, f"{entry.code} has invalid coverage: {entry.coverage}"
 
-    def test_asi01_has_trifecta_or_taint_mechanism(self) -> None:
+    def test_asi01_is_detective_sigchain(self) -> None:
         asi01 = next(e for e in OWASP_CROSSWALK if e.code == "ASI01")
+        assert asi01.title == "Agent Goal Hijack"
         mechanisms_text = " ".join(asi01.aevum_mechanisms).lower()
-        assert "trifecta" in mechanisms_text or "taint" in mechanisms_text
+        assert "sigchain" in mechanisms_text or "recorded" in mechanisms_text
 
     def test_asi06_is_full_coverage(self) -> None:
         asi06 = next(e for e in OWASP_CROSSWALK if e.code == "ASI06")
         assert asi06.coverage == "full"
 
-    def test_asi07_mentions_exfiltration(self) -> None:
-        asi07 = next(e for e in OWASP_CROSSWALK if e.code == "ASI07")
-        notes_lower = asi07.notes.lower()
-        assert "exfil" in notes_lower or "trifecta" in notes_lower
+    def test_asi02_mentions_trifecta_or_exfiltration(self) -> None:
+        asi02 = next(e for e in OWASP_CROSSWALK if e.code == "ASI02")
+        mechanisms_text = " ".join(asi02.aevum_mechanisms).lower()
+        assert "exfil" in mechanisms_text or "trifecta" in mechanisms_text
 
     def test_asi01_has_barriers(self) -> None:
         asi01 = next(e for e in OWASP_CROSSWALK if e.code == "ASI01")
         assert len(asi01.aevum_barriers) > 0
 
-    def test_asi08_has_no_barriers(self) -> None:
-        asi08 = next(e for e in OWASP_CROSSWALK if e.code == "ASI08")
-        assert len(asi08.aevum_barriers) == 0
+    def test_all_entries_have_barriers(self) -> None:
+        for entry in OWASP_CROSSWALK:
+            assert len(entry.aevum_barriers) > 0, f"{entry.code} has no barriers"
 
     def test_all_mechanisms_are_nonempty_strings(self) -> None:
         for entry in OWASP_CROSSWALK:
@@ -77,7 +78,7 @@ class TestOWASPCrosswalk:
 
     def test_full_coverage_entries_count(self) -> None:
         full_count = sum(1 for e in OWASP_CROSSWALK if e.coverage == "full")
-        assert full_count >= 5  # at least 5 full-coverage entries (ASI01,02,03,04,06,07)
+        assert full_count == 2  # full evidentiary coverage: ASI01, ASI06
 
     def test_render_text_contains_all_codes(self) -> None:
         text = render_crosswalk("text")
