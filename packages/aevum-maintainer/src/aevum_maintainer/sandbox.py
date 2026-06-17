@@ -138,7 +138,7 @@ class SandboxState:
         self._add_sigchain_entry("scan.complete", "sandbox-scanner", task.task_id)
 
     def create_task(self, host_id: str, scan_type: str) -> SandboxTask:
-        findings = {
+        findings: dict[str, tuple[str, Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"], str]] = {
             "fund_transfer": (
                 "Agent initiated a $25,000 wire to a newly added beneficiary",
                 "CRITICAL",
