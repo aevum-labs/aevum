@@ -24,10 +24,10 @@ dev-dependencies = [
     "scalar-fastapi>=1.8.2",
     "httpx>=0.27",  # for fastapi TestClient in demo tests
 ]
-# CVE GHSA-pp6c-gr5w-3c5g: python-multipart DoS fixed in 0.0.27 (transitive via mcp)
+# GHSA-pp6c-gr5w-3c5g (DoS) + CVE-2026-53538 (querystring parser differential): python-multipart fixed in 0.0.30 (transitive via mcp)
 # PYSEC-2026-161 (host header) + CVE-2026-54282 (request-path authority injection): starlette fixed in 1.3.0
 constraint-dependencies = [
-    "python-multipart>=0.0.27",
+    "python-multipart>=0.0.30",
     "starlette>=1.3.0",
 ]
 
