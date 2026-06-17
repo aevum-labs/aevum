@@ -13,6 +13,15 @@ const SCAN_TYPES = [
   { value: 'trade_execution', label: 'trade_execution — equity order outside mandate' },
 ]
 
+// Canonical barrier order (1–5). Backend keys may differ in dict order; we read by key.
+const BARRIERS: { key: string; label: string }[] = [
+  { key: 'Crisis',                label: 'Crisis' },
+  { key: 'ClassificationCeiling', label: 'Classification Ceiling' },
+  { key: 'Consent',               label: 'Consent' },
+  { key: 'AuditImmutability',     label: 'Audit Immutability' },
+  { key: 'Provenance',            label: 'Provenance' },
+]
+
 interface StepperProps {
   onViewApiExplorer: () => void
 }
@@ -292,10 +301,35 @@ function Step1Scan({ hostId, scanType, onHostIdChange, onScanTypeChange, onSubmi
             <span className="result-key">proposed_action</span>
             <span className="result-value">{result.proposed_action}</span>
           </div>
+          <div className="result-row" style={{ alignItems: 'flex-start' }}>
+            <span className="result-key">barriers</span>
+            <span className="result-value" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+              {BARRIERS.map((b, i) => {
+                const verdict = result.barriers_evaluated[b.key] ?? '—'
+                const ok = verdict === 'ALLOW'
+                return (
+                  <span key={b.key} style={{
+                    fontSize: '0.68rem',
+                    padding: '0.1rem 0.4rem',
+                    borderRadius: '4px',
+                    border: '1px solid #30363d',
+                    color: ok ? '#3fb950' : '#f85149',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {i + 1} {b.label} {ok ? '✓' : '✗'}
+                  </span>
+                )
+              })}
+            </span>
+          </div>
           <div className="result-row">
             <span className="result-key">receipt_hash</span>
             <span className="result-value">{result.receipt_hash.slice(0, 20)}…</span>
           </div>
+          <p className="muted" style={{ fontSize: '0.72rem', marginTop: '0.5rem', marginBottom: 0 }}>
+            Every action is checked against the five unconditional barriers — hardcoded
+            gates that run before any policy and cannot be disabled by configuration.
+          </p>
         </div>
       )}
     </>
