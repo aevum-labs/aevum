@@ -174,9 +174,9 @@ The five barriers are enforced as **hardcoded checks in `barriers.py` that run f
 | SEC 17a-4 / FINRA 4511 (broker-dealer records) | Audit-trail alternative: records reconstructable after modification, with verified authenticity |
 | GDPR Art. 6/9 (lawful basis) | Consent ledger: OR-Set grants, purpose-scoped, Cedar-enforced |
 | GDPR Art. 17 (erasure) | Crypto-shredding: DEK destroyed on revoke, ciphertext unrecoverable |
-| OWASP ASI01 (prompt injection) | Trifecta barrier: blocks untrusted-read + private-read + exfiltrate composition |
-| OWASP ASI02 (data exfiltration) | Classification ceiling + trifecta Cedar policy |
-| OWASP ASI04 (memory poisoning) | Sigchain: every entry chained, mutations detectable |
+| OWASP ASI02 (Tool Misuse) | Consent + Classification Ceiling gate governed tool actions; trifecta Cedar policy blocks the untrusted-read + private-read + exfiltrate composition; every call recorded |
+| OWASP ASI06 (Memory & Context Poisoning) | Provenance + cryptographic integrity on governed context — altered or poisoned context is detectable |
+| OWASP ASI03 (Identity & Privilege Abuse) | Principal + full delegation chain recorded on every action; tamper-evident attribution |
 | NIST AI RMF MAP-1.6 | Structured audit pack exportable for any decision |
 
 **What Aevum does and does not claim.** Aevum is a tool that helps firms meet recordkeeping obligations; it does not itself constitute compliance, and it has not been certified or audited under any framework. For the capability-by-capability mapping (SEC 17a-4(f), FRE 902(13)/(14)) and an explicit list of what Aevum does *not* claim, see [Regulatory Alignment](docs/compliance/regulatory-alignment.md) and [Non-Goals](NON-GOALS.md). Not legal advice.
