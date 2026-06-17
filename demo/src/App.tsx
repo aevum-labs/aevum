@@ -185,6 +185,15 @@ export default function App() {
                   aevum.build
                 </a>
               </p>
+              <p style={{ marginTop: '0.35rem' }}>
+                Compliance, limitations, and what Aevum does and does not claim:{' '}
+                <a href="https://aevum.build/compliance/regulatory-alignment/"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style={{ color: '#58a6ff' }}>
+                  Regulatory Alignment
+                </a>
+              </p>
             </div>
           )}
         </div>
