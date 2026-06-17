@@ -149,7 +149,7 @@ runtime.
 | 1 — Crisis Detection | Proceeding with any graph operation when crisis keywords are detected in ingested content |
 | 2 — Classification Ceiling | Returning data above the requesting actor's clearance level |
 | 3 — Consent | Any graph traversal without an active consent grant |
-| 4 — Audit Immutability | Any deletion or modification of episodic ledger entries (`ImmutableLedgerError`) |
+| 4 — Audit Immutability | Deletion or modification of episodic ledger entries attempted through the governed API (`ImmutableLedgerError`); out-of-band tampering remains detectable via the sigchain |
 | 5 — Provenance | Ingesting data without a valid provenance record (`source_id` required) |
 
 **The `review` function:** Halts a decision workflow and presents structured context to
