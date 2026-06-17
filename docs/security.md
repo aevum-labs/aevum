@@ -97,7 +97,7 @@ or complication:
 1. **Crisis detection** — halts on dangerous content
 2. **Classification ceiling** — enforces data classification limits
 3. **Consent enforcement** — requires valid consent for all operations
-4. **Audit immutability** — prevents audit log modification
+4. **Audit immutability** — blocks deletion or modification of ledger entries through the governed API (raises `ImmutableLedgerError`); out-of-band tampering remains detectable via the sigchain
 5. **Provenance** — records data lineage
 
 These are kernel-enforced, not policy-controlled. A misconfigured Cedar or

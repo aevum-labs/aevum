@@ -23,7 +23,7 @@ extract evidence for your auditor.
 |---|---|---|
 | CC6.1 | Logical access controls | Cedar policy decisions with sigchain evidence; consent grants as authorization records |
 | CC6.2 | Authentication | Consent grant verification (subject_id + grantee_id + purpose); SPIFFE workload identity via `aevum-spiffe` (optional) |
-| CC7.2 | Monitoring | Sigchain as immutable activity log with actor, timestamp, event type; Rekor external anchoring for third-party witnessing |
+| CC7.2 | Monitoring | Sigchain as append-only, tamper-evident activity log with actor, timestamp, event type; Rekor external anchoring for third-party witnessing |
 | CC8.1 | Change management | Rekor-anchored release signing; complication lifecycle state machine (registered → approved → active → suspended) |
 
 ---
@@ -61,7 +61,7 @@ trace back to a specific workload.
 
 ### CC7.2 — Monitoring
 
-The sigchain provides continuous monitoring evidence — an immutable, sequential log of
+The sigchain provides continuous monitoring evidence — an append-only, tamper-evident, sequential log of
 every governed operation. Each entry records:
 
 - `event_type`: what operation occurred

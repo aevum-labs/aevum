@@ -40,9 +40,10 @@ in the episodic ledger via `Sigchain.new_event()`. Each entry records:
 | `prior_hash` | SHA3-256 hash of the previous chain entry (Merkle linkage) |
 | `signature` | Ed25519 signature over all signing fields |
 
-The episodic ledger is append-only. Barrier 4 (Audit Immutability) unconditionally
-prevents deletion or modification of any chain entry — `ImmutableLedgerError` is raised
-on any such attempt. Deployers can query the ledger by time window, actor, or event type
+The episodic ledger is append-only. Barrier 4 (Audit Immutability) blocks deletion or
+modification of chain entries made through the governed API — `ImmutableLedgerError` is
+raised on any such attempt, and any out-of-band tampering remains detectable via the sigchain.
+Deployers can query the ledger by time window, actor, or event type
 to satisfy audit review requirements under §164.308(a)(1)(ii)(D).
 
 ---
