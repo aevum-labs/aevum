@@ -91,6 +91,11 @@ class ConsentLedger:
         self._init_schema()
 
     def _init_schema(self) -> None:
+        # secure_delete: deleted DEK bytes are overwritten with zeros on disk
+        # (including the rollback journal) rather than merely unlinked from
+        # the page index. Required for the GDPR Art. 17 erasure guarantee
+        # that shred() actually makes the DEK unrecoverable, not just unindexed.
+        self._conn.execute("PRAGMA secure_delete=ON;")
         self._conn.executescript("""
             CREATE TABLE IF NOT EXISTS consent_grants (
                 grant_id    TEXT PRIMARY KEY,
@@ -194,6 +199,16 @@ class ConsentLedger:
         GDPR Art. 17 erasure: destroy the subject's DEK.
         All data encrypted with this DEK becomes permanently unreadable.
         The grant records remain (audit trail) but the data is gone.
+
+        Atomic: the DELETE and commit are a single SQLite transaction, so a
+        crash cannot leave a half-erased DEK — the row is either fully
+        present or fully gone. PRAGMA secure_delete=ON (set in _init_schema)
+        ensures the deleted bytes are zeroed on disk rather than merely
+        unlinked from the page index.
+
+        Authorization is the caller's responsibility: this method does not
+        check whether the caller may erase `subject`'s data. Callers must
+        verify authorization (e.g. via the policy engine) before invoking it.
         """
         self._conn.execute(
             "DELETE FROM dek_vault WHERE subject_id = ?", (subject,)

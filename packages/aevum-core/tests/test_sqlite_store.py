@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import time
 
 import pytest
@@ -168,6 +169,41 @@ class TestSqliteReceiptStoreRotation:
         info = store.get_receipt_info(h)
         assert info is not None
         assert info["tier"] == "crash_protected"
+
+
+class TestSqliteReceiptStoreWalCheckpoint:
+    """GREEN: rotate_operational() must checkpoint+truncate the -wal sidecar
+    so it does not retain pre-rotation page versions after process exit."""
+
+    def test_rotate_truncates_wal_sidecar(self, tmp_path) -> None:
+        db_path = str(tmp_path / "receipts.db")
+        wal_path = db_path + "-wal"
+        store = SqliteReceiptStore(db_path=db_path)
+
+        marker = b"WAL_CHECKPOINT_MARKER_" + os.urandom(8).hex().encode()
+        h = hashlib.sha3_256(marker).hexdigest()
+        store.put(h, marker)
+        store._conn.execute(
+            "UPDATE receipts SET stored_at=? WHERE receipt_hash=?",
+            (time.time() - 50 * 3600, h),
+        )
+        store._conn.commit()
+
+        # Sanity check: before any checkpoint, the WAL sidecar actually holds
+        # the marker (proves the test exercises the real WAL-persistence risk).
+        assert os.path.exists(wal_path)
+        with open(wal_path, "rb") as f:
+            assert marker in f.read()
+
+        rotated = store.rotate_operational(hours=48)
+        assert rotated == 1
+
+        # After rotation, the sidecar must be checkpointed away (TRUNCATE
+        # leaves it at zero length) — no stale pre-rotation content remains.
+        assert os.path.getsize(wal_path) == 0
+
+        # Rotation promotes tier, it does not delete the receipt itself.
+        assert store.get(h) == marker
 
 
 class TestSqliteFromEnv:

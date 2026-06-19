@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
+import os
+import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -212,6 +215,76 @@ class TestCryptoShredding:
         ledger.shred("alice")
         ledger.shred("alice")  # second shred must not raise
         assert ledger.get_dek("alice") is None
+
+
+class TestSecureErasure:
+    """GREEN: shred() must make the DEK unrecoverable from the raw db file,
+    not just unindexed (PRAGMA secure_delete=ON)."""
+
+    def test_init_schema_source_sets_secure_delete(self):
+        """Pin the implementation directly. On this sandbox's SQLite build,
+        secure_delete already defaults to ON via a compile-time flag (see
+        test_without_secure_delete_marker_can_survive_deletion for proof the
+        pragma is load-bearing on builds where it isn't) — so a purely
+        behavioral check cannot, on its own, catch someone deleting the
+        `PRAGMA secure_delete=ON;` line from _init_schema. This source check
+        is the backstop."""
+        import inspect
+        source = inspect.getsource(ConsentLedger._init_schema)
+        assert "secure_delete=on" in source.lower().replace(" ", "")
+
+    def test_ledger_enables_secure_delete(self, tmp_path):
+        ledger = ConsentLedger(tmp_path / "pragma_check.db")
+        assert ledger._conn.execute("PRAGMA secure_delete;").fetchone()[0] == 1
+        ledger.close()
+
+    def test_shred_removes_dek_bytes_from_raw_file(self, tmp_path):
+        db_path = tmp_path / "secure_erasure.db"
+        ledger = ConsentLedger(db_path)
+        marker = b"SECURE_DELETE_MARKER_" + os.urandom(8).hex().encode()
+        ledger._conn.execute(
+            "INSERT INTO dek_vault VALUES (?, ?, ?)",
+            ("shred_subject", marker, datetime.now(UTC).isoformat()),
+        )
+        ledger._conn.commit()
+
+        # Sanity check: the marker is actually on disk before shred (so the
+        # assertion below proves erasure, not just that we never wrote it).
+        assert marker in db_path.read_bytes()
+
+        ledger.shred("shred_subject")
+        ledger.close()
+
+        assert marker not in db_path.read_bytes()
+
+    def test_without_secure_delete_marker_can_survive_deletion(self, tmp_path):
+        """Baseline proving the pragma is load-bearing: on a connection with
+        secure_delete explicitly OFF, the same insert/delete/commit sequence
+        leaves the DEK bytes recoverable on disk. This is the exposure
+        PRAGMA secure_delete=ON (set in ConsentLedger._init_schema) closes —
+        without it, some SQLite builds default OFF and shred() would not be
+        a real erasure."""
+        db_path = tmp_path / "secure_erasure_baseline.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("PRAGMA secure_delete=OFF;")
+        conn.executescript("""
+            CREATE TABLE dek_vault (
+                subject_id  TEXT PRIMARY KEY,
+                dek_bytes   BLOB NOT NULL,
+                created_at  TEXT NOT NULL
+            );
+        """)
+        conn.commit()
+        marker = b"BASELINE_MARKER_" + os.urandom(8).hex().encode()
+        conn.execute(
+            "INSERT INTO dek_vault VALUES (?, ?, ?)",
+            ("baseline_subject", marker, datetime.now(UTC).isoformat()),
+        )
+        conn.commit()
+        conn.execute("DELETE FROM dek_vault WHERE subject_id = ?", ("baseline_subject",))
+        conn.commit()
+        conn.close()
+        assert marker in db_path.read_bytes()
 
 
 class TestConsentLedgerProtocolCompat:

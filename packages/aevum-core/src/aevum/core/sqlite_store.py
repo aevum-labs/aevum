@@ -89,6 +89,7 @@ class SqliteReceiptStore:
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA synchronous=NORMAL;")
         conn.execute("PRAGMA foreign_keys=ON;")
+        conn.execute("PRAGMA secure_delete=ON;")
         return conn
 
     def _create_schema(self) -> None:
@@ -227,6 +228,10 @@ class SqliteReceiptStore:
         This method must be called on a schedule to prevent unbounded growth of
         the operational tier. Recommended frequency: daily.
 
+        Forces a WAL checkpoint(TRUNCATE) after committing the promotion, so the
+        -wal sidecar does not retain the pre-rotation page versions after the
+        process exits.
+
         Returns the number of receipts promoted.
         """
         cutoff = time.time() - hours * 3600
@@ -241,11 +246,8 @@ class SqliteReceiptStore:
             (cutoff,),
         )
         self._conn.commit()
+        self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         return cur.rowcount
-
-    # TODO(v0.8.0): Add WAL checkpoint and secure-delete on rotation.
-    # Current risk: -wal/-shm sidecars persist after process exit.
-    # See: security model in docs/security.md
 
     # ── Store info ────────────────────────────────────────────────────────────
 
