@@ -2,6 +2,13 @@
 """
 aevum.verify._core — standalone sigchain verifier.
 
+Every cryptographic primitive here — signing-digest construction (see
+_format.py), chain hashing, payload hashing, and RFC 6962 Merkle
+verification — is reimplemented from the public spec
+(docs/spec/aevum-signing-v1.md). This module shares no code with the system
+that produced the chain; independence is enforced by the AST import test in
+test_merkle_sth.py.
+
 Trust model
 -----------
 Classical anchor:  The pinned Ed25519 public-key bytes supplied out-of-band
@@ -25,7 +32,7 @@ Hybrid anchor:     The pinned Ed25519 key (above) PLUS the pinned ML-DSA-65
 Merkle + STH layer:
                    verify_inclusion / verify_consistency / leaf_hash / node_hash /
                    recompute_root are re-implemented from the RFC 6962 spec (SHA3-256).
-                   They do NOT import from aevum.core.audit.merkle — independence is
+                   They import nothing from the chain producer — independence is
                    enforced by the AST import test in test_merkle_sth.py.
 
                    verify_sth checks the hybrid STH signatures (Ed25519 + ML-DSA-65)
@@ -33,10 +40,10 @@ Merkle + STH layer:
                    rules as entry verification.  An optional expected_root check
                    confirms the STH root matches the locally recomputed Merkle root.
 
-                   verify_sth_tsa_full extends verify_sth_tsa (imprint-only) with
-                   full RFC 3161 token-signature + cert-chain validation against a
-                   pinned TSA root certificate.  Returns None / True / False
-                   (no-token / valid / invalid) preserving the existing tri-state.
+                   verify_sth_tsa_full extends an imprint-only RFC 3161 check with
+                   full token-signature + cert-chain validation against a pinned TSA
+                   root certificate.  Returns None / True / False (no-token / valid /
+                   invalid) preserving the existing tri-state.
 """
 from __future__ import annotations
 
@@ -49,19 +56,39 @@ from pathlib import Path
 from typing import Any, Protocol
 
 import rfc8785
-from aevum.core.audit.event import AuditEvent, _message_representative
-from aevum.core.audit.sigchain import GENESIS_HASH
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.x509 import load_der_x509_certificate, load_pem_x509_certificate
 from rfc3161_client import VerificationError, VerifierBuilder, decode_timestamp_response
+
+from aevum.verify._format import (
+    GENESIS_HASH,
+    MAX_CHAIN_ENTRIES,
+    VerifyEvent,
+    hash_event_for_chain,
+    hash_payload,
+    message_representative,
+    safe_fromhex,
+)
 
 logger = logging.getLogger(__name__)
 
 # Maps the lower-case key_scheme suffix to the OQS algorithm name.
 _MLDSA_LEVEL_MAP: dict[str, str] = {"ml-dsa-65": "ML-DSA-65"}
 
+# Optional liboqs backend for ML-DSA-65 verification (hybrid entries only).
+# Classical (Ed25519-only) chains verify with no liboqs dependency at all.
+_oqs_module: Any = None
+_OQS_AVAILABLE: bool = False
+try:
+    import oqs as _oqs_import
+
+    _oqs_module = _oqs_import
+    _OQS_AVAILABLE = True
+except (ImportError, OSError, SystemExit):
+    pass
+
 # ---------------------------------------------------------------------------
-# Merkle constants (must match aevum.core.audit.merkle exactly)
+# Merkle constants (must match the RFC 6962 + SHA3-256 construction in the spec)
 # ---------------------------------------------------------------------------
 
 # RFC 6962 leaf / node domain bytes
@@ -83,8 +110,8 @@ _SHA_OID_TO_ALGO: dict[str, str] = {
 
 
 # ---------------------------------------------------------------------------
-# _STHLike — duck-typed protocol satisfied by aevum.core.audit.merkle.SignedTreeHead
-# (aevum.core.audit.merkle is never imported at runtime; independence enforced by test)
+# _STHLike — duck-typed protocol satisfied by the producer's SignedTreeHead dataclass
+# (never imported at runtime; independence enforced by the AST test in test_merkle_sth.py)
 # ---------------------------------------------------------------------------
 
 class _STHLike(Protocol):
@@ -120,7 +147,7 @@ class VerifyResult:
 
 
 def verify_entry(
-    entry: AuditEvent,
+    entry: VerifyEvent,
     *,
     ed25519_pub: bytes,
     mldsa65_pub: bytes | None,
@@ -128,11 +155,12 @@ def verify_entry(
 ) -> VerifyResult:
     """Verify a single chain entry against pinned public keys.
 
-    The check order matches aevum-core's verify_chain to guarantee that both
-    implementations detect the same failure in the same entry.
+    The check order matches the reference verification procedure (spec
+    "Verification Procedure") to guarantee that independent implementations
+    detect the same failure in the same entry.
 
     Args:
-        entry:          The AuditEvent to verify.
+        entry:          The event to verify.
         ed25519_pub:    Pinned Ed25519 public key bytes (32 bytes).
         mldsa65_pub:    Pinned ML-DSA-65 public key bytes; required for hybrid entries.
         expected_prior: Expected value of entry.prior_hash.
@@ -149,7 +177,7 @@ def verify_entry(
     if entry.prior_hash != expected_prior:
         return VerifyResult(ok=False, reason="prior_hash mismatch")
 
-    if AuditEvent.hash_payload(entry.payload) != entry.payload_hash:
+    if hash_payload(entry.payload) != entry.payload_hash:
         return VerifyResult(ok=False, reason="payload_hash mismatch")
 
     signing_fields: dict[str, Any] = {
@@ -174,7 +202,7 @@ def verify_entry(
         "sig_format_version": 1,
         "hash_alg": entry.hash_alg,
     }
-    representative = _message_representative(signing_fields)
+    representative = message_representative(signing_fields)
     digest = hashlib.sha3_256(representative).digest()
 
     # Ed25519 verify against the PINNED key — the sole classical trust anchor.
@@ -207,22 +235,30 @@ def verify_entry(
             )
 
         # Pinned-key match: the embedded key must equal the published anchor.
-        if bytes.fromhex(entry.mldsa65_pub) != mldsa65_pub:
+        # bytes.fromhex raises ValueError on malformed/oversized hex — fail closed
+        # rather than crash (garbage-hex mldsa65_pub must never raise).
+        try:
+            embedded_mldsa65_pub = safe_fromhex(entry.mldsa65_pub)
+        except ValueError as exc:
+            return VerifyResult(ok=False, reason=f"malformed mldsa65_pub: {exc}")
+        if embedded_mldsa65_pub != mldsa65_pub:
             return VerifyResult(
                 ok=False,
                 reason="embedded mldsa65_pub does not match pinned ML-DSA-65 key",
             )
 
         # ML-DSA verification over the representative bytes (not the hash of them).
-        try:
-            from aevum.core.signing import DualSigner
-
-            DualSigner.verify_mldsa(
-                representative,
-                bytes.fromhex(entry.mldsa65_sig),
-                mldsa65_pub,
-                alg=mldsa_alg,
+        if not _OQS_AVAILABLE:
+            return VerifyResult(
+                ok=False,
+                reason="liboqs unavailable — cannot verify ML-DSA-65 signature",
             )
+        try:
+            mldsa_sig_bytes = safe_fromhex(entry.mldsa65_sig)
+            with _oqs_module.Signature(mldsa_alg) as verifier:
+                ok = verifier.verify(representative, mldsa_sig_bytes, mldsa65_pub)
+            if not ok:
+                return VerifyResult(ok=False, reason="ML-DSA signature invalid")
         except Exception as exc:
             return VerifyResult(ok=False, reason=f"ML-DSA signature invalid: {exc}")
     else:
@@ -232,21 +268,22 @@ def verify_entry(
 
 
 def verify_chain(
-    entries: list[AuditEvent],
+    entries: list[VerifyEvent],
     *,
     ed25519_pub: bytes,
     mldsa65_pub: bytes | None = None,
 ) -> VerifyResult:
     """Verify an entire sigchain from genesis.
 
-    Applies the same pre-pass checks as aevum-core's Sigchain.verify_chain to
-    guarantee both implementations detect failures at the same entry:
+    Applies the same pre-pass checks as the reference verification procedure
+    (spec "Verification Procedure") to guarantee independent implementations
+    detect failures at the same entry:
       1. sig_format_version == 1 for every entry.
       2. key_scheme homogeneity — a mixed chain is a downgrade/splice fingerprint.
       3. Per-entry: prior_hash linkage, payload_hash, Ed25519 + ML-DSA (if hybrid).
 
     Args:
-        entries:     Ordered list of AuditEvent objects starting from genesis.
+        entries:     Ordered list of events starting from genesis.
         ed25519_pub: Pinned Ed25519 public key bytes (the sole classical trust anchor).
         mldsa65_pub: Pinned ML-DSA-65 public key bytes; required for hybrid chains.
 
@@ -285,7 +322,7 @@ def verify_chain(
         )
         if not result.ok:
             return VerifyResult(ok=False, failing_index=i, reason=result.reason)
-        expected_prior = AuditEvent.hash_event_for_chain(entry)
+        expected_prior = hash_event_for_chain(entry)
 
     return VerifyResult(ok=True)
 
@@ -294,8 +331,8 @@ def verify_chain(
 # JSON serialization helpers (for CLI and test fixtures)
 # ---------------------------------------------------------------------------
 
-def event_to_dict(event: AuditEvent) -> dict[str, Any]:
-    """Serialize an AuditEvent to a JSON-safe dict (receipt_cbor excluded)."""
+def event_to_dict(event: VerifyEvent) -> dict[str, Any]:
+    """Serialize an event to a JSON-safe dict (receipt_cbor excluded)."""
     return {
         "event_id": event.event_id,
         "episode_id": event.episode_id,
@@ -325,9 +362,9 @@ def event_to_dict(event: AuditEvent) -> dict[str, Any]:
     }
 
 
-def event_from_dict(d: dict[str, Any]) -> AuditEvent:
-    """Deserialize an AuditEvent from a dict produced by event_to_dict."""
-    return AuditEvent(
+def event_from_dict(d: dict[str, Any]) -> VerifyEvent:
+    """Deserialize an event from a dict produced by event_to_dict."""
+    return VerifyEvent(
         event_id=d["event_id"],
         episode_id=d["episode_id"],
         sequence=int(d["sequence"]),
@@ -356,22 +393,30 @@ def event_from_dict(d: dict[str, Any]) -> AuditEvent:
     )
 
 
-def load_chain(path: Path) -> list[AuditEvent]:
-    """Load a chain from a JSON file (array of event dicts)."""
+def load_chain(path: Path) -> list[VerifyEvent]:
+    """Load a chain from a JSON file (array of event dicts).
+
+    Rejects (raises ValueError) a chain exceeding MAX_CHAIN_ENTRIES before
+    deserializing a single entry — a DoS guard against a hostile file
+    claiming an absurd number of entries.
+    """
     data = json.loads(path.read_text())
     if not isinstance(data, list):
         raise ValueError(f"chain file must contain a JSON array, got {type(data).__name__}")
+    if len(data) > MAX_CHAIN_ENTRIES:
+        raise ValueError(f"chain has {len(data)} entries, exceeds limit of {MAX_CHAIN_ENTRIES}")
     return [event_from_dict(entry) for entry in data]
 
 
-def dump_chain(events: list[AuditEvent], path: Path) -> None:
+def dump_chain(events: list[VerifyEvent], path: Path) -> None:
     """Write a chain to a JSON file."""
     path.write_text(json.dumps([event_to_dict(e) for e in events], indent=2))
 
 
 # ---------------------------------------------------------------------------
 # Merkle primitives — re-implemented from RFC 6962 spec (SHA3-256)
-# Never imports from aevum.core.audit.merkle (independence enforced by AST test)
+# Imports nothing from the chain producer (independence enforced by the AST
+# test in test_merkle_sth.py)
 # ---------------------------------------------------------------------------
 
 def leaf_hash(entry_digest: bytes) -> bytes:
@@ -394,14 +439,14 @@ def _mth_impl(nodes: list[bytes]) -> bytes:
     return node_hash(_mth_impl(nodes[:k]), _mth_impl(nodes[k:]))
 
 
-def recompute_root(entries: list[AuditEvent]) -> bytes:
-    """Recompute the Merkle root from AuditEvent entries.
+def recompute_root(entries: list[VerifyEvent]) -> bytes:
+    """Recompute the Merkle root from event entries.
 
-    Leaf input per entry: bytes.fromhex(AuditEvent.hash_event_for_chain(entry)).
-    This matches aevum-core's MerkleLog.signed_tree_head() leaf-digest definition.
+    Leaf input per entry: bytes.fromhex(hash_event_for_chain(entry)).
+    This matches the spec's leaf-digest definition for the verifiable log.
     Empty list → EMPTY_ROOT.
     """
-    leaves = [leaf_hash(bytes.fromhex(AuditEvent.hash_event_for_chain(e))) for e in entries]
+    leaves = [leaf_hash(bytes.fromhex(hash_event_for_chain(e))) for e in entries]
     return _mth_impl(leaves)
 
 
@@ -412,10 +457,11 @@ def verify_inclusion(
     proof: list[bytes],
     root: bytes,
 ) -> bool:
-    """RFC 6962 §2.1.1 inclusion verifier (re-implemented, independent of aevum-core).
+    """RFC 6962 §2.1.1 inclusion verifier (re-implemented from the public spec,
+    independent of the chain producer).
 
     Returns True iff the inclusion proof for leaf_hash_value at index in a tree of
-    tree_size entries recomputes to root.  Never calls aevum.core.audit.merkle.
+    tree_size entries recomputes to root.  Calls nothing from the chain producer.
     """
     if index >= tree_size:
         return False
@@ -442,11 +488,12 @@ def verify_consistency(
     new_root: bytes,
     proof: list[bytes],
 ) -> bool:
-    """RFC 6962 §2.1.2 consistency verifier (re-implemented, independent of aevum-core).
+    """RFC 6962 §2.1.2 consistency verifier (re-implemented from the public spec,
+    independent of the chain producer).
 
     Returns True iff the log only grew (no history rewritten) between old and new.
     m==0 → True; m==n → True iff roots equal and proof empty; m>n → False.
-    Never calls aevum.core.audit.merkle.
+    Calls nothing from the chain producer.
     """
     if old_size > new_size:
         return False
@@ -494,7 +541,7 @@ def verify_consistency(
 
 
 # ---------------------------------------------------------------------------
-# STH field canonicalization (mirrors _sth_fields in aevum-core merkle.py)
+# STH field canonicalization (mirrors the spec's STH signing-field rules)
 # ---------------------------------------------------------------------------
 
 def _sth_canonical_fields(sth: _STHLike) -> dict[str, Any]:
@@ -529,11 +576,17 @@ def verify_sth(
     If expected_root is provided (typically from recompute_root(entries)) the
     check also fails if bytes.fromhex(sth.root_hash) != expected_root.
 
-    Returns False if either signature is invalid, if mldsa65_pub is absent, or
-    if the expected_root check fails.  Never raises — always returns bool.
+    Returns False if either signature is invalid, if mldsa65_pub is absent, if
+    root_hash is malformed/oversized hex, or if the expected_root check fails.
+    Never raises — always returns bool.
     """
-    if expected_root is not None and bytes.fromhex(sth.root_hash) != expected_root:
-        return False
+    if expected_root is not None:
+        try:
+            root_hash_bytes = safe_fromhex(sth.root_hash)
+        except ValueError:
+            return False
+        if root_hash_bytes != expected_root:
+            return False
 
     fields = _sth_canonical_fields(sth)
     representative: bytes = _STH_DOMAIN + rfc8785.dumps(fields)
@@ -550,13 +603,14 @@ def verify_sth(
     # ML-DSA-65 over representative directly (fail-closed: required for hybrid STH)
     if mldsa65_pub is None:
         return False
+    if not _OQS_AVAILABLE:
+        return False
     try:
-        from aevum.core.signing import DualSigner
-        DualSigner.verify_mldsa(
-            representative,
-            bytes.fromhex(sth.mldsa65_sig),
-            mldsa65_pub,
-        )
+        mldsa_sig_bytes = safe_fromhex(sth.mldsa65_sig)
+        with _oqs_module.Signature("ML-DSA-65") as verifier:
+            ok = verifier.verify(representative, mldsa_sig_bytes, mldsa65_pub)
+        if not ok:
+            return False
     except Exception:
         return False
 
@@ -574,7 +628,8 @@ def verify_sth_tsa_full(
 ) -> bool | None:
     """Full RFC 3161 TSA validation: imprint + token signature + chain to pinned root.
 
-    Extends the imprint-only check in aevum-core's verify_sth_tsa with:
+    Extends an imprint-only RFC 3161 check (which validates only that the
+    token's message imprint equals the Merkle root) with:
       (ii)  token signature verified via PKCS#7 chain
       (iii) signing cert chains to the PINNED tsa_root_cert (PEM or DER bytes)
             — the token's own embedded chain is verified *against* this anchor,
@@ -588,9 +643,9 @@ def verify_sth_tsa_full(
     if sth.tsa_token is None:
         return None
     try:
-        token_bytes = bytes.fromhex(sth.tsa_token)
+        token_bytes = safe_fromhex(sth.tsa_token)
         response = decode_timestamp_response(token_bytes)
-        root_bytes = bytes.fromhex(sth.root_hash)
+        root_bytes = safe_fromhex(sth.root_hash)
 
         # Load the pinned root cert (accept PEM or DER)
         try:

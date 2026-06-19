@@ -487,7 +487,7 @@ name = "aevum-verify"
 version = "0.8.0"
 source = { editable = "packages/aevum-verify" }
 dependencies = [
-    { name = "aevum-core" },
+    { name = "rfc8785" },
 ]
 
 [package.optional-dependencies]
@@ -503,11 +503,11 @@ pqc = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aevum-core", editable = "packages/aevum-core" },
     { name = "liboqs-python", marker = "extra == 'pqc'", specifier = ">=0.14.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "rfc8785", specifier = ">=0.1.2" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
 ]
 provides-extras = ["pqc", "dev"]

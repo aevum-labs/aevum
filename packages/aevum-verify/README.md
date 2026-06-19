@@ -1,13 +1,38 @@
 # aevum-verify
 
-Standalone sigchain verifier for Aevum. Re-implements verification from the
-spec — entry signatures, the Merkle root, inclusion/consistency proofs,
-tree-head signatures, and TSA certificate-chain validation — independently
-of `aevum-core`, anchored only to pinned, out-of-band public keys.
+Standalone sigchain verifier for Aevum. `aevum-verify` shares no code with
+`aevum-core` — every cryptographic primitive (the signing-digest
+construction, payload hashing, chain hashing, RFC 6962 Merkle inclusion and
+consistency proofs, tree-head signatures, and TSA certificate-chain
+validation) is reimplemented directly from the public spec,
+[`docs/spec/aevum-signing-v1.md`](https://github.com/aevum-labs/aevum/blob/main/docs/spec/aevum-signing-v1.md),
+not derived from or imported from the chain producer's runtime.
 
-Any third party — an auditor, a regulator, opposing counsel — can confirm
-that an exported chain is authentic and unmodified without trusting the
-Aevum vendor or the deploying firm's systems.
+This means signature verification no longer trusts the operator's runtime:
+any third party — an auditor, a regulator, opposing counsel — can confirm
+that an exported chain is internally consistent and matches its claimed
+signatures using an implementation that imports nothing from the system that
+produced the chain. `aevum-verify` is **tamper-evident, not tamper-proof** —
+it detects whether an exported chain has been altered after the fact; it
+makes no claim about events that were never recorded or about the integrity
+of the system that generated the chain in the first place.
+
+## Independence
+
+- Zero runtime dependency on `aevum-core` — `aevum-verify`'s own package
+  metadata does not declare it, and `aevum-verify`'s wheel does not pull it
+  in.
+- Zero imports of any `aevum.core.*` module from `_core.py` or `_format.py`,
+  enforced by an AST-level test (`test_merkle_sth.py::TestMerkleIndependence`)
+  that fails the build if either file ever imports from the producer again.
+- The only inputs trusted are the pinned public key bytes the caller supplies
+  out-of-band, and the chain file itself.
+
+Tests are the one place this package still touches `aevum-core`: fixtures
+use the real `Sigchain`/`DualSigner` to produce genuinely signed chains so
+the independent reimplementation can be checked against real signatures,
+not just its own assumptions. None of that is reachable from `aevum-verify`'s
+verification logic or its packaged dependencies.
 
 ## Install
 
@@ -66,9 +91,11 @@ supplied; absence of either signature or key for a hybrid entry fails
 closed. A chain mixing key schemes (e.g. some entries classical, some
 hybrid) is rejected outright as a downgrade/splice fingerprint.
 
-Merkle inclusion, consistency, and signed-tree-head verification are
-re-implemented from the RFC 6962 spec independently of `aevum-core` — this
-package never imports `aevum.core.audit.merkle`.
+Malformed or hostile input — corrupt JSON, truncated files, missing fields,
+wrong-length keys, garbage-hex embedded fields, oversized hex values or
+entry counts — fails closed (a reported FAILED result, a non-zero exit
+code, or a usage error) rather than raising an unhandled exception or
+silently accepting bad data.
 
 ## License
 

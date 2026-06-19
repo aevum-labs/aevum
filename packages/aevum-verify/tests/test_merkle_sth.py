@@ -33,28 +33,41 @@ _D = [bytes([i] * 32) for i in range(20)]
 # ---------------------------------------------------------------------------
 
 class TestMerkleIndependence:
-    def test_ast_no_merkle_import(self) -> None:
-        """AST-level check: no import statement references aevum.core.audit.merkle.
-
-        The Merkle algorithms (leaf_hash, node_hash, verify_inclusion,
-        verify_consistency, _mth_impl) are re-implemented from the RFC 6962 spec.
-        They must not be imported from aevum.core.audit.merkle so that the verifier
-        can run without trusting aevum-core's Merkle implementation.
-        """
-        import aevum.verify._core as _core_mod
-        source_path = Path(_core_mod.__file__)  # type: ignore[arg-type]
+    @staticmethod
+    def _assert_no_aevum_core_import(source_path: Path) -> None:
         tree = ast.parse(source_path.read_text())
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    assert "aevum.core.audit.merkle" not in alias.name, (
-                        f"import {alias.name} found — Merkle independence violated"
+                    assert not alias.name.startswith("aevum.core"), (
+                        f"{source_path.name}: import {alias.name} found — independence violated"
                     )
             elif isinstance(node, ast.ImportFrom):
                 module = node.module or ""
-                assert "aevum.core.audit.merkle" not in module, (
-                    f"from {module} import ... — Merkle independence violated"
+                assert not module.startswith("aevum.core"), (
+                    f"{source_path.name}: from {module} import ... found — independence violated"
                 )
+
+    def test_ast_no_aevum_core_import_in_core(self) -> None:
+        """AST-level check: no import statement in _core.py names any aevum.core module.
+
+        Every algorithm in _core.py — entry/chain hashing, RFC 6962 Merkle
+        verification, STH and TSA validation — is re-implemented from the public
+        spec. None of it may import from the chain producer (any aevum.core.*
+        module), so the verifier never trusts the producer's runtime.
+        """
+        import aevum.verify._core as _core_mod
+        self._assert_no_aevum_core_import(Path(_core_mod.__file__))  # type: ignore[arg-type]
+
+    def test_ast_no_aevum_core_import_in_format(self) -> None:
+        """AST-level check: no import statement in _format.py names any aevum.core module.
+
+        _format.py reimplements the signing-digest, payload-hash, and
+        chain-hash primitives from the spec; it must not import them from the
+        chain producer either.
+        """
+        import aevum.verify._format as _format_mod
+        self._assert_no_aevum_core_import(Path(_format_mod.__file__))  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
