@@ -566,6 +566,29 @@ cedarpy version at verification: 4.8.4 (constraint ~=4.8.0)
 
 ---
 
+## HO-SEC-SKIP: aevum-llm / aevum-maintainer pip-audit Skips Are Expected (CLOSED — HO-SEC)
+
+**Item:** HO-SEC-SKIP — closed during the v0.8.1 CVE floor-raise + check-script
+hardening pass
+
+**Question:** Why does `pip-audit` report "Dependency not found on PyPI and
+could not be audited" for `aevum-llm` and `aevum-maintainer`? Is this a gap
+that needs investigation?
+
+**Resolution:** Expected, not a gap. `aevum-llm` is a tombstone package and
+`aevum-maintainer` is a private workspace package — both are intentionally
+unpublishable to PyPI, so `pip-audit` cannot resolve them and correctly
+reports a skip rather than a finding. `scripts/check-security.sh` now parses
+`pip-audit -f json` and fails only when the parsed vulnerability list is
+non-empty; skip-reason entries never fail the check.
+
+**Action required:** None. Do not re-investigate these two skip lines as a
+security gap in future sessions.
+
+**Closed:** HO-SEC session (2026-06-19).
+
+---
+
 ## v0.7.0 Release — Open Items (carry to v0.7.1)
 
 1. **V07-VAULT:** CLOSED Session 4 (2026-05-26) — sign/verify confirmed, integration tests added, CLI vault-check added
