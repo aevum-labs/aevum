@@ -35,6 +35,8 @@ jobs:
             exit 1
           fi
           echo "OK: No hardcoded Rekor URLs in Python source."
+      - name: No forbidden claim regressions
+        run: bash scripts/check-claims.sh
 
   typecheck:
     name: Type check (mypy)
@@ -75,6 +77,8 @@ jobs:
       - name: bandit
         run: |
           uv run bandit -r packages/ -ll -q
+      - name: Security release-check (pip-audit + weak primitives)
+        run: bash scripts/check-security.sh
 
   namespace-check:
     name: Namespace discipline

@@ -17,6 +17,9 @@ site/
 .pytest_cache/
 .hypothesis/
 .cache/
+.coverage
+coverage.json
+htmlcov/
 
 # IDE
 .vscode/
