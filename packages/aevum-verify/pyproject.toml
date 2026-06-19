@@ -16,7 +16,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "aevum-core",
+    "rfc8785>=0.1.2",
 ]
 
 [project.optional-dependencies]
@@ -43,9 +43,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aevum"]
-
-[tool.uv.sources]
-aevum-core = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
