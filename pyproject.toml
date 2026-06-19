@@ -27,9 +27,11 @@ dev-dependencies = [
 ]
 # GHSA-pp6c-gr5w-3c5g (DoS) + CVE-2026-53538 (querystring parser differential): python-multipart fixed in 0.0.30 (transitive via mcp)
 # PYSEC-2026-161 (host header) + CVE-2026-54282 (request-path authority injection): starlette fixed in 1.3.0
+# GHSA-6v7p-g79w-8964: msgpack fixed in 1.2.1 (transitive via pip-audit -> cachecontrol)
 constraint-dependencies = [
     "python-multipart>=0.0.30",
     "starlette>=1.3.0",
+    "msgpack>=1.2.1",
 ]
 
 [tool.pytest.ini_options]
