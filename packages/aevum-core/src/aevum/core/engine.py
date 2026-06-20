@@ -496,6 +496,9 @@ class Engine:
         idempotency_key: str | None = None,
         episode_id: str | None = None,
         correlation_id: str | None = None,
+        principal_identity: str | None = None,
+        principal_claims: dict[str, Any] | None = None,
+        commitment_key_id: str | None = None,
     ) -> OutputEnvelope:
         """REMEMBER — append an event to the episodic ledger (the sigchain directly).
 
@@ -508,6 +511,12 @@ class Engine:
         Any idempotency_key provided causes a cached envelope to be returned for duplicate
         calls, preventing double-writes in at-least-once delivery scenarios.
 
+        principal_identity / principal_claims / commitment_key_id bind this event to a
+        verified external credential identity (P2-IDENTITY-V2) — pass these only when the
+        underlying ledger was constructed with a CommitmentKeyStore (see
+        aevum.core.audit.commitment_key_store). The raw commitment key never crosses this
+        method's signature; only commitment_key_id does (HO-G-PLUMB SR1).
+
         Returns:
             OutputEnvelope — status "ok" with the signed AuditEvent audit_id in data,
             or "error" if the ledger write failed. Never raises on policy denial.
@@ -518,6 +527,9 @@ class Engine:
             idempotency_key=idempotency_key,
             idempotency_cache=self._idempotency_cache,
             episode_id=episode_id, correlation_id=correlation_id,
+            principal_identity=principal_identity,
+            principal_claims=principal_claims,
+            commitment_key_id=commitment_key_id,
         )
 
     def replay(

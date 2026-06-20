@@ -22,6 +22,7 @@ from __future__ import annotations
 import dataclasses
 
 import pytest
+from aevum.core.audit.commitment_key_store import CommitmentKeyStore
 from aevum.core.audit.event import AuditEvent
 from aevum.core.audit.ledger import InMemoryLedger
 from aevum.core.audit.sigchain import Sigchain
@@ -156,18 +157,24 @@ class TestEventRowRoundTrip:
 @pytest.mark.parametrize(
     "ledger_factory",
     [
-        pytest.param(lambda sc: InMemoryLedger(sc), id="InMemoryLedger"),
-        pytest.param(lambda sc: PostgresLedger(FakeConn(), sc), id="PostgresLedger"),
+        pytest.param(
+            lambda sc, store=None: InMemoryLedger(sc, commitment_key_store=store),
+            id="InMemoryLedger",
+        ),
+        pytest.param(
+            lambda sc, store=None: PostgresLedger(FakeConn(), sc, commitment_key_store=store),
+            id="PostgresLedger",
+        ),
     ],
 )
 class TestLedgerRoundTripAllStores:
     """Parametrized over every current AuditLedgerProtocol implementor (Gate
     P-b) -- InMemoryLedger and PostgresLedger. Exercises real append()/get()/
     all_events() for the signer configs the shared ledger.append() API
-    supports today (classical, hybrid). v2/TSA/receipt_cbor fields are
-    exercised at the _event_to_row/_row_to_event boundary above, since no
-    ledger's append() currently plumbs Sigchain.new_event()'s extra v2 kwargs
-    through (a separate, pre-existing gap outside HO-G-PG2's scope)."""
+    supports today (classical, hybrid, v2 principal-binding). TSA/receipt_cbor
+    fields are still exercised only at the _event_to_row/_row_to_event boundary
+    above, since no ledger's append() plumbs those through (a TSA exchange is
+    attached metadata, not something append() accepts as input)."""
 
     def test_satisfies_protocol(self, ledger_factory) -> None:
         ledger = ledger_factory(Sigchain())
@@ -210,6 +217,30 @@ class TestLedgerRoundTripAllStores:
         fetched_events = ledger.all_events()
         assert len(fetched_events) == 3
         assert sc.verify_chain(fetched_events) is True
+
+    def test_v2_principal_binding_append_round_trip_and_verifies(self, ledger_factory) -> None:
+        """HO-G-PLUMB: v2 principal-binding kwargs are now reachable through the
+        public append() signature for every AuditLedgerProtocol implementor, not
+        just through Sigchain.new_event() directly."""
+        sc = Sigchain()
+        store = CommitmentKeyStore()
+        key_id = store.create_key(scope="test-deployment")
+        ledger = ledger_factory(sc, store)
+        event = ledger.append(
+            event_type="rt.v2",
+            payload={"d": 4},
+            actor="tester",
+            principal_identity="urn:oidc:sub:alice",
+            principal_claims={"iss": "https://idp.example", "aud": "aevum", "sub": "alice"},
+            commitment_key_id=key_id,
+        )
+        assert event.sig_format_version == 2
+        assert event.principal_commitment_key_id == key_id
+        assert event.principal_commitment is not None
+        assert event.principal_binding is not None
+        fetched = ledger.get(event.audit_id())
+        _assert_lossless(event, fetched)
+        assert sc.verify_chain([fetched]) is True
 
 
 class TestRoundTripHasTeeth:

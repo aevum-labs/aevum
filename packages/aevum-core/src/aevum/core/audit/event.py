@@ -178,6 +178,33 @@ _PRINCIPAL_BINDING_ALLOWED_KEYS = frozenset({"iss", "aud", "jti", "iat", "exp", 
 # ('jkt') — never the raw key or any other proof-of-possession material.
 _CNF_ALLOWED_KEYS = frozenset({"jkt"})
 
+# HO-G-PLUMB SR4: generous headroom for realistic OIDC sub / SPIFFE ID / DID values
+# and claim sets (mirrors the size-bound posture aevum-verify applies to hex fields,
+# MAX_HEX_FIELD_LEN — HO-C) — not a tight fit, but oversized input is rejected before
+# any HMAC/canonicalization work to prevent a DoS via new_event().
+MAX_PRINCIPAL_IDENTITY_LEN = 2_048
+MAX_PRINCIPAL_CLAIMS_SERIALIZED_LEN = 16_384
+
+
+def validate_principal_binding_sizes(
+    principal_identity: str | None, principal_claims: Mapping[str, Any] | None
+) -> None:
+    """Reject oversized principal-binding inputs (SR4). Never includes the raw
+    value in the raised message — only lengths — so a caller logging the
+    exception cannot leak the identity or claims (SR2)."""
+    if principal_identity is not None and len(principal_identity) > MAX_PRINCIPAL_IDENTITY_LEN:
+        raise ValueError(
+            f"principal_identity length {len(principal_identity)} exceeds "
+            f"{MAX_PRINCIPAL_IDENTITY_LEN} limit"
+        )
+    if principal_claims is not None:
+        serialized_len = len(json.dumps(principal_claims, default=str))
+        if serialized_len > MAX_PRINCIPAL_CLAIMS_SERIALIZED_LEN:
+            raise ValueError(
+                f"principal_claims serialized length {serialized_len} exceeds "
+                f"{MAX_PRINCIPAL_CLAIMS_SERIALIZED_LEN} limit"
+            )
+
 
 def build_principal_binding_blob(claims: Mapping[str, Any]) -> str:
     """Build the v2 principal_binding signed field from verified credential claims.

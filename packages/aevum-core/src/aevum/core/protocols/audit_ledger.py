@@ -24,6 +24,9 @@ class AuditLedgerProtocol(Protocol):
         episode_id: str | None = None,
         causation_id: str | None = None,
         correlation_id: str | None = None,
+        principal_identity: str | None = None,
+        principal_claims: dict[str, Any] | None = None,
+        commitment_key_id: str | None = None,
     ) -> AuditEvent: ...
 
     def get(self, audit_id: str) -> AuditEvent: ...

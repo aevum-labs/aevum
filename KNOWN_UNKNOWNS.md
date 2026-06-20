@@ -685,11 +685,34 @@ for consent-derived artifacts).
 
 ---
 
-## HO-G-PG-FIELDS: PostgresLedger Row Round-Trip Drops Most Post-P2g Signed Fields (Open — before v0.9.0)
+## HO-G-PG-FIELDS: PostgresLedger Row Round-Trip Drops Most Post-P2g Signed Fields (RESOLVED — HO-G-PG2 + HO-G-PLUMB)
 
 **Item:** HO-G-PG-FIELDS — found while fixing HO-G-PG (`sig_format_version`
 dropped by the postgres store's row round-trip, surfaced by the HO-G-LINT
 None-guard in `signing_fields_from_event`)
+
+**Resolution:** Closed in two passes. HO-G-PG2 added the missing DDL columns
+plus `_event_to_row()`/`_row_to_event()`/`_resume_chain_from_db()` coverage
+for all 10 fields named below (`key_scheme`, `hash_alg`, `mldsa65_sig`,
+`mldsa65_pub`, `tsa_url`, `tsa_token`, `receipt_cbor`, `principal_binding`,
+`principal_commitment`, `principal_commitment_key_id`), enforced by a
+`dataclasses.fields(AuditEvent)`-driven round-trip test
+(`packages/aevum-store-postgres/tests/test_lossless_roundtrip.py`) so a
+future field addition that a store forgets to carry fails automatically.
+HO-G-PLUMB then closed the smaller remaining gap flagged below — that
+`PostgresLedger.append()` (and `InMemoryLedger.append()`, and the shared
+`AuditLedgerProtocol`) didn't expose `commitment_key_id` /
+`principal_identity` / `principal_claims` as parameters at all, so v2
+entries could not be created through any ledger's public `append()`, only
+through `Sigchain.new_event()` directly. `append()` now accepts these three
+kwargs (never a raw `commitment_key: bytes` — SR1); both ledger
+implementors resolve the raw key internally via
+`aevum.core.audit.commitment_key_store.resolve_commitment_key()` from an
+optional `commitment_key_store=` constructor argument. `Engine.commit()`
+forwards the same three kwargs through to `ledger.append()`. See
+`packages/aevum-core/tests/test_commit_v2_binding.py` for the end-to-end
+proof (v2 reachable via `engine.commit()`, v1 chains unaffected, raw
+identity/claims/key absent from logs and the stored `AuditEvent`).
 
 **Question:** `sig_format_version` was one field among several that
 `aevum_ledger`'s DDL, `_event_to_row()`, and `_row_to_event()`
@@ -718,34 +741,8 @@ doesn't even expose `commitment_key_id` as a parameter, so v2 entries can't
 be created via this store yet at all, which is a smaller gap (a missing
 feature, not silent data loss) but worth closing in the same pass.
 
-**Why deferred (not fixed alongside HO-G-PG):** HO-G-PG was scoped
-specifically to `sig_format_version`, the field whose absence the
-`None`-guard had already turned into a loud, located test failure. The other
-fields are not (yet) guarded the same way and fixing all of them is a larger
-DDL migration (new columns) plus round-trip change than the scoped fix
-warrants in one pass. `hash_alg`'s default is correct for every
-sig_format_version 1 producer path that exists today (none have ever signed
-with anything but `"sha3-256"`), so it is lower urgency than `key_scheme` and
-the dual-sig/receipt fields.
-
-**Fix shape (when picked up):** Same pattern as the `sig_format_version`
-fix — add columns to `_DDL_LEDGER` plus an `ADD COLUMN IF NOT EXISTS ...`
-migration statement, extend `_event_to_row()` / `_row_to_event()` /
-the explicit `_resume_chain_from_db()` SELECT column list / the `append()`
-INSERT column list. Unlike `sig_format_version`, a correct backfill default
-for **existing** rows cannot be inferred for `mldsa65_sig`/`mldsa65_pub` —
-any row predating the fix that was actually dual-signed has already lost
-that signature material on every prior read-back; only `key_scheme` can be
-backfilled confidently (default `'ed25519'`, since no dual-signer + postgres
-deployment has ever existed). Add a regression test exercising `DualSigner`
-+ `PostgresLedger` together (none exists today, which is part of why this
-gap was never caught) before declaring it closed.
-
-**Condition for revisitation:** Before v0.9.0 tags, or immediately if any
-deployment is found running `PostgresLedger` with `DualSigner` or
-P2-IDENTITY-V2 `commitment_key_id`.
-
-**Related:** HO-G-PG (this session, `sig_format_version` fix),
+**Related:** HO-G-PG (`sig_format_version` fix), HO-G-PG2 (storage round-trip
+fix for the remaining 10 fields), HO-G-PLUMB (`append()` parameter plumbing),
 `packages/aevum-core/src/aevum/core/audit/event.py` (`AuditEvent`,
 `signing_fields_from_event`), `packages/aevum-core/src/aevum/core/audit/sigchain.py`
 (DD4 dispatch, `Sigchain.new_event`), V07-MLDSA65 (ML-DSA-65 dual-signing

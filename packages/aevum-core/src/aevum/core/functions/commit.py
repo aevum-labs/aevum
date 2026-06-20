@@ -39,6 +39,9 @@ def commit(
     idempotency_cache: dict[str, OutputEnvelope] | None = None,
     episode_id: str | None = None,
     correlation_id: str | None = None,
+    principal_identity: str | None = None,
+    principal_claims: dict[str, Any] | None = None,
+    commitment_key_id: str | None = None,
 ) -> OutputEnvelope:
     if idempotency_key and idempotency_cache is not None and idempotency_key in idempotency_cache:
         return idempotency_cache[idempotency_key]
@@ -94,7 +97,10 @@ def commit(
         )
 
     event = ledger.append(event_type=event_type, payload=payload, actor=actor,
-                          episode_id=episode_id, correlation_id=correlation_id)
+                          episode_id=episode_id, correlation_id=correlation_id,
+                          principal_identity=principal_identity,
+                          principal_claims=principal_claims,
+                          commitment_key_id=commitment_key_id)
     audit_id = event.audit_id()
     result = OutputEnvelope.ok(
         audit_id=audit_id,
