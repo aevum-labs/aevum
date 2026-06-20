@@ -8,6 +8,22 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added
+
+- **Neutral `PrincipalBindingVerifier` Protocol + `aevum-oidc` adapter
+  (HO-G-OIDC).** `aevum.core.protocols.principal_binding_verifier` defines an
+  issuer-neutral contract (`BindingVerificationResult`, `PrincipalBindingVerifier`)
+  for re-verifying a recorded v2 `principal_binding` blob, with zero OIDC/SPIFFE
+  dependencies in core. The new `aevum-oidc` package implements it for OIDC/JWT
+  (`scheme="oidc-jwt"`): checks structure, validity window, issuer, audience, and
+  `cnf.jkt` format/holder-match, all offline (DD-I3) and fail-closed on malformed
+  input. It explicitly does not re-verify the issuer's signature or a bearer
+  token — every result's `checks_not_performed` says so. An optional `[jwks]`
+  extra adds a live-JWKS-fetch convenience, isolated from the core offline path.
+  `aevum.core.audit.commitment_key_store.verify_commitment` adds the issuer-neutral
+  commitment-match check (DD-I5) that confirms a claimed identity against a
+  recorded `principal_commitment`, using `hmac.compare_digest`.
+
 ### Fixed
 
 - **`PostgresLedger` lost `sig_format_version` on every row round-trip.**
