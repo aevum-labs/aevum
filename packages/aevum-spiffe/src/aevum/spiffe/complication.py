@@ -32,8 +32,11 @@ class SpiffeComplication:
     SPIFFE/SPIRE agent identity complication.
 
     When on_approved() is called, fetches a JWT-SVID from the SPIFFE Workload
-    API and emits a spiffe.attested AuditEvent recording the SPIFFE ID and
-    metadata. The JWT token itself is never stored.
+    API and commits a spiffe.attested AuditEvent. When `commitment_key_id` is
+    configured, the SPIFFE ID is bound via a v2 principal_identity commitment
+    (HMAC, never stored raw — P2-IDENTITY-V2) rather than recorded directly in
+    the payload; trust domain and other metadata are always recorded
+    operationally. The JWT token itself is never stored.
 
     Failure modes (all non-fatal):
     - py-spiffe not installed: warn and skip
@@ -56,11 +59,15 @@ class SpiffeComplication:
         self,
         socket_path: str | None = None,
         audience: list[str] | None = None,
+        commitment_key_id: str | None = None,
     ) -> None:
         self._socket = socket_path or os.environ.get(
             "AEVUM_SPIFFE_SOCKET", _DEFAULT_SOCKET
         )
         self._audience = audience or list(_DEFAULT_AUDIENCE)
+        self._commitment_key_id = commitment_key_id or os.environ.get(
+            "AEVUM_SPIFFE_COMMITMENT_KEY_ID"
+        )
         self._spiffe_id: str | None = None
         self._trust_domain: str | None = None
         self._attested: bool = False
@@ -112,8 +119,8 @@ class SpiffeComplication:
         self._trust_domain = trust_domain
         self._attested = True
 
-        self._write_attested_event(engine, spiffe_id, trust_domain, expiry)
-        log.info("aevum-spiffe: attested as %s", spiffe_id)
+        self._commit_attested_event(engine, spiffe_id, trust_domain, expiry)
+        log.info("aevum-spiffe: attested (trust_domain=%s)", trust_domain)
 
     def _fetch_svid(self) -> tuple[str, str, str]:
         """
@@ -142,29 +149,47 @@ class SpiffeComplication:
         expiry = expiry_dt.isoformat()
         return spiffe_id, trust_domain, expiry
 
-    def _write_attested_event(
+    def _commit_attested_event(
         self,
         engine: Any,
         spiffe_id: str,
         trust_domain: str,
         expiry: str,
     ) -> None:
-        try:
-            engine._ledger.append(
-                event_type="spiffe.attested",
-                payload={
-                    "spiffe_id": spiffe_id,
-                    "trust_domain": trust_domain,
-                    "audience": self._audience,
-                    "svid_type": "jwt",
-                    "source": "workload-api",
-                    "socket": self._socket,
-                    "expiry": expiry,
+        # spiffe_id goes to principal_identity (→ HMAC commitment), never the
+        # payload — putting it in both would defeat the commitment. No iat: py-spiffe's
+        # JwtSvid exposes only spiffe_id/audience/expiry, not an issued-at claim.
+        payload = {
+            "trust_domain": trust_domain,
+            "audience": self._audience,
+            "svid_type": "jwt",
+            "source": "workload-api",
+            "socket": self._socket,
+            "expiry": expiry,
+        }
+        binding_kwargs: dict[str, Any] = {}
+        if self._commitment_key_id is not None:
+            from datetime import datetime as _datetime
+
+            exp_epoch = int(_datetime.fromisoformat(expiry).timestamp())
+            binding_kwargs = {
+                "principal_identity": spiffe_id,
+                "principal_claims": {
+                    "iss": f"spiffe://{trust_domain}",
+                    "aud": list(self._audience),
+                    "exp": exp_epoch,
                 },
+                "commitment_key_id": self._commitment_key_id,
+            }
+        try:
+            engine.commit(
+                event_type="spiffe.attested",
+                payload=payload,
                 actor="aevum-spiffe",
+                **binding_kwargs,
             )
         except Exception as exc:
-            log.error("aevum-spiffe: failed to write spiffe.attested event: %s", exc)
+            log.error("aevum-spiffe: failed to commit spiffe.attested event: %s", exc)
 
     # ── Public API for downstream complications ───────────────────────────────
 
