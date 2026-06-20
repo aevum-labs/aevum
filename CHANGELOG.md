@@ -8,6 +8,19 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`PostgresLedger` lost `sig_format_version` on every row round-trip.**
+  `aevum_ledger` had no column for it, so `_event_to_row`/`_row_to_event`
+  silently dropped the field; any restart, `get()`, or `all_events()` call
+  reconstructed entries with `sig_format_version=None`, which the DD4
+  None-guard in `signing_fields_from_event` correctly rejects. Added the
+  column (with an `ADD COLUMN IF NOT EXISTS ... DEFAULT 1` migration for
+  already-deployed tables — safe because this store's `append()` has never
+  supported `sig_format_version` 2) and carried the field through the full
+  read/write/resume path. See `KNOWN_UNKNOWNS.md` (`HO-G-PG-FIELDS`) for a
+  related gap in other post-P2g signed fields that was not in scope here.
+
 ## [0.8.0] — 2026-06-12
 
 ### Added
