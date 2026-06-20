@@ -484,7 +484,7 @@ class Sigchain:
             versions.append(v)
 
         # DD4 hardening: sig_format_version must never DECREASE across the chain.
-        for prev_v, cur_v in zip(versions, versions[1:]):
+        for prev_v, cur_v in zip(versions, versions[1:], strict=False):
             if cur_v < prev_v:
                 return False
 
