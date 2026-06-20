@@ -177,3 +177,38 @@ class CommitmentKeyStore:
 
     def close(self) -> None:
         self._conn.close()
+
+
+def resolve_commitment_key(
+    store: CommitmentKeyStore | None,
+    *,
+    principal_identity: str | None,
+    commitment_key_id: str | None,
+) -> bytes | None:
+    """Resolve the raw commitment key needed to compute a principal_commitment.
+
+    HO-G-PLUMB SR1: this is the one place the raw key crosses the boundary
+    from CommitmentKeyStore into Sigchain.new_event() — callers (ledger
+    implementors) call this internally; the raw key never appears on the
+    public AuditLedgerProtocol.append() signature, only commitment_key_id.
+
+    Returns None when no key is needed (no principal_identity to bind) —
+    opting into v2 via commitment_key_id alone (DD2) never touches the store.
+    Raises ValueError (fail closed) when a key IS needed but cannot be
+    resolved. Never includes principal_identity in the raised message (SR2);
+    commitment_key_id is not secret/PII and is safe to include.
+    """
+    if principal_identity is None:
+        return None
+    if commitment_key_id is None:
+        raise ValueError("commitment_key_id is required when principal_identity is provided")
+    if store is None:
+        raise ValueError(
+            "principal_identity binding requires a CommitmentKeyStore configured on this ledger"
+        )
+    key = store.get_key(commitment_key_id)
+    if key is None:
+        raise ValueError(
+            f"commitment_key_id {commitment_key_id!r} has no resolvable key (destroyed or unknown)"
+        )
+    return key

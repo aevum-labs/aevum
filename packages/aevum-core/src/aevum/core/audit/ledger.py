@@ -6,18 +6,26 @@ Episodic ledger — append-only. Barrier 4 enforced here. Spec Section 06.
 from __future__ import annotations
 
 import threading
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from aevum.core.audit.event import AuditEvent
 from aevum.core.audit.sigchain import Sigchain
 from aevum.core.exceptions import BarrierViolationError, ReplayNotFoundError
 
+if TYPE_CHECKING:
+    from aevum.core.audit.commitment_key_store import CommitmentKeyStore
+
 
 class InMemoryLedger:
     """Thread-safe append-only in-memory episodic ledger. Suitable for development and testing."""
 
-    def __init__(self, sigchain: Sigchain) -> None:
+    def __init__(
+        self,
+        sigchain: Sigchain,
+        commitment_key_store: CommitmentKeyStore | None = None,
+    ) -> None:
         self._sigchain = sigchain
+        self._commitment_key_store = commitment_key_store
         self._events: list[AuditEvent] = []
         self._index: dict[str, AuditEvent] = {}
         self._lock = threading.Lock()
@@ -41,7 +49,17 @@ class InMemoryLedger:
         episode_id: str | None = None,
         causation_id: str | None = None,
         correlation_id: str | None = None,
+        principal_identity: str | None = None,
+        principal_claims: dict[str, Any] | None = None,
+        commitment_key_id: str | None = None,
     ) -> AuditEvent:
+        from aevum.core.audit.commitment_key_store import resolve_commitment_key
+
+        commitment_key = resolve_commitment_key(
+            self._commitment_key_store,
+            principal_identity=principal_identity,
+            commitment_key_id=commitment_key_id,
+        )
         with self._lock:
             event = self._sigchain.new_event(
                 event_type=event_type,
@@ -50,6 +68,10 @@ class InMemoryLedger:
                 episode_id=episode_id,
                 causation_id=causation_id,
                 correlation_id=correlation_id,
+                principal_identity=principal_identity,
+                principal_claims=principal_claims,
+                commitment_key_id=commitment_key_id,
+                commitment_key=commitment_key,
             )
             self._events.append(event)
             self._index[event.audit_id()] = event

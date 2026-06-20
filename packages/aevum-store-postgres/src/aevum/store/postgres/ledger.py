@@ -14,11 +14,14 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from aevum.core.audit.event import AuditEvent
 from aevum.core.audit.sigchain import Sigchain
 from aevum.core.exceptions import BarrierViolationError, ReplayNotFoundError
+
+if TYPE_CHECKING:
+    from aevum.core.audit.commitment_key_store import CommitmentKeyStore
 
 _DDL_LEDGER = """
 CREATE TABLE IF NOT EXISTS aevum_ledger (
@@ -180,10 +183,12 @@ class PostgresLedger:
         conn: Any,
         sigchain: Sigchain,
         lock: threading.Lock | None = None,
+        commitment_key_store: CommitmentKeyStore | None = None,
     ) -> None:
         self._conn = conn
         self._sigchain = sigchain
         self._lock = lock or threading.Lock()
+        self._commitment_key_store = commitment_key_store
         self._resume_chain_from_db()
 
     def _resume_chain_from_db(self) -> None:
@@ -251,7 +256,17 @@ class PostgresLedger:
         episode_id: str | None = None,
         causation_id: str | None = None,
         correlation_id: str | None = None,
+        principal_identity: str | None = None,
+        principal_claims: dict[str, Any] | None = None,
+        commitment_key_id: str | None = None,
     ) -> AuditEvent:
+        from aevum.core.audit.commitment_key_store import resolve_commitment_key
+
+        commitment_key = resolve_commitment_key(
+            self._commitment_key_store,
+            principal_identity=principal_identity,
+            commitment_key_id=commitment_key_id,
+        )
         with self._lock:
             # Save sigchain state before advancing it.
             # If the INSERT fails, restore prevents the chain from
@@ -264,6 +279,10 @@ class PostgresLedger:
                 episode_id=episode_id,
                 causation_id=causation_id,
                 correlation_id=correlation_id,
+                principal_identity=principal_identity,
+                principal_claims=principal_claims,
+                commitment_key_id=commitment_key_id,
+                commitment_key=commitment_key,
             )
             row = _event_to_row(event)
             try:

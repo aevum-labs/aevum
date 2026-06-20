@@ -49,6 +49,7 @@ from aevum.core.audit.event import (
     build_principal_binding_blob,
     compute_principal_commitment,
     signing_fields_from_event,
+    validate_principal_binding_sizes,
 )
 from aevum.core.audit.hlc import now as hlc_now
 from aevum.core.audit.signer import InProcessSigner, Signer
@@ -260,6 +261,8 @@ class Sigchain:
         Returns:
             AuditEvent: The completed, signed, and chain-linked audit event.
         """
+        validate_principal_binding_sizes(principal_identity, principal_claims)
+
         if commitment_key_id is not None:
             sig_format_version = 2
             if principal_identity is not None:
