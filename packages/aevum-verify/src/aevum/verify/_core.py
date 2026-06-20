@@ -168,10 +168,10 @@ def verify_entry(
     Returns:
         VerifyResult(ok=True) if the entry is intact, VerifyResult(ok=False, ...) otherwise.
     """
-    if entry.sig_format_version != 1:
+    if entry.sig_format_version not in (1, 2):
         return VerifyResult(
             ok=False,
-            reason=f"sig_format_version {entry.sig_format_version!r} != 1",
+            reason=f"sig_format_version {entry.sig_format_version!r} not in (1, 2)",
         )
 
     if entry.prior_hash != expected_prior:
@@ -199,9 +199,15 @@ def verify_entry(
         "prior_hash": entry.prior_hash,
         "signer_key_id": entry.signer_key_id,
         "key_scheme": entry.key_scheme,
-        "sig_format_version": 1,
+        "sig_format_version": entry.sig_format_version,
         "hash_alg": entry.hash_alg,
     }
+    # DD2/DD4 (aevum-signing-v2.md): v2 entries additionally sign the 3
+    # principal-binding fields; v1 entries never include them.
+    if entry.sig_format_version == 2:
+        signing_fields["principal_binding"] = entry.principal_binding
+        signing_fields["principal_commitment"] = entry.principal_commitment
+        signing_fields["principal_commitment_key_id"] = entry.principal_commitment_key_id
     representative = message_representative(signing_fields)
     digest = hashlib.sha3_256(representative).digest()
 
@@ -278,7 +284,9 @@ def verify_chain(
     Applies the same pre-pass checks as the reference verification procedure
     (spec "Verification Procedure") to guarantee independent implementations
     detect failures at the same entry:
-      1. sig_format_version == 1 for every entry.
+      1. sig_format_version in {1, 2} for every entry (DD4, aevum-signing-v2.md),
+         and never DECREASING across the chain — a decrease is the fingerprint
+         of a downgrade/splice attack.
       2. key_scheme homogeneity — a mixed chain is a downgrade/splice fingerprint.
       3. Per-entry: prior_hash linkage, payload_hash, Ed25519 + ML-DSA (if hybrid).
 
@@ -294,13 +302,28 @@ def verify_chain(
     if not entries:
         return VerifyResult(ok=True)
 
-    # Pre-pass 1: sig_format_version must be 1 for every entry.
+    # Pre-pass 1 (DD4): sig_format_version must be 1 or 2 for every entry, and
+    # must never decrease across the chain.
+    versions: list[int] = []
     for i, e in enumerate(entries):
-        if getattr(e, "sig_format_version", None) != 1:
+        v = getattr(e, "sig_format_version", None)
+        if v not in (1, 2):
             return VerifyResult(
                 ok=False,
                 failing_index=i,
-                reason=f"sig_format_version {e.sig_format_version!r} != 1",
+                reason=f"sig_format_version {v!r} not in (1, 2)",
+            )
+        versions.append(v)
+
+    for i in range(1, len(versions)):
+        if versions[i] < versions[i - 1]:
+            return VerifyResult(
+                ok=False,
+                failing_index=i,
+                reason=(
+                    f"sig_format_version decreased from {versions[i - 1]} to "
+                    f"{versions[i]} — downgrade/splice attack"
+                ),
             )
 
     # Pre-pass 2: homogeneity — all entries must share the same key_scheme.
@@ -359,6 +382,9 @@ def event_to_dict(event: VerifyEvent) -> dict[str, Any]:
         "key_scheme": event.key_scheme,
         "sig_format_version": event.sig_format_version,
         "hash_alg": event.hash_alg,
+        "principal_binding": event.principal_binding,
+        "principal_commitment": event.principal_commitment,
+        "principal_commitment_key_id": event.principal_commitment_key_id,
     }
 
 
@@ -390,6 +416,9 @@ def event_from_dict(d: dict[str, Any]) -> VerifyEvent:
         key_scheme=d.get("key_scheme", "ed25519"),
         sig_format_version=d.get("sig_format_version"),
         hash_alg=d.get("hash_alg", "sha3-256"),
+        principal_binding=d.get("principal_binding"),
+        principal_commitment=d.get("principal_commitment"),
+        principal_commitment_key_id=d.get("principal_commitment_key_id"),
     )
 
 

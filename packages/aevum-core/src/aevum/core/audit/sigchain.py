@@ -42,7 +42,14 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
-from aevum.core.audit.event import AuditEvent, _message_representative
+from aevum.core.audit.event import (
+    AuditEvent,
+    _build_signing_fields,
+    _message_representative,
+    build_principal_binding_blob,
+    compute_principal_commitment,
+    signing_fields_from_event,
+)
 from aevum.core.audit.hlc import now as hlc_now
 from aevum.core.audit.signer import InProcessSigner, Signer
 
@@ -213,6 +220,10 @@ class Sigchain:
         span_id: str | None = None,
         valid_from: str | None = None,
         valid_to: str | None = None,
+        principal_identity: str | None = None,
+        principal_claims: dict[str, Any] | None = None,
+        commitment_key_id: str | None = None,
+        commitment_key: bytes | None = None,
     ) -> AuditEvent:
         """Append a new signed event to the chain and return the completed AuditEvent.
 
@@ -228,9 +239,50 @@ class Sigchain:
              a TSA outage must never prevent audit events from being recorded).
           7. Advance self._prior_hash to SHA3-256(completed event fields).
 
+        P2-IDENTITY-V2 (DD2-DD7, spec aevum-signing-v2.md): passing commitment_key_id
+        opts this entry into sig_format_version 2, signing three additional principal-
+        binding fields that commit to a verified external credential identity (OIDC
+        sub / SPIFFE ID / DID) rather than the plaintext actor field:
+          principal_identity   — the bound credential identity; HMAC-committed, never
+                                  stored in the clear (DD1).
+          principal_claims     — verified credential claims; allow-list extracted into
+                                  principal_binding (DD7) — never a bearer token, never
+                                  the raw subject.
+          commitment_key_id    — which CommitmentKeyStore key to attribute the
+                                  commitment to; required to opt into v2 at all.
+          commitment_key       — the actual key bytes, required only when
+                                  principal_identity is also given (DD6: chain
+                                  verification itself never needs this key — only
+                                  identity-matching does).
+        Omitting all four (the default) produces a v1 entry, byte-for-byte identical
+        to pre-v2 behaviour.
+
         Returns:
             AuditEvent: The completed, signed, and chain-linked audit event.
         """
+        if commitment_key_id is not None:
+            sig_format_version = 2
+            if principal_identity is not None:
+                if commitment_key is None:
+                    raise ValueError(
+                        "commitment_key is required when principal_identity is provided"
+                    )
+                principal_commitment = compute_principal_commitment(commitment_key, principal_identity)
+            else:
+                principal_commitment = None
+            principal_binding = (
+                build_principal_binding_blob(principal_claims) if principal_claims is not None else None
+            )
+        else:
+            if principal_identity is not None or principal_claims is not None or commitment_key is not None:
+                raise ValueError(
+                    "commitment_key_id is required when principal_identity, "
+                    "principal_claims, or commitment_key is provided"
+                )
+            sig_format_version = 1
+            principal_commitment = None
+            principal_binding = None
+
         self._sequence += 1
         event_id = _uuid7()
         ep_id = episode_id or _uuid7()
@@ -241,28 +293,30 @@ class Sigchain:
         # Derive scheme from signer — no literal "65" hardcoded here.
         scheme = f"ed25519+{self._dual_signer.scheme_suffix}" if self._dual_signer is not None else "ed25519"
 
-        signing_fields: dict[str, Any] = {
-            "event_id": event_id,
-            "episode_id": ep_id,
-            "sequence": self._sequence,
-            "event_type": event_type,
-            "schema_version": "1.0",
-            "valid_from": vf,
-            "valid_to": valid_to,
-            # system_time is a HLC integer that may exceed 2^53; encode as string for RFC 8785.
-            "system_time": str(ts),
-            "causation_id": causation_id,
-            "correlation_id": correlation_id,
-            "actor": actor,
-            "trace_id": trace_id,
-            "span_id": span_id,
-            "payload_hash": payload_hash,
-            "prior_hash": prior,
-            "signer_key_id": self._signer.key_id,
-            "key_scheme": scheme,
-            "sig_format_version": 1,
-            "hash_alg": "sha3-256",
-        }
+        signing_fields = _build_signing_fields(
+            event_id=event_id,
+            episode_id=ep_id,
+            sequence=self._sequence,
+            event_type=event_type,
+            schema_version="1.0",
+            valid_from=vf,
+            valid_to=valid_to,
+            system_time=ts,
+            causation_id=causation_id,
+            correlation_id=correlation_id,
+            actor=actor,
+            trace_id=trace_id,
+            span_id=span_id,
+            payload_hash=payload_hash,
+            prior_hash=prior,
+            signer_key_id=self._signer.key_id,
+            key_scheme=scheme,
+            sig_format_version=sig_format_version,
+            hash_alg="sha3-256",
+            principal_binding=principal_binding,
+            principal_commitment=principal_commitment,
+            principal_commitment_key_id=commitment_key_id,
+        )
         # True RFC 8785 canonicalization + domain prefix → message representative.
         # sha3_256(representative) is the Ed25519 signed digest AND the chain hash input —
         # compute-once: altering any signed field breaks signature verification and chain
@@ -325,8 +379,11 @@ class Sigchain:
             tsa_url=tsa_url,
             tsa_token=tsa_token_hex,
             key_scheme=scheme,
-            sig_format_version=1,
+            sig_format_version=sig_format_version,
             hash_alg="sha3-256",
+            principal_binding=principal_binding,
+            principal_commitment=principal_commitment,
+            principal_commitment_key_id=commitment_key_id,
         )
         self._prior_hash = AuditEvent.hash_event_for_chain(event)
 
@@ -391,25 +448,45 @@ class Sigchain:
         """Verify the entire chain from genesis. Returns True only if every entry is intact.
 
         An entry is "intact" when all of the following hold:
-          1. sig_format_version == 1 (any other value, including None, is rejected).
+          1. sig_format_version in {1, 2} (any other value, including None, is rejected),
+             and never DECREASES across the chain (DD4) — a decrease is the fingerprint
+             of a downgrade/splice attack, since stripping v2 fields to forge a v1 entry
+             changes the signed bytes and breaks the signature without the private key
+             (DD3); this pre-pass catches the cheaper case of an attacker splicing in a
+             legitimately-signed-but-earlier-version entry from elsewhere in the chain.
           2. prior_hash matches the expected value (GENESIS_HASH for entry #1, or the chain
              hash of the preceding entry for all subsequent entries).
           3. payload_hash matches SHA3-256(canonical_payload).
-          4. The Ed25519 signature verifies against SHA3-256(19-field signing_fields).
+          4. The Ed25519 signature verifies against SHA3-256(signing_fields) — 19 fields
+             for sig_format_version 1, 22 fields (+ principal_binding/_commitment/
+             _commitment_key_id) for sig_format_version 2 (DD2/DD4).
           5. key_scheme dispatch: "ed25519" → Ed25519 only; "ed25519+ml-dsa-65" → Ed25519
              AND ML-DSA-65 both required (absence = tamper/downgrade, fail closed).
           6. Homogeneity (D-S3): all entries share the same key_scheme; a mixed chain is the
              fingerprint of a downgrade or splice attack.
+
+        Note (DD6): this method never needs a CommitmentKeyStore key — principal_commitment
+        is opaque signed bytes to chain verification. Only identity-matching (confirming a
+        specific external credential produced a given commitment) needs the key.
 
         Returns False on the first failing check — does not skip or isolate broken entries.
         """
         pub_key_bytes = self._signer.public_key_bytes()
         public_key = Ed25519PublicKey.from_public_bytes(pub_key_bytes)
 
-        # Pre-pass 1: every entry must be sig_format_version == 1. None or any other value
-        # is rejected immediately — no fallback, no legacy path.
-        if not all(getattr(e, "sig_format_version", None) == 1 for e in events):
-            return False
+        # Pre-pass 1 (DD4): every entry must declare sig_format_version in {1, 2}. None or
+        # any other value is rejected immediately — no fallback, no legacy path.
+        versions: list[int] = []
+        for e in events:
+            v = getattr(e, "sig_format_version", None)
+            if v not in (1, 2):
+                return False
+            versions.append(v)
+
+        # DD4 hardening: sig_format_version must never DECREASE across the chain.
+        for prev_v, cur_v in zip(versions, versions[1:]):
+            if cur_v < prev_v:
+                return False
 
         # Pre-pass 2: homogeneity — all entries must share the same key_scheme.
         # Known limitation: mid-chain posture transitions are not supported in v0.8.0;
@@ -424,28 +501,7 @@ class Sigchain:
             if AuditEvent.hash_payload(event.payload) != event.payload_hash:
                 return False
 
-            signing_fields: dict[str, Any] = {
-                "event_id": event.event_id,
-                "episode_id": event.episode_id,
-                "sequence": event.sequence,
-                "event_type": event.event_type,
-                "schema_version": event.schema_version,
-                "valid_from": event.valid_from,
-                "valid_to": event.valid_to,
-                # system_time is a HLC integer that may exceed 2^53; encode as string for RFC 8785.
-                "system_time": str(event.system_time),
-                "causation_id": event.causation_id,
-                "correlation_id": event.correlation_id,
-                "actor": event.actor,
-                "trace_id": event.trace_id,
-                "span_id": event.span_id,
-                "payload_hash": event.payload_hash,
-                "prior_hash": event.prior_hash,
-                "signer_key_id": event.signer_key_id,
-                "key_scheme": event.key_scheme,
-                "sig_format_version": 1,
-                "hash_alg": event.hash_alg,
-            }
+            signing_fields = signing_fields_from_event(event)
 
             representative = _message_representative(signing_fields)
             digest = hashlib.sha3_256(representative).digest()
