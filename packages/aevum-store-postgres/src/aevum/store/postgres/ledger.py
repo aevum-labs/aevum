@@ -41,21 +41,50 @@ CREATE TABLE IF NOT EXISTS aevum_ledger (
     valid_to        TEXT,
     trace_id        TEXT,
     span_id         TEXT,
-    payload         JSONB NOT NULL
+    payload         JSONB NOT NULL,
+    key_scheme      TEXT NOT NULL DEFAULT 'ed25519',
+    hash_alg        TEXT NOT NULL DEFAULT 'sha3-256',
+    mldsa65_sig     TEXT,
+    mldsa65_pub     TEXT,
+    tsa_url         TEXT,
+    tsa_token       TEXT,
+    receipt_cbor    BYTEA,
+    principal_binding             TEXT,
+    principal_commitment          TEXT,
+    principal_commitment_key_id   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_aevum_ledger_audit_id ON aevum_ledger (audit_id);
 CREATE INDEX IF NOT EXISTS idx_aevum_ledger_sequence ON aevum_ledger (sequence);
 """
 
-# sig_format_version was added after aevum_ledger may already exist in deployed
+# Columns below were added after aevum_ledger may already exist in deployed
 # databases (CREATE TABLE IF NOT EXISTS above is a no-op against an existing
-# table). ADD COLUMN IF NOT EXISTS backfills every pre-existing row with the
-# default — safe because this store's append() has never accepted
-# commitment_key_id, so no row written before this column existed can be
-# anything other than sig_format_version 1.
-_DDL_MIGRATE_SIG_FORMAT_VERSION = """
+# table). ADD COLUMN IF NOT EXISTS backfills every pre-existing row with a
+# default.
+#
+# sig_format_version / key_scheme / hash_alg: safe to backfill with their
+# single historical value — this store's append() has never accepted
+# commitment_key_id or a dual_signer-bearing Sigchain, so no row written
+# before these columns existed can be anything other than
+# sig_format_version=1, key_scheme='ed25519', hash_alg='sha3-256'.
+#
+# mldsa65_sig / mldsa65_pub / tsa_url / tsa_token / receipt_cbor /
+# principal_binding / principal_commitment / principal_commitment_key_id:
+# nullable, no backfill value — these fields were genuinely absent on every
+# pre-existing row (NULL is the correct, not merely convenient, backfill).
+_DDL_MIGRATE_SIGNED_FIELDS = """
 ALTER TABLE aevum_ledger
-    ADD COLUMN IF NOT EXISTS sig_format_version INTEGER NOT NULL DEFAULT 1;
+    ADD COLUMN IF NOT EXISTS sig_format_version INTEGER NOT NULL DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS key_scheme TEXT NOT NULL DEFAULT 'ed25519',
+    ADD COLUMN IF NOT EXISTS hash_alg TEXT NOT NULL DEFAULT 'sha3-256',
+    ADD COLUMN IF NOT EXISTS mldsa65_sig TEXT,
+    ADD COLUMN IF NOT EXISTS mldsa65_pub TEXT,
+    ADD COLUMN IF NOT EXISTS tsa_url TEXT,
+    ADD COLUMN IF NOT EXISTS tsa_token TEXT,
+    ADD COLUMN IF NOT EXISTS receipt_cbor BYTEA,
+    ADD COLUMN IF NOT EXISTS principal_binding TEXT,
+    ADD COLUMN IF NOT EXISTS principal_commitment TEXT,
+    ADD COLUMN IF NOT EXISTS principal_commitment_key_id TEXT;
 """
 
 
@@ -63,7 +92,7 @@ def initialize_ledger_schema(conn: Any) -> None:
     """Create the aevum_ledger table if it does not exist."""
     with conn.cursor() as cur:
         cur.execute(_DDL_LEDGER)
-        cur.execute(_DDL_MIGRATE_SIG_FORMAT_VERSION)
+        cur.execute(_DDL_MIGRATE_SIGNED_FIELDS)
     conn.commit()
 
 
@@ -88,6 +117,16 @@ def _event_to_row(event: AuditEvent) -> dict[str, Any]:
         "trace_id": event.trace_id,
         "span_id": event.span_id,
         "payload": json.dumps(event.payload, default=str),
+        "key_scheme": event.key_scheme,
+        "hash_alg": event.hash_alg,
+        "mldsa65_sig": event.mldsa65_sig,
+        "mldsa65_pub": event.mldsa65_pub,
+        "tsa_url": event.tsa_url,
+        "tsa_token": event.tsa_token,
+        "receipt_cbor": event.receipt_cbor,
+        "principal_binding": event.principal_binding,
+        "principal_commitment": event.principal_commitment,
+        "principal_commitment_key_id": event.principal_commitment_key_id,
     }
 
 
@@ -115,6 +154,16 @@ def _row_to_event(row: dict[str, Any]) -> AuditEvent:
         prior_hash=row["prior_hash"],
         signature=row["signature"],
         signer_key_id=row["signer_key_id"],
+        key_scheme=row.get("key_scheme", "ed25519"),
+        hash_alg=row.get("hash_alg", "sha3-256"),
+        mldsa65_sig=row.get("mldsa65_sig"),
+        mldsa65_pub=row.get("mldsa65_pub"),
+        tsa_url=row.get("tsa_url"),
+        tsa_token=row.get("tsa_token"),
+        receipt_cbor=row.get("receipt_cbor"),
+        principal_binding=row.get("principal_binding"),
+        principal_commitment=row.get("principal_commitment"),
+        principal_commitment_key_id=row.get("principal_commitment_key_id"),
     )
 
 
@@ -160,7 +209,11 @@ class PostgresLedger:
                            prior_hash, payload_hash, signature,
                            signer_key_id, schema_version, sig_format_version,
                            valid_from, valid_to,
-                           trace_id, span_id, payload
+                           trace_id, span_id, payload,
+                           key_scheme, hash_alg,
+                           mldsa65_sig, mldsa65_pub, tsa_url, tsa_token,
+                           receipt_cbor, principal_binding, principal_commitment,
+                           principal_commitment_key_id
                     FROM aevum_ledger
                     ORDER BY sequence DESC
                     LIMIT 1
@@ -222,14 +275,22 @@ class PostgresLedger:
                             episode_id, causation_id, correlation_id,
                             prior_hash, payload_hash, signature, signer_key_id,
                             schema_version, sig_format_version, valid_from, valid_to,
-                            trace_id, span_id, payload
+                            trace_id, span_id, payload,
+                            key_scheme, hash_alg, mldsa65_sig, mldsa65_pub,
+                            tsa_url, tsa_token, receipt_cbor,
+                            principal_binding, principal_commitment,
+                            principal_commitment_key_id
                         ) VALUES (
                             %(event_id)s, %(audit_id)s, %(event_type)s, %(actor)s,
                             %(system_time)s, %(episode_id)s, %(causation_id)s,
                             %(correlation_id)s, %(prior_hash)s, %(payload_hash)s,
                             %(signature)s, %(signer_key_id)s, %(schema_version)s,
                             %(sig_format_version)s, %(valid_from)s, %(valid_to)s,
-                            %(trace_id)s, %(span_id)s, %(payload)s::jsonb
+                            %(trace_id)s, %(span_id)s, %(payload)s::jsonb,
+                            %(key_scheme)s, %(hash_alg)s, %(mldsa65_sig)s, %(mldsa65_pub)s,
+                            %(tsa_url)s, %(tsa_token)s, %(receipt_cbor)s,
+                            %(principal_binding)s, %(principal_commitment)s,
+                            %(principal_commitment_key_id)s
                         )
                         """,
                         row,

@@ -19,6 +19,11 @@ dependencies = [
     "psycopg[binary]>=3.1,<4.0",
 ]
 
+[project.optional-dependencies]
+verify = [
+    "aevum-verify",
+]
+
 [project.scripts]
 aevum-store-migrate = "aevum.store.postgres.migrate:main"
 
@@ -34,7 +39,8 @@ build-backend = "hatchling.build"
 packages = ["src/aevum"]
 
 [tool.uv.sources]
-aevum-core = { workspace = true }
+aevum-core   = { workspace = true }
+aevum-verify = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -477,11 +477,18 @@ dependencies = [
     { name = "psycopg", extra = ["binary"] },
 ]
 
+[package.optional-dependencies]
+verify = [
+    { name = "aevum-verify" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "aevum-core", editable = "packages/aevum-core" },
+    { name = "aevum-verify", marker = "extra == 'verify'", editable = "packages/aevum-verify" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.1,<4.0" },
 ]
+provides-extras = ["verify"]
 
 [[package]]
 name = "aevum-verify"
