@@ -131,6 +131,42 @@ jobs:
       - name: Run tests
         run: uv run --python ${{ matrix.python-version }} pytest --inline-snapshot=disable
 
+  postgres-integration:
+    name: Postgres integration (live migration + v2 chain)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aevum
+          POSTGRES_PASSWORD: aevum
+          POSTGRES_DB: aevum_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aevum"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081  # v5
+        with:
+          version: "latest"
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Run aevum-store-postgres tests against a live Postgres
+        # HO-G-PG2's ADD COLUMN IF NOT EXISTS migration and PostgresLedger's
+        # chain-resume-after-restart logic were previously only exercised
+        # against FakeConn. AEVUM_TEST_POSTGRES_DSN unskips the integration
+        # tests in packages/aevum-store-postgres/tests/, including the
+        # populated-table migration + v2 chain round-trip test (PG3).
+        env:
+          AEVUM_TEST_POSTGRES_DSN: postgresql://aevum:aevum@localhost:5432/aevum_test
+        run: uv run pytest packages/aevum-store-postgres/tests/ --inline-snapshot=disable
+
   zizmor:
     name: GitHub Actions security (zizmor)
     runs-on: ubuntu-latest
