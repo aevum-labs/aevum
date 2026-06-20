@@ -21,6 +21,23 @@ shared package became impractical. Each adapter now lives directly in
 See the [v0.5.0 section of CHANGELOG.md](https://github.com/aevum-labs/aevum/blob/main/CHANGELOG.md)
 for the original deprecation notice.
 
+**Removal target: v1.0.** `aevum-llm` will not be deleted or yanked before
+then — see `packages/aevum-llm/DEPRECATED.md` for the deprecation window.
+
+### If you were using aevum-llm for agent-to-agent (A2A) communication
+
+The adapter table below covers direct LLM provider wrapping (Anthropic,
+LangChain, OpenAI Agents SDK, etc.). If your use case was agent-to-agent
+task orchestration instead, the replacement is
+[`aevum-agent`](https://pypi.org/project/aevum-agent/), which implements the
+A2A v1.0 protocol with sigchain-backed signing and GOVERN checkpoints:
+
+```bash
+pip install aevum-agent
+```
+
+See `packages/aevum-agent/README.md` for current status and usage.
+
 ---
 
 ## Step 1 — Uninstall aevum-llm

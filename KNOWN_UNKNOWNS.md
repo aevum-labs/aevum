@@ -750,6 +750,62 @@ implementation).
 
 ---
 
+## D1: TSA Signing-Cert Long-Term Validation (RESOLVED — HO-SESSION5-CLOSE)
+
+**Item:** D1 — parked durability decision, closed in HO-SESSION5-CLOSE
+
+**Question:** Is the TSA signing-certificate chain stored alongside the
+RFC 3161 `tsa_token` (so offline/long-term validation and re-anchoring are
+possible), and what is Aevum's position on TSA timestamp longevity across a
+multi-year (e.g. SEC 17a-4, ~7-year) retention window?
+
+**Resolution:** `TSAClient.timestamp()` stores the complete, unparsed
+DER-encoded `TimeStampResponse` verbatim (`tsa.py`); when the TSA embeds its
+signing certificate/chain in the CMS `SignedData.certificates` field (typical
+for Sigstore/DigiCert), it travels with the token byte-for-byte since Aevum
+never strips or re-encodes the response. `aevum.verify._core.verify_sth_tsa_full`
+already validates the embedded chain against an operator-supplied pinned
+root. Gap: Aevum does not independently extract/persist the chain or track
+the TSA cert's expiry to trigger proactive re-anchoring — flagged as a small
+future code item (parse `notAfter` at write time, surface via log/metric).
+Aevum's position: the write-time timestamp is best-effort/advisory, not a
+permanent single-shot anchor — re-anchoring (re-timestamping the Merkle root
+with a current TSA before the prior cert expires) is the durability
+mechanism for the full retention window. RFC 4998/ERS remains parked until a
+design partner requires ERS-format interoperability.
+
+**Documented in:** `docs/durability/timestamp-longevity.md`.
+
+**Closed:** HO-SESSION5-CLOSE (2026-06-20).
+
+---
+
+## D2: Correction/Tombstone Append Pattern (RESOLVED — HO-SESSION5-CLOSE)
+
+**Item:** D2 — parked durability decision, closed in HO-SESSION5-CLOSE
+
+**Question:** What is the append-only pattern for correcting a previously
+committed fact, given that the episodic ledger has no UPDATE/DELETE
+(Barrier 4)?
+
+**Resolution:** A correction is a new appended event (`*.correction`
+`event_type`) whose payload carries `corrects_entry_hash` (the superseded
+entry's `entry_hash` / `sigchain_entry_hash`), `correction_reason`, and
+`corrected_fields`. The original entry is never mutated; both entries stay
+queryable (evidentiary integrity). `query` (NAVIGATE) surfaces the latest
+correction as current working-graph truth; `replay` is deliberately
+unaffected by later corrections — it faithfully reconstructs what was on
+record at the time of the decision being replayed. Distinct from the GDPR
+Article 17 erasure tombstone pattern (erasure removes data; correction
+amends it) — see comparison table in the spec doc.
+
+**Documented in:** `docs/spec/correction-pattern.md` (includes worked
+example).
+
+**Closed:** HO-SESSION5-CLOSE (2026-06-20).
+
+---
+
 ## v0.7.0 Release — Open Items (carry to v0.7.1)
 
 1. **V07-VAULT:** CLOSED Session 4 (2026-05-26) — sign/verify confirmed, integration tests added, CLI vault-check added

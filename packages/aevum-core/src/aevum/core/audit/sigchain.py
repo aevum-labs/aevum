@@ -610,7 +610,13 @@ class Sigchain:
             try:
                 if self._ambient_encoder is not None:
                     ambient_cbor = self._ambient_encoder.encode(snapshot)
-                else:
+                else:  # pragma: no cover
+                    # Dead code: the method-entry guard above (`if self._ambient_encoder
+                    # is None: return None`) already guarantees self._ambient_encoder is
+                    # not None by the time execution reaches here, and it is never
+                    # reassigned within this method. Kept as defensive fallback in case
+                    # that invariant changes; not reachable from any current call path
+                    # (flagged HO-SESSION5-CLOSE / COV, not removed in this pass).
                     # Fall back to raw CBOR payload (not COSE_Sign1) with a warning
                     logger.warning(
                         "ambient_encoder not set but receipt_store is configured — "

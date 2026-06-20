@@ -94,3 +94,62 @@ class TestSigchainDualSig:
         ]
         assert all(e.mldsa65_sig is None for e in events)
         assert chain.verify_chain(events) is True
+
+
+class _ExplodingDualSigner:
+    """Duck-typed dual_signer stub: new_event() only accesses .scheme_suffix and
+    .sign() — no isinstance check — so this is sufficient to drive the dual-sig
+    exception-handling branch without depending on a real key-corruption scenario."""
+
+    scheme_suffix = "ml-dsa-65"
+
+    def sign(self, data: bytes) -> object:
+        raise RuntimeError("dual-sig hardware fault")
+
+
+class _StubTSAToken:
+    def __init__(self, tsa_url: str, token_bytes: bytes) -> None:
+        self.tsa_url = tsa_url
+        self.token_bytes = token_bytes
+
+
+class _StubTSAClientSuccess:
+    """Duck-typed tsa_client stub returning a successful token on every call."""
+
+    def __init__(self, token: _StubTSAToken) -> None:
+        self._token = token
+
+    def timestamp(self, data: bytes) -> _StubTSAToken:
+        return self._token
+
+
+class _ExplodingTSAClient:
+    def timestamp(self, data: bytes) -> object:
+        raise RuntimeError("TSA endpoint unreachable")
+
+
+class TestSigchainPipelineExceptionPaths:
+    """The TSA block is nested inside `if self._dual_signer is not None` in
+    new_event() (sigchain.py), so exercising it requires a dual_signer to be
+    configured — these tests use a real DualSigner alongside stub TSA clients."""
+
+    def test_dual_sig_failure_is_caught_and_non_blocking(self):
+        chain = Sigchain(dual_signer=_ExplodingDualSigner())
+        event = chain.new_event(event_type="test.e", payload={}, actor="a")
+        assert event.mldsa65_sig is None
+        assert event.mldsa65_pub is None
+
+    def test_tsa_success_path_stores_token_on_event(self):
+        dual_signer = DualSigner.generate()
+        token = _StubTSAToken(tsa_url="https://tsa.example.test", token_bytes=b"\x01\x02\x03")
+        chain = Sigchain(dual_signer=dual_signer, tsa_client=_StubTSAClientSuccess(token))
+        event = chain.new_event(event_type="test.e", payload={}, actor="a")
+        assert event.tsa_url == "https://tsa.example.test"
+        assert event.tsa_token == token.token_bytes.hex()
+
+    def test_tsa_failure_is_caught_and_non_blocking(self):
+        dual_signer = DualSigner.generate()
+        chain = Sigchain(dual_signer=dual_signer, tsa_client=_ExplodingTSAClient())
+        event = chain.new_event(event_type="test.e", payload={}, actor="a")
+        assert event.tsa_url is None
+        assert event.tsa_token is None

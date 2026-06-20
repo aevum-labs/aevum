@@ -6,10 +6,11 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from aevum.core.audit.event import AuditEvent
+from aevum.core.audit.event import AuditEvent, _build_signing_fields
 from aevum.core.audit.sigchain import GENESIS_HASH, Sigchain
 
 
@@ -127,3 +128,122 @@ def test_verify_chain_with_key_scheme() -> None:
     events = [sc.new_event(event_type=f"t.{i}", payload={}, actor="a") for i in range(3)]
     assert all(e.key_scheme == "ed25519" for e in events)
     assert sc.verify_chain(events) is True
+
+
+def test_public_key_property_returns_signer_public_key() -> None:
+    """public_key exposes the InProcessSigner's Ed25519PublicKey directly."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    sc = Sigchain()
+    pub = sc.public_key
+    assert isinstance(pub, Ed25519PublicKey)
+    raw = pub.public_bytes(
+        encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
+    )
+    assert raw == sc._signer.public_key_bytes()
+
+
+def test_public_key_property_raises_for_non_in_process_signer() -> None:
+    """public_key is only available for InProcessSigner; external signers must use
+    public_key_bytes() instead (no private Ed25519PrivateKey object exists to return)."""
+    from aevum.core.audit.signer import VaultTransitSigner
+
+    sc = Sigchain(signer=VaultTransitSigner(key_name="test"))
+    with pytest.raises(NotImplementedError):
+        _ = sc.public_key
+
+
+def test_verify_chain_detects_missing_predecessor() -> None:
+    """A chain whose first entry's prior_hash isn't GENESIS_HASH must fail verification
+    even though every signature is individually valid — this is the prior_hash-gap
+    check, distinct from payload-tampering detection."""
+    chain = Sigchain()
+    chain.new_event(event_type="t.1", payload={}, actor="a")
+    e2 = chain.new_event(event_type="t.2", payload={}, actor="a")
+    # e2.prior_hash points to e1's chain hash, not GENESIS_HASH.
+    assert chain.verify_chain([e2]) is False
+
+
+def _signed_event_with_key_scheme(chain: Sigchain, key_scheme: str) -> AuditEvent:
+    """Build a genuinely Ed25519-signed AuditEvent carrying an arbitrary key_scheme.
+
+    Used to reach verify_chain's per-scheme dispatch branches: tampering an
+    already-signed event's key_scheme via dataclasses.replace breaks the signature
+    check before dispatch ever runs, so this instead signs the forged key_scheme
+    directly via the private _sign() method (the same path new_event() uses).
+    """
+    payload: dict[str, object] = {}
+    payload_hash = AuditEvent.hash_payload(payload)
+    signing_fields = _build_signing_fields(
+        event_id="01911f6e-0000-7000-8000-000000000000",
+        episode_id="01911f6e-0000-7000-8000-000000000001",
+        sequence=1,
+        event_type="test.forged",
+        schema_version="1.0",
+        valid_from="2026-01-01T00:00:00+00:00",
+        valid_to=None,
+        system_time=1,
+        causation_id=None,
+        correlation_id=None,
+        actor="a",
+        trace_id=None,
+        span_id=None,
+        payload_hash=payload_hash,
+        prior_hash=GENESIS_HASH,
+        signer_key_id=chain.key_id,
+        key_scheme=key_scheme,
+        sig_format_version=1,
+        hash_alg="sha3-256",
+    )
+    signature = chain._sign(signing_fields)
+    return AuditEvent(
+        event_id=signing_fields["event_id"],
+        episode_id=signing_fields["episode_id"],
+        sequence=signing_fields["sequence"],
+        event_type=signing_fields["event_type"],
+        schema_version=signing_fields["schema_version"],
+        valid_from=signing_fields["valid_from"],
+        valid_to=signing_fields["valid_to"],
+        system_time=int(signing_fields["system_time"]),
+        causation_id=signing_fields["causation_id"],
+        correlation_id=signing_fields["correlation_id"],
+        actor=signing_fields["actor"],
+        trace_id=signing_fields["trace_id"],
+        span_id=signing_fields["span_id"],
+        payload=payload,
+        payload_hash=payload_hash,
+        prior_hash=signing_fields["prior_hash"],
+        signature=signature,
+        signer_key_id=signing_fields["signer_key_id"],
+        mldsa65_sig="00" if key_scheme.startswith("ed25519+") else None,
+        mldsa65_pub="00" if key_scheme.startswith("ed25519+") else None,
+        key_scheme=key_scheme,
+        sig_format_version=1,
+        hash_alg="sha3-256",
+    )
+
+
+def test_sign_private_method_produces_verifiable_signature() -> None:
+    """_sign() is the same digest-sign-encode primitive new_event() uses internally;
+    exercised directly here via the forging helper above and confirmed valid by the
+    fact that verify_chain() accepts a chain built purely from it."""
+    chain = Sigchain()
+    event = _signed_event_with_key_scheme(chain, "ed25519")
+    assert chain.verify_chain([event]) is True
+
+
+def test_verify_chain_rejects_unknown_mldsa_level() -> None:
+    """An ed25519+<level> key_scheme with a level absent from _MLDSA_LEVEL_MAP must
+    fail closed rather than silently falling back to Ed25519-only verification."""
+    chain = Sigchain()
+    event = _signed_event_with_key_scheme(chain, "ed25519+ml-dsa-999")
+    assert chain.verify_chain([event]) is False
+
+
+def test_verify_chain_rejects_unknown_key_scheme() -> None:
+    """A key_scheme that is neither 'ed25519' nor 'ed25519+<level>' must fail closed —
+    no warn-and-fallback path exists for unrecognized schemes."""
+    chain = Sigchain()
+    event = _signed_event_with_key_scheme(chain, "rsa-2048")
+    assert chain.verify_chain([event]) is False

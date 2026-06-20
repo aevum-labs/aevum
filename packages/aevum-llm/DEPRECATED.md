@@ -28,4 +28,9 @@ provides audit trail for agent-to-agent communication.
 
 - v0.3.0: Final feature release
 - v0.3.1: This tombstone (DeprecationWarning on import)
-- Future: Removed from active monorepo maintenance
+- **v1.0: Removal target.** The package will be removed from the monorepo
+  and yanked from PyPI no earlier than the v1.0 release. Until then it
+  remains installable (with the `DeprecationWarning`) so pinned dependents
+  are not broken without notice. This is a deprecation window, not an
+  early yank — see `KNOWN_UNKNOWNS.md` (THIN / HO-SESSION5-CLOSE) for the
+  decision record.
