@@ -27,6 +27,9 @@ dev = [
 [project.entry-points."aevum.complications"]
 spiffe = "aevum.spiffe.complication:SpiffeComplication"
 
+[project.entry-points."aevum.binding_verifiers"]
+spiffe = "aevum.spiffe.verifier:SpiffeBindingVerifier"
+
 [project.urls]
 Homepage = "https://aevum.build"
 Repository = "https://github.com/aevum-labs/aevum"
