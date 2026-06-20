@@ -685,6 +685,74 @@ for consent-derived artifacts).
 
 ---
 
+## HO-G-PG-FIELDS: PostgresLedger Row Round-Trip Drops Most Post-P2g Signed Fields (Open — before v0.9.0)
+
+**Item:** HO-G-PG-FIELDS — found while fixing HO-G-PG (`sig_format_version`
+dropped by the postgres store's row round-trip, surfaced by the HO-G-LINT
+None-guard in `signing_fields_from_event`)
+
+**Question:** `sig_format_version` was one field among several that
+`aevum_ledger`'s DDL, `_event_to_row()`, and `_row_to_event()`
+(`packages/aevum-store-postgres/src/aevum/store/postgres/ledger.py`) never
+carried through the Postgres round-trip. The same gap exists for
+`key_scheme`, `hash_alg`, `mldsa65_sig`, `mldsa65_pub`, `tsa_url`,
+`tsa_token`, `receipt_cbor`, `principal_binding`, `principal_commitment`,
+and `principal_commitment_key_id` — none of these have a column in
+`aevum_ledger`, are written by `_event_to_row()`, or are restored by
+`_row_to_event()`. Are these gaps latent the same way `sig_format_version`
+was, and do they need the same fix?
+
+**Why it matters:** `key_scheme` and `hash_alg` currently default (via the
+`AuditEvent` dataclass) to `"ed25519"` / `"sha3-256"` on read-back, which
+happens to match reality today only because no deployment has paired
+`PostgresLedger` with a `DualSigner` (hybrid Ed25519 + ML-DSA-65). The moment
+one does, `get()`/`all_events()`/`_resume_chain_from_db()` would
+silently reconstruct entries with the wrong `key_scheme` (corrupting
+`signing_fields_from_event()`'s field set) and with the ML-DSA-65 signature
+material (`mldsa65_sig`/`mldsa65_pub`) gone entirely — there is no column to
+store it. `verify_chain()` on any such read-back, or any restart, would fail
+the same way the `sig_format_version` bug did, except for hybrid-signed
+chains. `principal_binding`/`principal_commitment`/`principal_commitment_key_id`
+(P2-IDENTITY-V2) are similarly unsupported — `PostgresLedger.append()`
+doesn't even expose `commitment_key_id` as a parameter, so v2 entries can't
+be created via this store yet at all, which is a smaller gap (a missing
+feature, not silent data loss) but worth closing in the same pass.
+
+**Why deferred (not fixed alongside HO-G-PG):** HO-G-PG was scoped
+specifically to `sig_format_version`, the field whose absence the
+`None`-guard had already turned into a loud, located test failure. The other
+fields are not (yet) guarded the same way and fixing all of them is a larger
+DDL migration (new columns) plus round-trip change than the scoped fix
+warrants in one pass. `hash_alg`'s default is correct for every
+sig_format_version 1 producer path that exists today (none have ever signed
+with anything but `"sha3-256"`), so it is lower urgency than `key_scheme` and
+the dual-sig/receipt fields.
+
+**Fix shape (when picked up):** Same pattern as the `sig_format_version`
+fix — add columns to `_DDL_LEDGER` plus an `ADD COLUMN IF NOT EXISTS ...`
+migration statement, extend `_event_to_row()` / `_row_to_event()` /
+the explicit `_resume_chain_from_db()` SELECT column list / the `append()`
+INSERT column list. Unlike `sig_format_version`, a correct backfill default
+for **existing** rows cannot be inferred for `mldsa65_sig`/`mldsa65_pub` —
+any row predating the fix that was actually dual-signed has already lost
+that signature material on every prior read-back; only `key_scheme` can be
+backfilled confidently (default `'ed25519'`, since no dual-signer + postgres
+deployment has ever existed). Add a regression test exercising `DualSigner`
++ `PostgresLedger` together (none exists today, which is part of why this
+gap was never caught) before declaring it closed.
+
+**Condition for revisitation:** Before v0.9.0 tags, or immediately if any
+deployment is found running `PostgresLedger` with `DualSigner` or
+P2-IDENTITY-V2 `commitment_key_id`.
+
+**Related:** HO-G-PG (this session, `sig_format_version` fix),
+`packages/aevum-core/src/aevum/core/audit/event.py` (`AuditEvent`,
+`signing_fields_from_event`), `packages/aevum-core/src/aevum/core/audit/sigchain.py`
+(DD4 dispatch, `Sigchain.new_event`), V07-MLDSA65 (ML-DSA-65 dual-signing
+implementation).
+
+---
+
 ## v0.7.0 Release — Open Items (carry to v0.7.1)
 
 1. **V07-VAULT:** CLOSED Session 4 (2026-05-26) — sign/verify confirmed, integration tests added, CLI vault-check added

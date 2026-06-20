@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS aevum_ledger (
     signature       TEXT NOT NULL,
     signer_key_id   TEXT NOT NULL,
     schema_version  TEXT NOT NULL DEFAULT '1.0',
+    sig_format_version INTEGER NOT NULL DEFAULT 1,
     valid_from      TEXT NOT NULL,
     valid_to        TEXT,
     trace_id        TEXT,
@@ -46,11 +47,23 @@ CREATE INDEX IF NOT EXISTS idx_aevum_ledger_audit_id ON aevum_ledger (audit_id);
 CREATE INDEX IF NOT EXISTS idx_aevum_ledger_sequence ON aevum_ledger (sequence);
 """
 
+# sig_format_version was added after aevum_ledger may already exist in deployed
+# databases (CREATE TABLE IF NOT EXISTS above is a no-op against an existing
+# table). ADD COLUMN IF NOT EXISTS backfills every pre-existing row with the
+# default — safe because this store's append() has never accepted
+# commitment_key_id, so no row written before this column existed can be
+# anything other than sig_format_version 1.
+_DDL_MIGRATE_SIG_FORMAT_VERSION = """
+ALTER TABLE aevum_ledger
+    ADD COLUMN IF NOT EXISTS sig_format_version INTEGER NOT NULL DEFAULT 1;
+"""
+
 
 def initialize_ledger_schema(conn: Any) -> None:
     """Create the aevum_ledger table if it does not exist."""
     with conn.cursor() as cur:
         cur.execute(_DDL_LEDGER)
+        cur.execute(_DDL_MIGRATE_SIG_FORMAT_VERSION)
     conn.commit()
 
 
@@ -69,6 +82,7 @@ def _event_to_row(event: AuditEvent) -> dict[str, Any]:
         "signature": event.signature,
         "signer_key_id": event.signer_key_id,
         "schema_version": event.schema_version,
+        "sig_format_version": event.sig_format_version,
         "valid_from": event.valid_from,
         "valid_to": event.valid_to,
         "trace_id": event.trace_id,
@@ -87,6 +101,7 @@ def _row_to_event(row: dict[str, Any]) -> AuditEvent:
         sequence=row["sequence"],
         event_type=row["event_type"],
         schema_version=row.get("schema_version", "1.0"),
+        sig_format_version=row["sig_format_version"],
         valid_from=row["valid_from"],
         valid_to=row.get("valid_to"),
         system_time=row["system_time"],
@@ -143,7 +158,7 @@ class PostgresLedger:
                            event_type, actor, system_time,
                            episode_id, causation_id, correlation_id,
                            prior_hash, payload_hash, signature,
-                           signer_key_id, schema_version,
+                           signer_key_id, schema_version, sig_format_version,
                            valid_from, valid_to,
                            trace_id, span_id, payload
                     FROM aevum_ledger
@@ -206,15 +221,15 @@ class PostgresLedger:
                             event_id, audit_id, event_type, actor, system_time,
                             episode_id, causation_id, correlation_id,
                             prior_hash, payload_hash, signature, signer_key_id,
-                            schema_version, valid_from, valid_to,
+                            schema_version, sig_format_version, valid_from, valid_to,
                             trace_id, span_id, payload
                         ) VALUES (
                             %(event_id)s, %(audit_id)s, %(event_type)s, %(actor)s,
                             %(system_time)s, %(episode_id)s, %(causation_id)s,
                             %(correlation_id)s, %(prior_hash)s, %(payload_hash)s,
                             %(signature)s, %(signer_key_id)s, %(schema_version)s,
-                            %(valid_from)s, %(valid_to)s, %(trace_id)s,
-                            %(span_id)s, %(payload)s::jsonb
+                            %(sig_format_version)s, %(valid_from)s, %(valid_to)s,
+                            %(trace_id)s, %(span_id)s, %(payload)s::jsonb
                         )
                         """,
                         row,
