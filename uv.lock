@@ -18,6 +18,7 @@ members = [
     "aevum-llm",
     "aevum-maintainer",
     "aevum-mcp",
+    "aevum-oidc",
     "aevum-otel",
     "aevum-publish",
     "aevum-server",
@@ -329,6 +330,34 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
 ]
 provides-extras = ["dev"]
+
+[[package]]
+name = "aevum-oidc"
+version = "0.8.0"
+source = { editable = "packages/aevum-oidc" }
+dependencies = [
+    { name = "aevum-core" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+jwks = [
+    { name = "pyjwt" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aevum-core", editable = "packages/aevum-core" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
+    { name = "pyjwt", marker = "extra == 'jwks'", specifier = ">=2.13.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
+]
+provides-extras = ["jwks", "dev"]
 
 [[package]]
 name = "aevum-otel"

@@ -30,6 +30,7 @@ external credential produced a given commitment) needs the key.
 """
 from __future__ import annotations
 
+import hmac
 import os
 import sqlite3
 import uuid
@@ -212,3 +213,22 @@ def resolve_commitment_key(
             f"commitment_key_id {commitment_key_id!r} has no resolvable key (destroyed or unknown)"
         )
     return key
+
+
+def verify_commitment(commitment: str, key: bytes, claimed_identity: str) -> bool:
+    """Issuer-neutral commitment-match check (DD-I5, HO-G-OIDC).
+
+    Confirms whether `claimed_identity` is the bound credential identity behind
+    a recorded `principal_commitment` value, by recomputing
+    compute_principal_commitment(key, claimed_identity) and comparing with
+    hmac.compare_digest (constant-time, so the comparison itself does not leak
+    timing information about how much of `commitment` matched).
+
+    Lives here rather than in any issuer-specific adapter (aevum-oidc,
+    aevum-spiffe) because the check is the same regardless of which credential
+    scheme produced `claimed_identity` -- it is a property of the HMAC
+    construction in compute_principal_commitment, not of OIDC or SPIFFE.
+    Adapters surface this check to their callers; they do not reimplement it.
+    """
+    expected = compute_principal_commitment(key, claimed_identity)
+    return hmac.compare_digest(expected, commitment)
