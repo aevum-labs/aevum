@@ -47,7 +47,7 @@
     "event_type": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
-      "description": "Dotted-namespace event type. Reserved prefixes: session., ingest., query., review., commit., replay., consent., capture., transparency., chain."
+      "description": "Dotted-namespace event type. Reserved prefixes: session., ingest., query., review., commit., replay., consent., capture., transparency., chain., barrier., policy., agent., complication., context., commitment_key."
     },
     "schema_version": {
       "type": "string",
@@ -117,8 +117,8 @@
     },
     "sig_format_version": {
       "type": "integer",
-      "const": 1,
-      "description": "Signing field-set version. Always 1 for entries produced by the current engine. Included in the signing field set; verify_chain rejects any entry where this is not 1."
+      "enum": [1, 2],
+      "description": "Signing field-set version. 1: the 19 base signing fields. 2 (aevum-signing-v2.md): the same 19 fields plus principal_binding, principal_commitment, principal_commitment_key_id. Included in the signing field set; verify_chain rejects any entry where this is not 1 or 2, and rejects a chain where it decreases across entries (downgrade/splice fingerprint, DD4)."
     },
     "hash_alg": {
       "type": "string",
@@ -144,6 +144,18 @@
     "receipt_cbor": {
       "type": ["string", "null"],
       "description": "Hex-encoded COSE_Sign1 receipt bytes (Phase 1A transparency receipt). Null when no receipt encoder is configured. When present, provides a verifiable log receipt binding this entry to a transparency log."
+    },
+    "principal_binding": {
+      "type": ["string", "null"],
+      "description": "P2-IDENTITY-V2 (aevum-signing-v2.md). Base64url-encoded (no padding) RFC 8785-canonical JSON of allow-listed verifiable credential claims (only iss, aud, jti, iat, exp, and cnf.jkt may appear — never sub, never a bearer token). Null when the entry has no external credential binding or sig_format_version != 2. Part of the signing field set only when sig_format_version == 2."
+    },
+    "principal_commitment": {
+      "type": ["string", "null"],
+      "description": "P2-IDENTITY-V2 (aevum-signing-v2.md). Base64url-encoded (no padding) HMAC-SHA256 commitment over the bound CREDENTIAL identity (OIDC sub / SPIFFE ID / DID), keyed by a CommitmentKeyStore secret. Opaque to chain verification — only identity-matching (performed with the key, out of band) interprets it. Null when sig_format_version != 2 or no external credential is bound. Part of the signing field set only when sig_format_version == 2."
+    },
+    "principal_commitment_key_id": {
+      "type": ["string", "null"],
+      "description": "P2-IDENTITY-V2 (aevum-signing-v2.md). Identifies which CommitmentKeyStore key produced principal_commitment. Informational signed field (like signer_key_id) — not a security boundary by itself. Null when sig_format_version != 2. Part of the signing field set only when sig_format_version == 2."
     },
     "audit_id": {
       "type": "string",

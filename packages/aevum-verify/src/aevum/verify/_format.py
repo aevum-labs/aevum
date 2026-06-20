@@ -78,8 +78,13 @@ def hash_event_for_chain(event: Any) -> str:
 
     Spec "Hash Chain" section: stored as the next event's prior_hash, and
     identical to the digest Ed25519 signed for this event (the "compute
-    once" property). Accepts any object exposing the 19 signing-field
+    once" property). Accepts any object exposing the signing-field
     attributes — both VerifyEvent and the producer's event dataclass qualify.
+
+    Dispatches on event.sig_format_version (DD4, aevum-signing-v2.md): v1
+    entries sign the 19 spec fields; v2 entries additionally sign the 3
+    principal-binding fields (DD2). Callers must have already validated
+    sig_format_version is 1 or 2 before calling this.
     """
     fields: dict[str, Any] = {
         "actor": event.actor,
@@ -94,7 +99,7 @@ def hash_event_for_chain(event: Any) -> str:
         "prior_hash": event.prior_hash,
         "schema_version": event.schema_version,
         "sequence": event.sequence,
-        "sig_format_version": 1,
+        "sig_format_version": event.sig_format_version,
         "signer_key_id": event.signer_key_id,
         "span_id": event.span_id,
         # HLC system_time may exceed 2^53; the signing field must be a string.
@@ -103,6 +108,10 @@ def hash_event_for_chain(event: Any) -> str:
         "valid_from": event.valid_from,
         "valid_to": event.valid_to,
     }
+    if event.sig_format_version == 2:
+        fields["principal_binding"] = event.principal_binding
+        fields["principal_commitment"] = event.principal_commitment
+        fields["principal_commitment_key_id"] = event.principal_commitment_key_id
     return hashlib.sha3_256(message_representative(fields)).hexdigest()
 
 
@@ -140,3 +149,6 @@ class VerifyEvent:
     key_scheme: str = "ed25519"
     sig_format_version: int | None = None
     hash_alg: str = "sha3-256"
+    principal_binding: str | None = None
+    principal_commitment: str | None = None
+    principal_commitment_key_id: str | None = None

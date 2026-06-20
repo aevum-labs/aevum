@@ -1,8 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
-"""P2a tests: sig_format_version binding and verify_chain rejection of non-v1 entries.
+"""P2a tests: sig_format_version binding and verify_chain rejection of unknown entries.
 
-After P2f there is a single verify path: sig_format_version must be 1.
-Any other value (None, 2, 99, ...) is rejected immediately — no legacy fallback.
+new_event() always produces sig_format_version 1 unless P2-IDENTITY-V2's
+commitment_key_id is supplied (see test_identity_binding_v2.py for v2 coverage).
+verify_chain accepts sig_format_version in {1, 2} (DD4, spec aevum-signing-v2.md)
+and rejects any other value (None, 99, ...) immediately — no legacy fallback.
+Mutating a v1 entry's declared sig_format_version to 2 is also rejected: 2 is a
+known version, but the entry's signature was computed over the 19-field v1
+signing set, not the 22-field v2 set verify_chain now expects for a v2-declared
+entry — the digest mismatches and the Ed25519 check fails (DD3).
 """
 from __future__ import annotations
 
@@ -50,7 +56,11 @@ class TestClassicalSigFormatVersion:
         assert chain.verify_chain([stripped]) is False
 
     def test_sig_format_version_2_rejected(self) -> None:
-        """sig_format_version=2 is unknown to this verifier → rejected (fail closed)."""
+        """2 is a known sig_format_version (DD4), but this entry's signature was
+        computed over the v1 (19-field) signing set. Relabeling it as v2 makes
+        verify_chain sign-check it against the v2 (22-field) set instead — the
+        digest no longer matches and the Ed25519 check fails (DD3: no downgrade/
+        relabel attack is possible without the private key)."""
         chain = Sigchain()
         event = chain.new_event(event_type="t", payload={}, actor="a")
         future = dataclasses.replace(event, sig_format_version=2)
@@ -135,7 +145,11 @@ class TestHybridSigFormatVersion:
         assert chain.verify_chain([stripped]) is False
 
     def test_sig_format_version_2_rejected(self) -> None:
-        """sig_format_version=2 is unknown to this verifier → rejected (fail closed)."""
+        """2 is a known sig_format_version (DD4), but this entry's signature was
+        computed over the v1 (19-field) signing set. Relabeling it as v2 makes
+        verify_chain sign-check it against the v2 (22-field) set instead — the
+        digest no longer matches and the Ed25519 check fails (DD3: no downgrade/
+        relabel attack is possible without the private key)."""
         chain = self._hybrid_chain()
         event = chain.new_event(event_type="t", payload={}, actor="a")
         future = dataclasses.replace(event, sig_format_version=2)

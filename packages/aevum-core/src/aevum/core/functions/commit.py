@@ -23,6 +23,7 @@ _RESERVED_PREFIXES = (
     "ingest.", "query.", "review.", "commit.",
     "replay.", "barrier.", "policy.", "agent.",
     "session.", "complication.", "capture.", "context.",
+    "commitment_key.",
 )
 
 

@@ -589,6 +589,102 @@ security gap in future sessions.
 
 ---
 
+## HO-G-TWOSUBJECT: Two-"Subject" Distinction — Consent Data Subject vs. P2-IDENTITY-V2 Principal (Open — v0.8.x)
+
+**Item:** HO-G-TWOSUBJECT — flagged during P2-IDENTITY-V2 (spec
+`aevum-signing-v2.md`) implementation
+
+**Question:** `aevum.core.consent.ledger.ConsentLedger` and
+`aevum.core.audit.commitment_key_store.CommitmentKeyStore` are structurally
+near-identical (SQLite-backed, `PRAGMA secure_delete=ON`, crypto-shred on
+destroy, an append-only auditable destroy event) but represent two genuinely
+different concepts that both happen to be called "subject" in their home
+vocabularies:
+
+- `ConsentLedger`'s **subject** is the GDPR/CCPA data subject — the
+  natural person whose personal data is being processed, who has granted or
+  withheld consent for a stated purpose (Barrier 3 — Consent).
+- P2-IDENTITY-V2's **principal** is the bound credential identity of an
+  *actor* — an OIDC `sub`, a SPIFFE ID, or a DID identifying which external,
+  authenticated party caused a given signed event (DD1).
+
+In the common case these are different people entirely: the actor who
+triggers an `agent.decision` event (a human reviewer, an automated agent
+acting on a service identity) is frequently not the data subject whose
+record the decision concerns. `CommitmentKeyStore` was deliberately given a
+disjoint vocabulary (`scope` / `principal` / `commitment_key_id` — DD8,
+never "subject") specifically so the two are not casually conflated in code
+or documentation. But the underlying conceptual overlap — two distinct
+"who is this event about/from" axes, both crypto-shreddable, both keyed by an
+opaque store — is real and not yet resolved into a single mental model or a
+shared abstraction (if one should even exist; see D-17-style caution about
+premature unification of barrier-adjacent concepts).
+
+**Why it matters:** An operator or auditor reading both stores side by side
+could reasonably ask "why are there two near-identical erasure mechanisms?"
+without an answer in the docs. If a future feature needs to correlate
+"this data subject's records were touched by this principal," the two
+vocabularies must compose cleanly without merging — accidentally treating a
+`commitment_key_id` lookup as a consent check (or vice versa) would be a
+privacy-relevant bug class.
+
+**Condition for revisitation:** When a concrete cross-cutting feature
+(e.g. a compliance report correlating data-subject consent state with
+principal-bound decisions) needs both stores in the same code path — at that
+point, decide explicitly whether a shared `Subject`-adjacent protocol is
+warranted or whether the disjoint vocabulary should simply be documented more
+prominently (e.g. in CLAUDE.md's terminology table) and left at that.
+
+**Related:** DD1, DD8 (`aevum-signing-v2.md`), Barrier 3 (Consent),
+`ConsentLedger.shred()`, `CommitmentKeyStore.destroy()`.
+
+---
+
+## HO-G-ERASURE-SCOPE: CommitmentKeyStore Deployment-Scope Erasure Granularity (Deferred — toward v1.0)
+
+**Item:** HO-G-ERASURE-SCOPE — DD5 design decision flagged during
+P2-IDENTITY-V2 implementation, not yet revisited
+
+**Question:** `CommitmentKeyStore` keys are scoped per-deployment (or
+per-tenant, depending on how `scope` is used by an integrator), not
+per-principal. Destroying a `commitment_key_id` via `destroy()` erases the
+ability to confirm or re-derive **every** `principal_commitment` computed
+under that key — there is no way to selectively erase a single principal's
+commitment while leaving others under the same key confirmable. Is this
+coarse, all-or-nothing granularity sufficient for v1.0's anticipated use
+cases, or will an integrator need per-principal (or per-credential) erasure
+before then?
+
+**Why it matters:** A right-to-erasure request scoped to one external
+principal (e.g. "stop being able to confirm any event was caused by this
+specific OIDC subject") cannot currently be satisfied without destroying the
+entire deployment-scope key — which also erases confirmability for every
+other principal under that key. For a deployment with many principals
+sharing one commitment key, this is a much blunter instrument than
+`ConsentLedger.shred()`'s per-subject granularity.
+
+**Fix shape (if needed):** `principal_commitment_key_id` already identifies
+which key produced a given commitment (informational signed field, like
+`signer_key_id`), so per-principal granularity needs **no signed-format
+change** — it would require `CommitmentKeyStore` to mint one key per
+principal (or per some finer-grained scope) rather than one per deployment,
+which is purely an operational/store-side decision, not a wire-format one.
+This is explicitly noted in the `CommitmentKeyStore` docstring as the
+intended future refinement path.
+
+**Condition for revisitation:** When a concrete deployment needs
+per-principal erasure (e.g. a multi-tenant SaaS integrator handling
+individual right-to-erasure requests against a shared commitment key) — at
+that point, evaluate whether the operational cost of one key per principal
+is acceptable, or whether a different commitment construction is needed.
+Target: v1.0 differentiator, not a v0.8.x blocker.
+
+**Related:** DD5, DD6 (`aevum-signing-v2.md`), `CommitmentKeyStore.destroy()`,
+V08-CONSENT-FLOWTHROUGH (a related but distinct erasure-granularity question
+for consent-derived artifacts).
+
+---
+
 ## v0.7.0 Release — Open Items (carry to v0.7.1)
 
 1. **V07-VAULT:** CLOSED Session 4 (2026-05-26) — sign/verify confirmed, integration tests added, CLI vault-check added
