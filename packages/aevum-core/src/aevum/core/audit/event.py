@@ -142,6 +142,8 @@ def signing_fields_from_event(event: AuditEvent) -> dict[str, Any]:
     (hash_event_for_chain, Sigchain.verify_chain) must have already rejected any
     sig_format_version outside {1, 2} before calling this.
     """
+    if event.sig_format_version is None:
+        raise ValueError("sig_format_version must be set before signing")
     return _build_signing_fields(
         event_id=event.event_id,
         episode_id=event.episode_id,
