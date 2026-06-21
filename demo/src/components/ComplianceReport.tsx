@@ -389,6 +389,13 @@ export default function ComplianceReport({ preselectedSession }: Props) {
                 (No <code>pipx</code>? <code>pip install aevum-verify</code>, then{' '}
                 <code>aevum-verify …</code>.)
               </p>
+              <p className="muted" style={{ fontSize: '0.78rem', margin: '0.4rem 0 0' }}>
+                Full walkthrough, the failure case, and what this does and does
+                not prove:{' '}
+                <a href="https://aevum.build/verify/" target="_blank" rel="noreferrer">
+                  Verify It Yourself →
+                </a>
+              </p>
             </div>
           </div>
         )

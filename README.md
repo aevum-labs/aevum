@@ -34,7 +34,9 @@ Aevum produces records that are:
 - **Independently verifiable** — a third party verifies a chain export with
   the public key alone using the standalone `aevum-verify` tool
   (`pip install aevum-verify`), which shares no code with Aevum's own
-  runtime. No access to your systems required.
+  runtime. No access to your systems required. See
+  [Verify It Yourself](https://aevum.build/verify/) for the copy-paste
+  walkthrough.
 - **Portable and timestamped** — each entry is wrapped in a COSE_Sign1 receipt
   with an RFC 3161 trusted timestamp, and can be anchored to a public
   transparency log (Rekor v2).
