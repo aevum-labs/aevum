@@ -1,6 +1,6 @@
 [project]
 name = "aevum-conformance"
-version = "0.8.0"
+version = "0.9.0"
 description = "Aevum conformance test suite — 11 behavioral invariants."
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
@@ -13,11 +13,11 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "aevum-core>=0.7.0",
+    "aevum-core>=0.9.0",
 ]
 
 [project.optional-dependencies]
-full = ["aevum-publish>=0.7.0"]   # enables invariant 10 (COSE receipt) in a full reference run
+full = ["aevum-publish>=0.9.0"]   # enables invariant 10 (COSE receipt) in a full reference run
 
 [project.urls]
 Homepage = "https://aevum.build"

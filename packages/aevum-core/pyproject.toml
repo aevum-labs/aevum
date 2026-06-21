@@ -1,6 +1,6 @@
 [project]
 name = "aevum-core"
-version = "0.8.0"
+version = "0.9.0"
 description = "Aevum — the sealed movement. Replay-first, policy-governed context kernel."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -32,22 +32,22 @@ dependencies = [
 
 [project.optional-dependencies]
 cedar = ["cedarpy~=4.8.0"]
-default = ["aevum-store-oxigraph"]
+default = ["aevum-store-oxigraph>=0.9.0"]
 server = [
-    "aevum-server>=0.7.0",
+    "aevum-server>=0.9.0",
     # aevum-oidc added back in Phase 1 when OIDC package is restored
 ]
 mcp = [
-    "aevum-mcp>=0.7.0",
+    "aevum-mcp>=0.9.0",
 ]
 a2a = [
-    "aevum-agent>=0.7.0",
+    "aevum-agent>=0.9.0",
 ]
 oxigraph = [
-    "aevum-store-oxigraph>=0.7.0",
+    "aevum-store-oxigraph>=0.9.0",
 ]
 postgres = [
-    "aevum-store-postgres>=0.7.0",
+    "aevum-store-postgres>=0.9.0",
 ]
 langgraph = [
     "langgraph-checkpoint>=4.1.0",  # CVE-2025-64439 (7.4) RCE via JsonPlusSerializer — fixed 3.0, already satisfied

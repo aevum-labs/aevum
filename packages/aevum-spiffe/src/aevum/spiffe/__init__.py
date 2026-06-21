@@ -37,5 +37,5 @@ Usage (verifier -- re-verifying a recorded v2 principal_binding later):
 from aevum.spiffe.complication import SpiffeComplication
 from aevum.spiffe.verifier import SpiffeBindingVerifier
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 __all__ = ["SpiffeBindingVerifier", "SpiffeComplication"]

@@ -8,62 +8,105 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-06-21
+
 ### Added
 
-- **Neutral `PrincipalBindingVerifier` Protocol + `aevum-oidc` adapter
-  (HO-G-OIDC).** `aevum.core.protocols.principal_binding_verifier` defines an
-  issuer-neutral contract (`BindingVerificationResult`, `PrincipalBindingVerifier`)
-  for re-verifying a recorded v2 `principal_binding` blob, with zero OIDC/SPIFFE
-  dependencies in core. The new `aevum-oidc` package implements it for OIDC/JWT
-  (`scheme="oidc-jwt"`): checks structure, validity window, issuer, audience, and
-  `cnf.jkt` format/holder-match, all offline (DD-I3) and fail-closed on malformed
-  input. It explicitly does not re-verify the issuer's signature or a bearer
-  token — every result's `checks_not_performed` says so. An optional `[jwks]`
-  extra adds a live-JWKS-fetch convenience, isolated from the core offline path.
-  `aevum.core.audit.commitment_key_store.verify_commitment` adds the issuer-neutral
-  commitment-match check (DD-I5) that confirms a claimed identity against a
-  recorded `principal_commitment`, using `hmac.compare_digest`.
+- **`aevum-verify` full independence from `aevum-core` (HO-C).** Every
+  primitive `aevum-verify` borrowed from `aevum-core` (`message_representative`,
+  `hash_payload`, `hash_event_for_chain`, `GENESIS_HASH`, the verify-local
+  `VerifyEvent`, and the ML-DSA-65 `oqs` call) is reimplemented directly from
+  `docs/spec/aevum-signing-v1.md` in a new `_format.py`; `pyproject.toml`
+  drops the `aevum-core` runtime dependency entirely (adds `rfc8785` directly).
+  An AST-level test fails the build if `_core.py` or `_format.py` ever imports
+  `aevum.core` again. Also fixes two fail-open bugs (a garbage-hex
+  `mldsa65_pub` field and a garbage-hex STH `root_hash` used to raise instead
+  of returning `FAILED`) via a `safe_fromhex()` DoS guard, and a missing
+  `cryptography`/`rfc3161-client` dependency declaration that crashed a cold
+  install with no `aevum-core` present (the auditor's actual path).
+- **v2 identity-binding signed format + two binding-verifier adapters
+  (HO-G, HO-G-OIDC, HO-G2-SPIFFE).** An additive, nullable `sig_format_version`
+  2 field set (`principal_binding`, `principal_commitment`,
+  `principal_commitment_key_id`) binds an `AuditEvent` to a verified external
+  credential identity via HMAC commitment, without ever writing the raw
+  identity to the chain. `CommitmentKeyStore` (SQLite, `secure_delete=ON`,
+  crypto-shred on destroy) holds the HMAC keys; chain verification never needs
+  them. `sig_format_version` is enforced non-decreasing across a chain to make
+  downgrade/splice attacks detectable. Implemented in lockstep in `aevum-core`
+  (producer) and the independent `aevum-verify`, with a new
+  `docs/spec/aevum-signing-v2.md`. The neutral `PrincipalBindingVerifier`
+  Protocol (zero OIDC/SPIFFE dependencies in core) ships two adapters:
+  `aevum-oidc` (OIDC/JWT — issuer, audience, validity window, `cnf.jkt`
+  holder-match, offline and fail-closed) and `aevum-spiffe` (SPIFFE/JWT-SVID —
+  array-valued `aud`, no mandatory `iat`), proving the Protocol's neutrality
+  with zero changes required to core, the Protocol, `aevum-verify`, or the v2
+  field allow-list. `AuditLedgerProtocol.append()`, `InMemoryLedger`,
+  `PostgresLedger`, and `Engine.commit()` now accept `principal_identity` /
+  `principal_claims` / `commitment_key_id` (never a raw key, SR1) so the v2
+  path is reachable through the public API, not just `Sigchain.new_event()`
+  directly.
+- **Auditor evidence pack export (HO-AUDITOR-PACK).** `export_evidence_pack()`
+  in `aevum-core` bundles a signed chain segment into a self-contained
+  directory (`chain.json` + `ed25519-pub.hex` [+ `mldsa65-pub.hex` for hybrid]
+  + `manifest.json` + `VERIFY.txt`) that the standalone `aevum-verify` package
+  alone can verify — no `aevum-core` install or network access required.
+  `chain.json` reproduces `aevum.verify._core.event_to_dict`'s field shape
+  locally rather than importing `aevum.verify`, preserving the verifier's
+  independence, with a cross-package test guarding the two stay identical.
+  Cold-path testing caught and fixed two real bugs in the `VERIFY.txt`
+  instructions: `--ed25519-pub` takes the hex value itself (needs `$(cat ...)`
+  substitution, not a bare filename), and hybrid chains need the `[pqc]`
+  extra.
+- **`docs/verify.md` (HO-VERIFY-DOCS).** A first-time reader now has a
+  one-click path from the docs landing page to independently verifying a
+  chain — install (+ `[pqc]` for hybrid chains), the exact verify command
+  mirrored from the demo's Compliance tab, the tamper/FAILED case, and the
+  tamper-evident-vs-tamper-proof / capture-faithfulness honesty boundaries.
+  Linked from `README.md` and the demo's "Verify it yourself" panel.
+- **Capture-faithfulness boundary.** Tamper-evidence proves a record was not
+  altered after it was written; it does not prove every action was captured
+  in the first place. Named explicitly as Assumption 5 in `THREAT_MODEL.md`,
+  alongside the existing tamper-evidence claims in `README.md`, and in
+  `docs/concepts/capture-faithfulness.md`, linking the existing
+  `capture_surface` / `capture.gap` (`record_capture_gap()`) mechanisms to the
+  boundary they declare.
+- **Durability position on TSA timestamp longevity.** The write-time RFC 3161
+  timestamp is best-effort/advisory, not a permanent single-shot anchor —
+  re-anchoring (re-timestamping the Merkle root with a current TSA before the
+  prior certificate expires) is the durability mechanism across long
+  retention windows. See `docs/durability/timestamp-longevity.md`.
+- **Append-only correction pattern.** A correction to a previously committed
+  fact is a new appended event (`*.correction` `event_type`) carrying
+  `corrects_entry_hash`, `correction_reason`, and `corrected_fields`; the
+  original entry is never mutated, and both stay queryable. `query` surfaces
+  the latest correction as current working-graph truth; `replay` is
+  deliberately unaffected by later corrections. See
+  `docs/spec/correction-pattern.md`.
 
 ### Fixed
 
-- **`PostgresLedger` lost `sig_format_version` on every row round-trip.**
-  `aevum_ledger` had no column for it, so `_event_to_row`/`_row_to_event`
-  silently dropped the field; any restart, `get()`, or `all_events()` call
-  reconstructed entries with `sig_format_version=None`, which the DD4
-  None-guard in `signing_fields_from_event` correctly rejects. Added the
-  column (with an `ADD COLUMN IF NOT EXISTS ... DEFAULT 1` migration for
-  already-deployed tables — safe because this store's `append()` has never
-  supported `sig_format_version` 2) and carried the field through the full
-  read/write/resume path. The remaining post-P2g signed fields had the same
-  gap; see the `[1.0.0]` section below for the full fix.
-
-## [1.0.0] — Unreleased
-
-Closed items consolidated from the retired `KNOWN_UNKNOWNS.md`.
-
-### Fixed
-
-- **`PostgresLedger` row round-trip dropped most post-P2g signed fields.**
-  `key_scheme`, `hash_alg`, `mldsa65_sig`, `mldsa65_pub`, `tsa_url`,
-  `tsa_token`, `receipt_cbor`, `principal_binding`, `principal_commitment`,
-  and `principal_commitment_key_id` had no column in `aevum_ledger` and were
-  not written by `_event_to_row()` or restored by `_row_to_event()`. Added
-  the missing DDL columns and round-trip coverage for all ten fields,
-  enforced by a `dataclasses.fields(AuditEvent)`-driven round-trip test
+- **`PostgresLedger` lossless round-trip (HO-G-PG2).** `key_scheme`,
+  `hash_alg`, `mldsa65_sig`, `mldsa65_pub`, `tsa_url`, `tsa_token`,
+  `receipt_cbor`, `principal_binding`, `principal_commitment`,
+  `principal_commitment_key_id`, and `sig_format_version` had no column in
+  `aevum_ledger` and were silently dropped by `_event_to_row()`/
+  `_row_to_event()` on every restart, `get()`, or `all_events()` call. Added
+  the missing DDL columns (`ADD COLUMN IF NOT EXISTS` migrations, safe
+  against already-deployed tables) and round-trip coverage for all eleven
+  fields, enforced by a `dataclasses.fields(AuditEvent)`-driven test
   (`packages/aevum-store-postgres/tests/test_lossless_roundtrip.py`) so a
-  future field addition that a store forgets to carry now fails
-  automatically. `PostgresLedger.append()` (and `InMemoryLedger.append()`,
-  and the shared `AuditLedgerProtocol`) did not expose `commitment_key_id`,
-  `principal_identity`, or `principal_claims` as parameters at all, so v2
-  signed entries could not be created through any ledger's public
-  `append()`, only through `Sigchain.new_event()` directly — `append()` now
-  accepts these three kwargs (never a raw `commitment_key: bytes`); both
-  ledger implementors resolve the raw key internally via
-  `aevum.core.audit.commitment_key_store.resolve_commitment_key()`.
-  `Engine.commit()` forwards the same three kwargs through to
-  `ledger.append()`. See
-  `packages/aevum-core/tests/test_commit_v2_binding.py` for the end-to-end
-  proof.
+  future field a store forgets to carry now fails automatically. A live-Postgres
+  CI job runs the migration against real populated tables and round-trips a
+  new v2 entry through it end to end.
+- **Dead escalation detector and TSA/dual-sig coupling in
+  `Sigchain.new_event()`.** `from_sigchain_event()` was always called with no
+  kwargs, so `handoff_type` / `human_override_action` / `barrier_evaluations`
+  defaulted to non-escalating values regardless of payload contents —
+  `should_escalate()` could never return `True` through the public path.
+  The TSA timestamp block was nested inside the dual-signer conditional, so
+  Ed25519-only deployments with a configured `tsa_client` (the documented
+  `Kernel.local()` default) silently never received a timestamp token. Both
+  fixed; `sigchain.py` coverage raised to ~100%.
 - **`VaultTransitSigner` rejected by live Vault.** `prehashed: true` is
   unsupported for Vault 2.0.0 Ed25519 keys ("only Pure Ed25519 signatures
   supported, prehashed must be false"); fixed to `prehashed: false`. The
@@ -75,29 +118,57 @@ Closed items consolidated from the retired `KNOWN_UNKNOWNS.md`.
   (`packages/aevum-core/tests/test_vault_transit_signer.py`, skipped unless
   `VAULT_ADDR` is set).
 
-### Added
-
-- **Durability position on TSA timestamp longevity.** The write-time RFC
-  3161 timestamp is best-effort/advisory, not a permanent single-shot
-  anchor — re-anchoring (re-timestamping the Merkle root with a current TSA
-  before the prior certificate expires) is the durability mechanism across
-  long retention windows. See
-  `docs/durability/timestamp-longevity.md`.
-- **Append-only correction pattern.** A correction to a previously committed
-  fact is a new appended event (`*.correction` `event_type`) carrying
-  `corrects_entry_hash`, `correction_reason`, and `corrected_fields`; the
-  original entry is never mutated, and both stay queryable. `query`
-  surfaces the latest correction as current working-graph truth; `replay`
-  is deliberately unaffected by later corrections. See
-  `docs/spec/correction-pattern.md`.
-
 ### Security
 
+- **Secure erasure hardened end to end.** `ConsentLedger` sets
+  `PRAGMA secure_delete=ON` so `shred()` zeroes the deleted DEK bytes on disk
+  (including the rollback journal), not just unindexes them — closing the gap
+  between the GDPR Art. 17 crypto-shred guarantee and what the file actually
+  retained. `SqliteReceiptStore.rotate_operational()` now forces
+  `PRAGMA wal_checkpoint(TRUNCATE)` after the promotion commit and enables
+  `secure_delete` on the connection, so the `-wal` sidecar no longer retains
+  pre-rotation page versions after process exit. Both guarantees are backed by
+  on-disk-absence tests that write a known marker, perform the operation, and
+  grep the raw db/`-wal` bytes for it.
 - **`pip-audit` "not found on PyPI" skips for private workspace packages are
   not findings.** `scripts/check-security.sh` now parses `pip-audit -f json`
   and fails only when the parsed vulnerability list is non-empty; skip-reason
   entries (e.g. for a workspace-only package that is never published to
   PyPI) never fail the check.
+
+### Removed
+
+- **`aevum-llm`** (never published to PyPI) and the **`PostgresReceiptStore`**
+  stub (always raised `NotImplementedError`, no real callers) — both
+  descoped from v1.0; docs now state present-tense that the multi-process
+  Postgres receipt tier is not supported, instead of planned.
+- **Dead OpenClaw drift detector** — cut from v0.6.0 scope; ran against a
+  placeholder all-zero pin since inception and always skipped. No code or
+  workflow referenced it.
+- **`KNOWN_UNKNOWNS.md`** retired in favor of present-tense
+  **`KNOWN_LIMITATIONS.md`**: closed items already reflected in this
+  changelog are dropped, genuine open product gaps move over rewritten with
+  no version promises, and internal/business items move to the private
+  `aevum-ops` backlog. Roadmap/"coming soon" language scrubbed from docs in
+  favor of present-tense framing (FIPS 140-3, RFC 4998/ERS, and SCITT stay
+  explicitly forward-looking as a marked compliance-track exception).
+
+### Changed
+
+- All 13 publishable packages bumped to `0.9.0`; every intra-workspace
+  dependency now carries an explicit `>=0.9.0` lower bound in the published
+  wheel metadata, including several (`aevum-cli`, `aevum-mcp`, `aevum-oidc`,
+  `aevum-spiffe`, `aevum-server`, `aevum-publish`, `aevum-store-oxigraph`,
+  `aevum-store-postgres`) that previously shipped an unpinned `aevum-core`
+  requirement (the version constraint lived only in `[tool.uv.sources]`,
+  which `hatchling` does not carry into the built wheel) — a cold install of
+  any of those packages could previously resolve an arbitrarily old sibling.
+  `aevum-verify` is the deliberate exception: it now declares no `aevum-core`
+  dependency at all (see Independence, above).
+- **`release.yml`** — `gh release create` now always passes `--clobber`,
+  making the GitHub Release step idempotent on re-run (manual dispatch retry,
+  or recovering from a partial release) instead of relying on a
+  `gh release view` existence check with a no-SBOM fallback path.
 
 ### Verified
 

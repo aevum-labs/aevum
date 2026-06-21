@@ -1,6 +1,6 @@
 [project]
 name = "aevum-cli"
-version = "0.8.0"
+version = "0.9.0"
 description = "Aevum -- command-line interface for operating Aevum nodes."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,8 +13,8 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "aevum-core",
-    "aevum-server",
+    "aevum-core>=0.9.0",
+    "aevum-server>=0.9.0",
     "typer>=0.12",
     "uvicorn[standard]>=0.30",
 ]
@@ -60,7 +60,7 @@ ignore = ["ANN401"]
 
 [project.optional-dependencies]
 conform = [
-    "aevum-conformance",
+    "aevum-conformance>=0.9.0",
 ]
 dev = [
     "pytest>=8.0",

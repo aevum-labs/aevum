@@ -1,6 +1,6 @@
 [project]
 name = "aevum-publish"
-version = "0.8.0"
+version = "0.9.0"
 description = "Aevum — Sigstore Rekor v2 transparency log complication."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,7 +13,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "aevum-core",
+    "aevum-core>=0.9.0",
     "cbor2>=6.1.1",
 ]
 
