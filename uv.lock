@@ -518,6 +518,8 @@ name = "aevum-verify"
 version = "0.8.0"
 source = { editable = "packages/aevum-verify" }
 dependencies = [
+    { name = "cryptography" },
+    { name = "rfc3161-client" },
     { name = "rfc8785" },
 ]
 
@@ -534,10 +536,12 @@ pqc = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=48.0.1" },
     { name = "liboqs-python", marker = "extra == 'pqc'", specifier = ">=0.14.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "rfc3161-client", specifier = ">=1.0.6" },
     { name = "rfc8785", specifier = ">=0.1.2" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
 ]
