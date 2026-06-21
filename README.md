@@ -40,6 +40,15 @@ Aevum produces records that are:
   auditor- and court-defensible (an FRE 902(13) self-authentication
   certification template is included in `docs/legal/`).
 
+**Tamper-evidence is a property of the record; faithfulness-at-capture is a
+property of the integration.** Aevum proves that what was recorded has not
+been altered after the fact. It does not, by itself, guarantee that every
+action an agent took was captured, or that a recorded action faithfully
+reflects what happened at the boundary where Aevum observes it. Aevum records
+the capture surface and emits an explicit `capture.gap` event whenever it
+detects a gap, so the boundary is visible rather than silent — see
+[Capture Faithfulness](docs/concepts/capture-faithfulness.md).
+
 ## The problem it solves
 
 When an autonomous agent does something consequential — moves money, touches

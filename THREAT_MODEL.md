@@ -136,6 +136,31 @@ persistent workload.
 
 ---
 
+### Assumption 5: The integration reports everything it should
+
+**Guarantee supported:** None directly — this assumption marks the boundary
+of what sigchain integrity can guarantee, not an additional guarantee.
+
+**If violated:** An agent action occurs that the integration never reports
+to Aevum (no `ingest()`, `commit()`, or `record_capture_gap()` call). The
+action leaves no trace in the sigchain at all — there is no broken hash link
+to detect, because no entry was ever written.
+
+**Important distinction:** Tamper-evidence is a property of the record;
+faithfulness-at-capture is a property of the integration.
+`verify_sigchain()` proves that what was recorded has not been altered. It
+cannot prove that everything that happened was recorded.
+
+**Mitigation:** Instrument every call site that can take a consequential
+action (LLM call, tool call, MCP call) with either a governed function or
+`record_capture_gap()`, and treat `capture_surface` coverage as a deployment
+metric to monitor rather than a one-time setup step. See
+"record_capture_gap() Ordering Limitation (D-03)" below for the retroactive-
+recording caveat, and `docs/concepts/capture-faithfulness.md` for the full
+boundary.
+
+---
+
 ## What Aevum Protects Against
 
 | Threat | Coverage | Notes |

@@ -155,6 +155,7 @@ nav:
     - GDPR Article 17 Pattern: compliance/gdpr-article-17.md
     - Memory Poisoning Defense: concepts/memory-poisoning.md
     - Tamper-Evident Logging: concepts/tamper-evident-logs.md
+    - Capture Faithfulness: concepts/capture-faithfulness.md
     - Research Foundations: concepts/research-foundations.md
     - Self-Governance: learn/self-governance.md
     - Maintenance Playbook: learn/playbook.md
