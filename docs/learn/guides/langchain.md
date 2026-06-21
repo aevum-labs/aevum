@@ -265,6 +265,4 @@ directly, so `aevum-core` can be imported without `langchain-core` installed.
 - [Architecture](/learn/architecture/)
 - [Pure Python guide](/learn/guides/pure-python/)
 - [Anthropic adapter guide](/learn/guides/anthropic/)
-
-!!! note "OpenAI Agents guide"
-    An integration guide for OpenAI Agents SDK is planned for v0.7.0.
+- [OpenAI Agents SDK guide](/guides/openai-agents/)

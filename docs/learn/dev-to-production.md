@@ -179,7 +179,7 @@ For regulated deployments (FDA 21 CFR §11.10(e), EU AI Act Art. 12, HIPAA §164
     engine = Engine(sigchain=Sigchain(signer=signer))
     ```
 
-=== "AWS KMS (future)"
+=== "AWS KMS"
 
     AWS KMS signing is not yet implemented. Use `VaultTransitSigner` or
     implement the `Signer` protocol (see `aevum.core.audit.signer.Signer`).

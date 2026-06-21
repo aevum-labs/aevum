@@ -101,7 +101,6 @@ SHA3-256) are fast on any modern hardware including ARM.
 No. It is open source software. Community support via
 [GitHub Issues](https://github.com/aevum-labs/aevum/issues) and
 [GitHub Discussions](https://github.com/aevum-labs/aevum/discussions).
-Commercial support is on the roadmap.
 
 ---
 

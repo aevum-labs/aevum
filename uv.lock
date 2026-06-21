@@ -15,7 +15,6 @@ members = [
     "aevum-cli",
     "aevum-conformance",
     "aevum-core",
-    "aevum-llm",
     "aevum-maintainer",
     "aevum-mcp",
     "aevum-oidc",
@@ -270,11 +269,6 @@ requires-dist = [
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
 ]
 provides-extras = ["cedar", "default", "server", "mcp", "a2a", "oxigraph", "postgres", "langgraph", "crewai", "openai-agents", "adk", "maf", "anthropic", "langchain", "benchmark", "pqc", "all", "dev"]
-
-[[package]]
-name = "aevum-llm"
-version = "0.8.0"
-source = { editable = "packages/aevum-llm" }
 
 [[package]]
 name = "aevum-maintainer"

@@ -2,7 +2,6 @@
 
 Aevum provides two integration points for Model Context Protocol deployments:
 FastMCP in-process middleware and a Docker MCP Gateway subprocess interceptor.
-A first-class SEP-1763 interceptor is planned for when the Python SDK ships it.
 
 ## Prerequisites
 
@@ -217,21 +216,6 @@ For full Docker MCP Gateway setup, see `docs/deployment/mcp-gateway.md`.
 
 For recording MCP tool calls with full sigchain provenance (kernel required),
 see `docs/guides/mcp-audit-trail.md`.
-
-## SEP-1763 status
-
-MCP SEP-1763 (Interceptors API) is still in **Draft** status as of v0.7.0.
-The Python MCP SDK does not yet implement it.
-
-When SEP-1763 ships in the Python SDK, Aevum will:
-1. Implement `AevumSEP1763Interceptor` using the first-class interceptor API
-2. Deprecate the Docker Gateway shim (one minor version cycle)
-3. Provide a migration guide
-
-The FastMCP middleware approach will continue to be supported as a
-FastMCP-specific integration path.
-
-For the full SEP-1763 roadmap, see [SEP-1763 Status](sep-1763-status.md).
 
 ## Verifying tool calls
 

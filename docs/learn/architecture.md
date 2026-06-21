@@ -705,7 +705,7 @@ reference string. This approach is A2A-compatible, backward-compatible with
 single-agent deployments, and requires no shared signing key or shared ledger
 between agents. The combination is suitable for publication as a conference
 paper or practitioner reference at a systems security venue. See ADR-008 for
-the full design and KNOWN_UNKNOWNS.md (E-07-PUB) for the publication flag.
+the full design.
 
 ## What Aevum does not do
 

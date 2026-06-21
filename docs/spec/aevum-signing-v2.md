@@ -54,7 +54,7 @@ context.
 | DD5 | A commitment key is deployment/scope-grained, not per-principal. Destroying a key erases the ability to confirm or re-derive *every* `principal_commitment` computed under it — a coarse, all-or-nothing erasure. Per-principal granularity is a possible future refinement that needs no signed-format change. |
 | DD6 | Chain verification (`verify_chain` / `verify_entry`) never calls into `CommitmentKeyStore` and takes no commitment-key parameter. `principal_commitment` is opaque signed bytes to the verifier; only identity-*matching* (confirming which external credential produced a given commitment) needs the key, and that is a separate operation from chain verification. |
 | DD7 | `principal_binding` is built by **allow-list** extraction, never a deny-list: only `iss`, `aud`, `jti`, `iat`, `exp`, and `cnf.jkt` may survive. The raw subject (`sub`) and any bearer-token-shaped claim are structurally excluded regardless of what the caller passes in — there is no key under which a bearer token or raw `sub` can appear in the blob. |
-| DD8 | `CommitmentKeyStore`'s vocabulary (`scope` / `principal` / `commitment_key_id`) is deliberately disjoint from `ConsentLedger`'s vocabulary (`subject`). They look structurally similar (SQLite, `secure_delete=ON`, crypto-shred on destroy) but name different concepts — see `KNOWN_UNKNOWNS.md` for the two-"subject" distinction. |
+| DD8 | `CommitmentKeyStore`'s vocabulary (`scope` / `principal` / `commitment_key_id`) is deliberately disjoint from `ConsentLedger`'s vocabulary (`subject`). They look structurally similar (SQLite, `secure_delete=ON`, crypto-shred on destroy) but name different concepts — see `KNOWN_LIMITATIONS.md` for the two-"subject" distinction. |
 
 ---
 
@@ -317,7 +317,7 @@ crypto-shred on destroy) but uses a deliberately disjoint vocabulary —
 `scope` / `principal` / `commitment_key_id`, never "subject" — because
 `ConsentLedger`'s "subject" means the GDPR data subject, and this store's
 "principal" means the bound credential identity of an actor (see
-`KNOWN_UNKNOWNS.md` for the full two-"subject" distinction).
+`KNOWN_LIMITATIONS.md` for the full two-"subject" distinction).
 
 Public surface:
 

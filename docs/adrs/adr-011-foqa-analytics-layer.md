@@ -120,7 +120,6 @@ formal differential privacy guarantees before export.
   engineer and an understanding of the expected query patterns.
 - The current aggregate-only design (no individual session attributes) already
   provides strong practical protection without formal DP.
-- Planned for v0.8.0.
 
 ---
 

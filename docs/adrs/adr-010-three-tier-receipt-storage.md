@@ -134,21 +134,18 @@ This preserves SPARQL queryability of provenance metadata without duplicating bl
 in the RDF store. Callers with both stores call `OxigraphStore.store_receipt_ref()`
 after `SqliteReceiptStore.put()`.
 
-### WORM-Backend Option (Deferred)
+### WORM-Backend Option — Not Implemented
 
-When `AEVUM_RECEIPT_WORM_URL` is set, crash_protected receipts should be replicated
-off-host (S3 Object Lock, Azure Immutable Blob, GCS Object Retention). This is
-documented in `.env.example` but **not implemented in this session**. Planned for
-v0.8. The SQLite `locked=1` flag is the crash-protection mechanism until WORM
-replication is implemented.
+`AEVUM_RECEIPT_WORM_URL` is documented in `.env.example` as the variable that
+would trigger off-host replication of crash_protected receipts (S3 Object
+Lock, Azure Immutable Blob, GCS Object Retention), but no such replication is
+implemented. The SQLite `locked=1` flag is the only crash-protection mechanism.
 
-### PostgresReceiptStore Stub
+### Multi-Process Deployments — Not Supported
 
-SQLite WAL does not support concurrent writers across OS processes. For multi-process
-agent deployments (e.g., multiple worker processes sharing a single receipt store),
-`PostgresReceiptStore` must be used. A stub is provided in `aevum.core.store` that
-raises `NotImplementedError` with a clear message directing users to the tracking
-issue. Implementation is planned for a future session.
+SQLite WAL does not support concurrent writers across OS processes. Multi-process
+agent deployments (e.g., multiple worker processes sharing a single receipt store)
+are not supported. Use a single-process deployment with `SqliteReceiptStore`.
 
 ### Maintenance
 
@@ -174,17 +171,14 @@ minimum are the deployer's responsibility.
 
 ### Negative / risks
 
-- SQLite WAL: one writer at a time. Multi-process deployments must use Postgres
-  (not yet implemented).
+- SQLite WAL: one writer at a time. Multi-process deployments are not supported.
 - `rotate_operational()` must be scheduled externally — no built-in scheduler.
 - Long-term tier is permanent (no auto-delete) — deployers must manage growth.
-- WORM replication deferred — crash_protected receipts are only as durable as the
-  local SQLite file until v0.8.
+- WORM replication is not implemented — crash_protected receipts are only as
+  durable as the local SQLite file.
 
 ### Open Questions
 
-- When should Postgres support be added? **Proposed: v0.8**, driven by first
-  multi-process deployment need.
 - Should `rotate_operational()` be configurable per-tier? **No** — the EU AI Act
   minimum for long_term is non-negotiable; only the operational window is configurable.
 - Should ambient receipts be tiered separately? **No** — ambient receipts always

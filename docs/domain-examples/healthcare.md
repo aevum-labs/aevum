@@ -58,9 +58,3 @@ result = engine.ingest(
 # result.audit_id is now a permanent, signed record of this ingestion
 ```
 
-## SHACL-style validation (planned for aevum-domain-healthcare)
-
-Future domain pack will include:
-- FHIR R4 SHACL shapes for structural validation
-- HIPAA minimum-necessary constraint enforcement
-- PHI classification inference from resource type

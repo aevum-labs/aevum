@@ -143,14 +143,13 @@ hash-tree archive structures. Adopting ERS would give Aevum a standards-body
 format for the re-anchoring chain instead of an Aevum-specific convention
 (STH-over-STH).
 
-**This is intentionally parked, not adopted, in this pass.** No design
-partner has required ERS-format interoperability; the manual procedure
-above satisfies the underlying durability requirement (a fresh, verifiable
-external timestamp before the prior one's trust window narrows) without
-committing to ERS's wire format ahead of a concrete need. Revisit when a
-design partner requires ERS-compatible evidence records for cross-system
-interoperability (e.g. handing an Aevum-anchored record to a third-party
-long-term archival service that expects RFC 4998 input).
+**This is intentionally parked, not adopted.** ERS-format interoperability
+is not implemented; it would require adopting RFC 4998 Evidence Record
+Syntax. The manual procedure above satisfies the underlying durability
+requirement (a fresh, verifiable external timestamp before the prior one's
+trust window narrows) without committing to ERS's wire format. Handing an
+Aevum-anchored record to a third-party long-term archival service that
+expects RFC 4998 input is not currently supported.
 
 ## Related
 
@@ -161,4 +160,4 @@ long-term archival service that expects RFC 4998 input).
   (embedded-cert chain validation against a pinned root)
 - `docs/deployment/key-rotation.md` — the analogous procedure for signing
   key rotation (event-bridge pattern this re-anchoring procedure mirrors)
-- `KNOWN_UNKNOWNS.md` — D1/D2 tracking entries
+- `CHANGELOG.md` — `[1.0.0]` section, TSA longevity position closed

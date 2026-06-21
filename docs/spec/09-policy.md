@@ -82,5 +82,4 @@ first use. It is suitable only for development (AEVUM_DEV=1) and testing.
 
 - ADR-005: Externalised Cedar+OPA policy layer
 - `packages/aevum-core/src/aevum/core/policies/` — Cedar policy bundles
-- KNOWN_UNKNOWNS.md — G-25 (resolved)
 - THREAT_MODEL.md — policy layer trust assumptions

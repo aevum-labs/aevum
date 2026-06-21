@@ -103,37 +103,3 @@ class NullReceiptStore:
 
     def get_ambient(self, snapshot_id: str) -> bytes | None:
         return None
-
-
-class PostgresReceiptStore:
-    """
-    Stub for multi-process deployments using PostgreSQL.
-    SQLite WAL does NOT support concurrent writers across processes.
-    For multi-process agent deployments, use this backend.
-    Requires: pip install aevum-core[postgres] (adds asyncpg or psycopg2)
-    """
-
-    def __init__(self, dsn: str) -> None:
-        raise NotImplementedError(
-            "PostgresReceiptStore is not yet implemented. "
-            "Use SqliteReceiptStore for single-process deployments. "
-            "Track: github.com/aevum-labs/aevum/issues (postgres-store label)"
-        )
-
-    def put(self, *args: object, **kwargs: object) -> None:
-        raise NotImplementedError()
-
-    def get(self, *args: object, **kwargs: object) -> bytes | None:
-        raise NotImplementedError()
-
-    def lock(self, *args: object, **kwargs: object) -> None:
-        raise NotImplementedError()
-
-    def list_hashes(self, *args: object, **kwargs: object) -> list[str]:
-        raise NotImplementedError()
-
-    def put_ambient(self, *args: object, **kwargs: object) -> None:
-        raise NotImplementedError()
-
-    def get_ambient(self, *args: object, **kwargs: object) -> bytes | None:
-        raise NotImplementedError()
