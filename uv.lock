@@ -54,7 +54,7 @@ dev = [
 
 [[package]]
 name = "aevum-agent"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-agent" }
 dependencies = [
     { name = "aevum-core" },
@@ -78,7 +78,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "aevum-cli"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-cli" }
 dependencies = [
     { name = "aevum-core" },
@@ -114,7 +114,7 @@ provides-extras = ["conform", "dev"]
 
 [[package]]
 name = "aevum-conformance"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-conformance" }
 dependencies = [
     { name = "aevum-core" },
@@ -134,7 +134,7 @@ provides-extras = ["full"]
 
 [[package]]
 name = "aevum-core"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-core" }
 dependencies = [
     { name = "base58" },
@@ -272,7 +272,7 @@ provides-extras = ["cedar", "default", "server", "mcp", "a2a", "oxigraph", "post
 
 [[package]]
 name = "aevum-maintainer"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-maintainer" }
 dependencies = [
     { name = "aevum-core" },
@@ -299,7 +299,7 @@ requires-dist = [
 
 [[package]]
 name = "aevum-mcp"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-mcp" }
 dependencies = [
     { name = "aevum-core" },
@@ -327,7 +327,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "aevum-oidc"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-oidc" }
 dependencies = [
     { name = "aevum-core" },
@@ -355,7 +355,7 @@ provides-extras = ["jwks", "dev"]
 
 [[package]]
 name = "aevum-otel"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-otel" }
 dependencies = [
     { name = "aevum-core" },
@@ -393,7 +393,7 @@ provides-extras = ["otlp", "otlp-http", "dev"]
 
 [[package]]
 name = "aevum-publish"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-publish" }
 dependencies = [
     { name = "aevum-core" },
@@ -425,7 +425,7 @@ provides-extras = ["rekor", "dev"]
 
 [[package]]
 name = "aevum-server"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-server" }
 dependencies = [
     { name = "aevum-core" },
@@ -450,7 +450,7 @@ requires-dist = [
 
 [[package]]
 name = "aevum-spiffe"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-spiffe" }
 dependencies = [
     { name = "aevum-core" },
@@ -478,7 +478,7 @@ provides-extras = ["spiffe", "dev"]
 
 [[package]]
 name = "aevum-store-oxigraph"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-store-oxigraph" }
 dependencies = [
     { name = "aevum-core" },
@@ -493,7 +493,7 @@ requires-dist = [
 
 [[package]]
 name = "aevum-store-postgres"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-store-postgres" }
 dependencies = [
     { name = "aevum-core" },
@@ -515,7 +515,7 @@ provides-extras = ["verify"]
 
 [[package]]
 name = "aevum-verify"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "packages/aevum-verify" }
 dependencies = [
     { name = "cryptography" },

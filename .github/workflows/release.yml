@@ -123,18 +123,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists — skipping creation"
-            echo "PyPI publish is the critical path; GitHub Release is display only."
-          else
-            gh release create "$RELEASE_TAG" \
-              --title "$RELEASE_TAG" \
-              --generate-notes \
-              dist/*.whl dist/*.tar.gz "sbom-$RELEASE_TAG.json" \
-              2>/dev/null || \
-            gh release create "$RELEASE_TAG" \
-              --title "$RELEASE_TAG" \
-              --generate-notes \
-              dist/*.whl dist/*.tar.gz \
-            && echo "Release $RELEASE_TAG created successfully"
-          fi
+          gh release create "$RELEASE_TAG" \
+            --title "$RELEASE_TAG" \
+            --generate-notes \
+            --clobber \
+            dist/*.whl dist/*.tar.gz "sbom-$RELEASE_TAG.json"
+          echo "Release $RELEASE_TAG created successfully"

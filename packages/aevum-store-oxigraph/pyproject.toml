@@ -1,6 +1,6 @@
 [project]
 name = "aevum-store-oxigraph"
-version = "0.8.0"
+version = "0.9.0"
 description = "Aevum — Oxigraph GraphStore backend (small deployments)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,7 +15,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "aevum-core",
+    "aevum-core>=0.9.0",
     "pyoxigraph>=0.5,<0.6",
 ]
 
