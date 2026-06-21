@@ -204,8 +204,8 @@ automation bias) is the justification — this warning is the friction that make
 independent review happen.
 
 **S-16 — Read the regression baseline before touching v0.7.0 code**
-At the start of any v0.7.0 session, read
-`regression-baseline-v0.6.0/README.md` before touching any code. If a
+At the start of any v0.7.0 session, consult the regression baseline
+maintained in the `aevum-ops` repo before touching any load-bearing code. If a
 benchmark, conformance test, or compat entry regresses from the baseline,
 treat it as a blocking issue requiring an explicit ADR before proceeding.
 

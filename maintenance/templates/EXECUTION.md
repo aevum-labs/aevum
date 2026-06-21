@@ -17,9 +17,10 @@ starting the execution session.)*
 Before writing any code, verify the following. Check each item and record
 the result. Do not proceed to Phase 1 until all items are resolved.
 
-**S-16 check:** Read `regression-baseline-v0.6.0/README.md` before touching
-any code. If a benchmark, conformance test, or compat entry regresses from the
-baseline, treat it as a blocking issue requiring an ADR before proceeding.
+**S-16 check:** Consult the regression baseline maintained in the `aevum-ops`
+repo before touching any load-bearing code. If a benchmark, conformance test,
+or compat entry regresses from the baseline, treat it as a blocking issue
+requiring an ADR before proceeding.
 
 - [ ] `git status` — working tree is clean
 - [ ] CI is green on `main` before this session starts
