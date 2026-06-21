@@ -135,14 +135,6 @@ class TestInstallStory:
                       "langgraph", "crewai", "openai-agents", "all", "dev"):
             assert extra in content, f"Missing extra [{extra}]"
 
-    def test_aevum_llm_is_tombstoned(self) -> None:
-        """aevum-llm should have DeprecationWarning on import."""
-        llm_init = Path("packages/aevum-llm/src/aevum/llm/__init__.py")
-        if llm_init.exists():
-            content = llm_init.read_text()
-            assert "DeprecationWarning" in content, \
-                "aevum-llm __init__.py should have DeprecationWarning"
-
     def test_no_lgpl_in_any_source(self) -> None:
         """Rule 12: Apache-2.0 only."""
         # Split the search term to avoid this file matching itself.

@@ -9,8 +9,6 @@ Targets the Linux Foundation-ratified A2A v1.0 spec (April 2026):
   - Signed Agent Cards (JWS/RFC 7515)
   - JSON member-based polymorphism (no kind discriminators)
 
-Replaces the deprecated aevum-llm package.
-
 Usage:
   from aevum.agent import AevumA2AInterceptor
   interceptor = AevumA2AInterceptor(kernel=kernel)

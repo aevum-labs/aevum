@@ -167,7 +167,6 @@ nav:
       - LangChain: learn/guides/langchain.md
       - Anthropic: learn/guides/anthropic.md
       - MCP Traceparent: learn/guides/mcp.md
-      - Migrate from aevum-llm: learn/guides/migrate-from-aevum-llm.md
       - Guide by User Type: guides/non-enterprise.md
       - Integration Layer: guides/integration-layer.md
       - Billing Walkthrough: use-cases/billing-inquiry.md
@@ -179,7 +178,6 @@ nav:
       - Google ADK: guides/google-adk.md
       - Microsoft Agent Framework: guides/microsoft-agent-framework.md
       - MCP Integration: guides/mcp.md
-      - SEP-1763 Status: guides/sep-1763-status.md
     - FAQ: getting-started/faq.md
     - Domain Examples:
       - Overview: domain-examples/index.md

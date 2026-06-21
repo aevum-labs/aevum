@@ -10,8 +10,8 @@ Three tiers, one SQLite file (AEVUM_RECEIPT_DB):
 
 SQLite WAL supports multiple readers but only one writer at a time.
 Concurrent put() calls serialize — this is acceptable for single-process
-deployments. For multi-process deployments, use PostgresReceiptStore (not yet
-implemented; see adr-010-three-tier-receipt-storage.md).
+deployments. Multi-process deployments are not supported; see
+adr-010-three-tier-receipt-storage.md.
 
 rotate_operational() is a maintenance method; it is NOT called automatically.
 Callers (cron job, maintenance session) must invoke it on a schedule.
