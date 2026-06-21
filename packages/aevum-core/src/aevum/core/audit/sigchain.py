@@ -346,17 +346,20 @@ class Sigchain:
             except Exception as exc:
                 logger.error("Dual-sig failed on new chain entry: %s", exc)
 
-            # Circuit-breaker: TSA failures are caught and logged but never block the audit write.
-            # A TSA outage must not prevent events from being recorded — the entry is written
-            # without a timestamp token if the RFC 3161 authority is unreachable or rate-limited.
-            if self._tsa_client is not None:
-                try:
-                    tsa_token = self._tsa_client.timestamp(representative)
-                    if tsa_token is not None:
-                        tsa_url = tsa_token.tsa_url
-                        tsa_token_hex = tsa_token.token_bytes.hex()
-                except Exception as exc:
-                    logger.warning("TSA timestamp failed (non-blocking): %s", exc)
+        # Circuit-breaker: TSA failures are caught and logged but never block the audit write.
+        # A TSA outage must not prevent events from being recorded — the entry is written
+        # without a timestamp token if the RFC 3161 authority is unreachable or rate-limited.
+        # TSA is independent of dual-sig posture — Ed25519-only deployments with a
+        # configured tsa_client must still get a timestamp token (classical-only +
+        # tsa_enabled=True is the Kernel.local() default; see kernel.py).
+        if self._tsa_client is not None:
+            try:
+                tsa_token = self._tsa_client.timestamp(representative)
+                if tsa_token is not None:
+                    tsa_url = tsa_token.tsa_url
+                    tsa_token_hex = tsa_token.token_bytes.hex()
+            except Exception as exc:
+                logger.warning("TSA timestamp failed (non-blocking): %s", exc)
 
         event = AuditEvent(
             event_id=event_id,
@@ -394,7 +397,15 @@ class Sigchain:
         if self._receipt_encoder is not None:
             try:
                 from aevum.core.receipt import AevumReceipt
-                receipt = AevumReceipt.from_sigchain_event(event)
+                # Wire escalation-relevant fields from the caller's payload through to
+                # the receipt so should_escalate() (aevum.core.escalation) evaluates real
+                # values instead of always defaulting to non-escalating.
+                receipt = AevumReceipt.from_sigchain_event(
+                    event,
+                    handoff_type=payload.get("handoff_type"),
+                    human_override_action=payload.get("human_override_action"),
+                    barrier_evaluations=payload.get("barrier_evaluations", {}),
+                )
                 receipt_cbor = self._receipt_encoder.encode(receipt)
                 import dataclasses
                 event = dataclasses.replace(event, receipt_cbor=receipt_cbor)

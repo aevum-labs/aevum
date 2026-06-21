@@ -129,9 +129,9 @@ class _ExplodingTSAClient:
 
 
 class TestSigchainPipelineExceptionPaths:
-    """The TSA block is nested inside `if self._dual_signer is not None` in
-    new_event() (sigchain.py), so exercising it requires a dual_signer to be
-    configured — these tests use a real DualSigner alongside stub TSA clients."""
+    """These tests use a real DualSigner alongside stub TSA clients to exercise
+    the dual-sig + TSA paths together. See test_sigchain_escalation_tsa_wiring.py
+    for coverage of TSA firing independently of dual_signer."""
 
     def test_dual_sig_failure_is_caught_and_non_blocking(self):
         chain = Sigchain(dual_signer=_ExplodingDualSigner())
