@@ -15,20 +15,20 @@ class TestVersionConsistency:
                 return line.split("=")[-1].strip().strip('"')
         return None
 
-    def test_aevum_core_at_0_8_0(self) -> None:
-        assert self._get_version("aevum-core") == "0.8.0"
+    def test_aevum_core_at_0_9_0(self) -> None:
+        assert self._get_version("aevum-core") == "0.9.0"
 
-    def test_aevum_cli_at_0_8_0(self) -> None:
-        assert self._get_version("aevum-cli") == "0.8.0"
+    def test_aevum_cli_at_0_9_0(self) -> None:
+        assert self._get_version("aevum-cli") == "0.9.0"
 
-    def test_aevum_mcp_at_0_8_0(self) -> None:
-        assert self._get_version("aevum-mcp") == "0.8.0"
+    def test_aevum_mcp_at_0_9_0(self) -> None:
+        assert self._get_version("aevum-mcp") == "0.9.0"
 
-    def test_aevum_agent_at_0_8_0(self) -> None:
-        assert self._get_version("aevum-agent") == "0.8.0"
+    def test_aevum_agent_at_0_9_0(self) -> None:
+        assert self._get_version("aevum-agent") == "0.9.0"
 
-    def test_aevum_conformance_at_0_8_0(self) -> None:
-        assert self._get_version("aevum-conformance") == "0.8.0"
+    def test_aevum_conformance_at_0_9_0(self) -> None:
+        assert self._get_version("aevum-conformance") == "0.9.0"
 
 
 class TestPyTypedMarkers:

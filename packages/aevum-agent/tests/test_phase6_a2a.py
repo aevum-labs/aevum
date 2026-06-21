@@ -480,7 +480,7 @@ class TestAevumAgentPackage:
 
     def test_package_version(self) -> None:
         from aevum.agent import __version__
-        assert __version__ == "0.8.0"
+        assert __version__ == "0.9.0"
 
     def test_all_contains_expected_exports(self) -> None:
         import aevum.agent
