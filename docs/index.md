@@ -23,6 +23,9 @@ The quickstart gets you to working code in ten minutes.
 !!! abstract "Security"
     Reviewing the threat model? — [THREAT_MODEL.md →](https://github.com/aevum-labs/aevum/blob/main/THREAT_MODEL.md)
 
+!!! success "Skeptical?"
+    Don't take our word for it — [verify a chain yourself →](/verify/)
+
 ## Where to start
 
 <div class="grid cards" markdown>
@@ -47,6 +50,13 @@ The quickstart gets you to working code in ten minutes.
     for engineers evaluating production deployment.
 
     [:octicons-arrow-right-24: Security](/learn/security/)
+
+-   :material-check-decagram-outline:{ .lg } **Prove it**
+
+    Verify a signed chain or auditor evidence pack yourself, with the
+    standalone `aevum-verify` tool — copy-paste, no Aevum install required.
+
+    [:octicons-arrow-right-24: Verify](/verify/)
 
 </div>
 

@@ -185,6 +185,7 @@ nav:
       - Healthcare (FHIR R4): domain-examples/healthcare.md
       - Finance (SOX): domain-examples/finance.md
       - Legal (GDPR): domain-examples/legal.md
+  - Verify: verify.md
   - Compliance:
     - Regulatory Alignment: compliance/regulatory-alignment.md
     - NIST AI RMF: compliance/nist-ai-rmf.md
