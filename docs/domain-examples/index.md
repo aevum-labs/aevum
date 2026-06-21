@@ -8,9 +8,6 @@ These examples show how Aevum's consent and classification primitives
 apply to regulated industries. They use `aevum-core` directly — no
 additional packages are required.
 
-Domain packs (pre-built configurations for each industry) are planned
-for a future release.
-
 ## Available examples
 
 | Domain | Standard | Key concern |

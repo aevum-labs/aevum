@@ -2,7 +2,6 @@
 
 Aevum provides two integration points for Model Context Protocol deployments:
 FastMCP in-process middleware and a Docker MCP Gateway subprocess interceptor.
-A first-class SEP-1763 interceptor is planned for when the Python SDK ships it.
 
 ## Prerequisites
 

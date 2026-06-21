@@ -113,8 +113,8 @@ following honesty patches so that the interim state is not silently misleading:
 
 - **First-run friction**: operators without `liboqs` installed will receive a hard error at
   startup (v0.8.0+). Mitigated by a clear error message with install instructions.
-- **Build complexity**: `liboqs` requires a native library build. Mitigated by the planned
-  pure-Python ML-DSA implementation (post-v0.8.0) and pre-built wheels for major platforms.
+- **Build complexity**: `liboqs` requires a native library build. Mitigated by pre-built
+  wheels for major platforms. No pure-Python ML-DSA implementation is provided.
 - **v0.7.5 interim gap**: Ed25519-only fallback is not fail-closed yet. Mitigated by honest
   logging and documentation — operators know the posture is interim.
 

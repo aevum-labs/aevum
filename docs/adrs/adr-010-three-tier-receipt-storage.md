@@ -134,13 +134,12 @@ This preserves SPARQL queryability of provenance metadata without duplicating bl
 in the RDF store. Callers with both stores call `OxigraphStore.store_receipt_ref()`
 after `SqliteReceiptStore.put()`.
 
-### WORM-Backend Option (Deferred)
+### WORM-Backend Option — Not Implemented
 
-When `AEVUM_RECEIPT_WORM_URL` is set, crash_protected receipts should be replicated
-off-host (S3 Object Lock, Azure Immutable Blob, GCS Object Retention). This is
-documented in `.env.example` but **not implemented in this session**. Planned for
-v0.8. The SQLite `locked=1` flag is the crash-protection mechanism until WORM
-replication is implemented.
+`AEVUM_RECEIPT_WORM_URL` is documented in `.env.example` as the variable that
+would trigger off-host replication of crash_protected receipts (S3 Object
+Lock, Azure Immutable Blob, GCS Object Retention), but no such replication is
+implemented. The SQLite `locked=1` flag is the only crash-protection mechanism.
 
 ### Multi-Process Deployments — Not Supported
 
@@ -175,8 +174,8 @@ minimum are the deployer's responsibility.
 - SQLite WAL: one writer at a time. Multi-process deployments are not supported.
 - `rotate_operational()` must be scheduled externally — no built-in scheduler.
 - Long-term tier is permanent (no auto-delete) — deployers must manage growth.
-- WORM replication deferred — crash_protected receipts are only as durable as the
-  local SQLite file until v0.8.
+- WORM replication is not implemented — crash_protected receipts are only as
+  durable as the local SQLite file.
 
 ### Open Questions
 

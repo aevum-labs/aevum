@@ -382,10 +382,10 @@ aevum store migrate --dsn postgresql://...
 Always run `aevum store migrate` after upgrading. It is idempotent —
 safe to run even if no migrations are needed.
 
-### Kubernetes (Helm) — coming soon
+### Kubernetes (Helm)
 
-A Helm chart is planned for a future release. Until then, use the
-Docker Compose reference architecture and adapt it to your Kubernetes setup.
+No Helm chart is provided. Use the Docker Compose reference architecture
+and adapt it to your Kubernetes setup.
 
 ## OIDC and identity integration
 

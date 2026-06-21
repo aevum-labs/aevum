@@ -23,9 +23,10 @@ designed to prevent.
   `FrozenInstanceError` on any attempted field assignment after creation.
 - Receipt bytes are attached via `dataclasses.replace(event, receipt_cbor=...)`,
   which creates a new frozen instance rather than mutating the original.
-- SQLite receipt store (Session 2): WAL journal mode, no UPDATE/DELETE on the
-  receipts table. The schema will include a trigger that raises an error on
-  any attempted modification (enforced at the database level, not just convention).
+- SQLite receipt store: WAL journal mode, no UPDATE/DELETE on the receipts
+  table. This is enforced by application convention (`SqliteReceiptStore`
+  never issues UPDATE/DELETE against the table) — there is no database-level
+  trigger rejecting modification.
 - Rekor v2 entries are immutable by design — the transparency log is append-only.
 
 **Failure mode:** An adversary with direct database write access could alter
@@ -62,9 +63,7 @@ and an adversary who knows this can time their actions to exploit the gap.
 - The receipt is attached via `dataclasses.replace(event, receipt_cbor=receipt_cbor)`.
   The event returned to the caller always carries the receipt.
 - If `receipt_encoder.encode()` raises, the exception is caught and logged
-  at WARNING level (non-blocking in Phase 1A). In a future hardened mode,
-  the exception should propagate — a missing receipt in production is a
-  completeness failure.
+  at WARNING level (non-blocking). The exception does not propagate.
 - `NullBackend.submit()` never raises (dev mode guarantee).
 
 **Failure mode:** If `receipt_encoder.encode()` raises silently (current
@@ -110,9 +109,10 @@ remain valid — Ed25519 verification against the old public key still passes.
 The mitigation is key rotation (new kid field, new issuer URI) and transparency
 log witnessing (historical entries in Rekor cannot be modified).
 
-**Future-proofing:** ML-DSA-65 dual-signing is planned for Session 13. When
-active, receipts will carry both Ed25519 and ML-DSA-65 signatures, providing
-post-quantum resilience.
+**Post-quantum signing:** ML-DSA-65 dual-signing is implemented (`DualSigner`).
+When active, receipts carry both Ed25519 and ML-DSA-65 signatures, providing
+post-quantum resilience. Classical-only (Ed25519-only) posture remains
+available and is explicitly noted on the resulting sigchain entries.
 
 **Test reference:**
 `packages/aevum-publish/tests/test_receipt_encoder.py::TestReceiptEncoder::test_encode_signature_verifiable`

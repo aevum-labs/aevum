@@ -149,9 +149,9 @@ for concurrent use.
 
 | Item | Reason | Target |
 |---|---|---|
-| EX-10 cross-session detection | Requires multi-session context | v0.8.0 |
-| EX-14 cross-agent detection | Requires A2A message tracking | v0.8.0 |
-| Differential privacy on aggregate metrics | Privacy budget design required | v0.8.0 |
+| EX-10 cross-session detection | Requires multi-session context | Current gap |
+| EX-14 cross-agent detection | Requires A2A message tracking | Current gap |
+| Differential privacy on aggregate metrics | Privacy budget design required | Current gap |
 | Federated exceedance detection across operators | Architecture decision pending | Post-v1.0 |
-| Regulator-facing aggregate report (CSV/JSON) | Format TBD pending regulatory consultation | v0.8.0 |
+| Regulator-facing aggregate report (CSV/JSON) | Format TBD pending regulatory consultation | Current gap |
 | gen_ai.agent.name / gen_ai.agent.id in OTel spans | AuditEvent lacks structured agent identity | v0.8.0 (see V07-AGENT-CONTEXT in KNOWN_UNKNOWNS.md) |

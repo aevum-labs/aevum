@@ -2,11 +2,6 @@
 
 Aevum is a monorepo. Each package is independently installable.
 
-!!! note "Release status"
-    Packages marked 🔧 install successfully but contain stub implementations
-    pending a future release. Packages marked 🚧 are in active development
-    and not yet available on PyPI.
-
 | Package | Purpose | Status | Source |
 |---|---|---|---|
 | `aevum-core` | Context kernel: five functions, sigchain, barriers, consent | ✅ Available | [source](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-core) |
