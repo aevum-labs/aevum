@@ -19,10 +19,10 @@ small change seems safe but the composition is not.
 outward. Barriers first. Sigchain second. Policy layer third. Adapters last.
 An invariant cannot be changed by a layer above it.
 
-**Known unknowns.** `KNOWN_UNKNOWNS.md` is a first-class document, not a
-backlog. It lists the things we know we do not know — gaps in test coverage,
-unsupported platforms, unverified integrations. A known unknown is always
-preferable to an unknown unknown.
+**Known limitations.** `KNOWN_LIMITATIONS.md` is a first-class document, not a
+backlog. It lists the things the product genuinely does not do yet — gaps in
+test coverage, unsupported platforms, unverified integrations. A documented
+limitation is always preferable to an undocumented one.
 
 **Automation bias awareness.** Every consequential checkpoint includes an
 explicit automation bias warning citing the ICLR 2025 finding (84.30%
@@ -60,9 +60,9 @@ made in the previous cycle. What did we say was true? Is it still true?
 This phase exists to prevent the cycle from becoming a sequence of
 unverified additions.
 
-**Phase 7 — Known unknowns.** The last phase of every cycle updates
-`KNOWN_UNKNOWNS.md`. What is new and unknown? What was previously unknown
-and is now known? Gaps are not failures — undocumented gaps are.
+**Phase 7 — Known limitations.** The last phase of every cycle updates
+`KNOWN_LIMITATIONS.md`. What gap is new? What was previously a gap and is now
+closed? Gaps are not failures — undocumented gaps are.
 
 Between Phase 0 and Phase 7, the cycle proceeds inside-out:
 barriers → sigchain → policy → adapters → documentation.

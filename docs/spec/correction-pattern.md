@@ -158,4 +158,4 @@ moved on; nothing about entry 41 changed):
 - `aevum.core.audit.event.AuditEvent.hash_event_for_chain` — `entry_hash` computation
 - `docs/spec/aevum-event-v1.md` — event schema, `event_type` namespace rules
 - `docs/compliance/gdpr-article-17.md` — the sibling tombstone (erasure) pattern
-- `KNOWN_UNKNOWNS.md` — D1/D2 tracking entries
+- `CHANGELOG.md` — `[1.0.0]` section, correction-pattern design closed

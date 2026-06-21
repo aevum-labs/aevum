@@ -34,8 +34,77 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
   column (with an `ADD COLUMN IF NOT EXISTS ... DEFAULT 1` migration for
   already-deployed tables — safe because this store's `append()` has never
   supported `sig_format_version` 2) and carried the field through the full
-  read/write/resume path. See `KNOWN_UNKNOWNS.md` (`HO-G-PG-FIELDS`) for a
-  related gap in other post-P2g signed fields that was not in scope here.
+  read/write/resume path. The remaining post-P2g signed fields had the same
+  gap; see the `[1.0.0]` section below for the full fix.
+
+## [1.0.0] — Unreleased
+
+Closed items consolidated from the retired `KNOWN_UNKNOWNS.md`.
+
+### Fixed
+
+- **`PostgresLedger` row round-trip dropped most post-P2g signed fields.**
+  `key_scheme`, `hash_alg`, `mldsa65_sig`, `mldsa65_pub`, `tsa_url`,
+  `tsa_token`, `receipt_cbor`, `principal_binding`, `principal_commitment`,
+  and `principal_commitment_key_id` had no column in `aevum_ledger` and were
+  not written by `_event_to_row()` or restored by `_row_to_event()`. Added
+  the missing DDL columns and round-trip coverage for all ten fields,
+  enforced by a `dataclasses.fields(AuditEvent)`-driven round-trip test
+  (`packages/aevum-store-postgres/tests/test_lossless_roundtrip.py`) so a
+  future field addition that a store forgets to carry now fails
+  automatically. `PostgresLedger.append()` (and `InMemoryLedger.append()`,
+  and the shared `AuditLedgerProtocol`) did not expose `commitment_key_id`,
+  `principal_identity`, or `principal_claims` as parameters at all, so v2
+  signed entries could not be created through any ledger's public
+  `append()`, only through `Sigchain.new_event()` directly — `append()` now
+  accepts these three kwargs (never a raw `commitment_key: bytes`); both
+  ledger implementors resolve the raw key internally via
+  `aevum.core.audit.commitment_key_store.resolve_commitment_key()`.
+  `Engine.commit()` forwards the same three kwargs through to
+  `ledger.append()`. See
+  `packages/aevum-core/tests/test_commit_v2_binding.py` for the end-to-end
+  proof.
+- **`VaultTransitSigner` rejected by live Vault.** `prehashed: true` is
+  unsupported for Vault 2.0.0 Ed25519 keys ("only Pure Ed25519 signatures
+  supported, prehashed must be false"); fixed to `prehashed: false`. The
+  `verify()` method was missing entirely — added against the Vault Transit
+  verify endpoint. Base64 encoding was also wrong: Vault uses standard
+  base64 (`+`/`/`), not URL-safe (`-`/`_`). Confirmed functional against a
+  live Vault 2.0.0 dev server; sign/verify round-trip passes. Added an
+  `aevum vault-check` CLI command and integration tests
+  (`packages/aevum-core/tests/test_vault_transit_signer.py`, skipped unless
+  `VAULT_ADDR` is set).
+
+### Added
+
+- **Durability position on TSA timestamp longevity.** The write-time RFC
+  3161 timestamp is best-effort/advisory, not a permanent single-shot
+  anchor — re-anchoring (re-timestamping the Merkle root with a current TSA
+  before the prior certificate expires) is the durability mechanism across
+  long retention windows. See
+  `docs/durability/timestamp-longevity.md`.
+- **Append-only correction pattern.** A correction to a previously committed
+  fact is a new appended event (`*.correction` `event_type`) carrying
+  `corrects_entry_hash`, `correction_reason`, and `corrected_fields`; the
+  original entry is never mutated, and both stay queryable. `query`
+  surfaces the latest correction as current working-graph truth; `replay`
+  is deliberately unaffected by later corrections. See
+  `docs/spec/correction-pattern.md`.
+
+### Security
+
+- **`pip-audit` "not found on PyPI" skips for private workspace packages are
+  not findings.** `scripts/check-security.sh` now parses `pip-audit -f json`
+  and fails only when the parsed vulnerability list is non-empty; skip-reason
+  entries (e.g. for a workspace-only package that is never published to
+  PyPI) never fail the check.
+
+### Verified
+
+- Adapter drift tests that use `pytest.importorskip()` (Anthropic SDK,
+  LangChain, etc.) are confirmed to skip intentionally in CI because the
+  optional framework packages are absent from the test environment — not a
+  test failure.
 
 ## [0.8.0] — 2026-06-12
 

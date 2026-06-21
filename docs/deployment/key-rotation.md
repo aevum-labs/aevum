@@ -190,7 +190,7 @@ Use this procedure when a key is compromised or suspected compromised.
 | Specification | Documented in `docs/spec/aevum-signing-v1.md` §VaultTransitSigner |
 | Protocol reference | `POST /v1/transit/sign/{key_name}` with `prehashed=true` |
 | Python implementation (`aevum.core.audit.signer.VaultTransitSigner`) | **Implemented** (v0.6.0+) |
-| Last tested against Vault | **Untested against live Vault** — see V07-VAULT in KNOWN_UNKNOWNS.md |
+| Last tested against Vault | Confirmed functional against a live Vault 2.0.0 dev server — sign/verify round-trip passes; see `aevum vault-check` CLI |
 | Integration test | `packages/aevum-core/tests/test_vault_signer.py` |
 
 ### Specification

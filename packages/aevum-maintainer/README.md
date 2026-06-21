@@ -10,9 +10,9 @@ to generate and sign compliance packs on each release.
 This package is never published to PyPI. `.github/workflows/release.yml`
 removes its wheel/sdist from `dist/` before the publish step and skips it
 in the PyPI-registration pre-flight check — confirmed present in both
-places as of the HO-SESSION5-CLOSE / THIN pass. `KNOWN_UNKNOWNS.md`
-(`HO-SEC-SKIP`) records why `pip-audit` correctly reports it as
-unauditable rather than as a finding.
+places as of the HO-SESSION5-CLOSE / THIN pass. `pip-audit` reporting it as
+"not found on PyPI" is expected, not a finding — `scripts/check-security.sh`
+parses `pip-audit -f json` and fails only on a non-empty vulnerability list.
 
 It also deliberately breaks the monorepo's flat `aevum.*` namespace
 convention (CLAUDE.md): its import path is the top-level `aevum_maintainer`

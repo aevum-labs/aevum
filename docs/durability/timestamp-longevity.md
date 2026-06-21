@@ -160,4 +160,4 @@ expects RFC 4998 input is not currently supported.
   (embedded-cert chain validation against a pinned root)
 - `docs/deployment/key-rotation.md` — the analogous procedure for signing
   key rotation (event-bridge pattern this re-anchoring procedure mirrors)
-- `KNOWN_UNKNOWNS.md` — D1/D2 tracking entries
+- `CHANGELOG.md` — `[1.0.0]` section, TSA longevity position closed
