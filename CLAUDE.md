@@ -3,9 +3,6 @@
 This is the briefing document for Claude Code sessions working on the
 `aevum-labs/aevum` monorepo. Read it fully before writing any code.
 
-For the complete design rationale and phase plan, see the Aevum planning
-conversation (Claude.ai project).
-
 ---
 
 ## What Aevum Is

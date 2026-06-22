@@ -50,6 +50,3 @@ verify_phase3.py
 verify_phase7.py
 verify_phase8.py
 verify_phase*.py
-
-# Maintenance generated files — local only, never commit
-maintenance/generated/
