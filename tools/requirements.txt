@@ -1,5 +1,0 @@
-# Tool dependencies — NOT package dependencies
-# pip install -r tools/requirements.txt
-cryptography>=42.0
-pyyaml>=6.0
-base58>=2.1

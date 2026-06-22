@@ -83,3 +83,4 @@ first use. It is suitable only for development (AEVUM_DEV=1) and testing.
 - ADR-005: Externalised Cedar+OPA policy layer
 - `packages/aevum-core/src/aevum/core/policies/` — Cedar policy bundles
 - THREAT_MODEL.md — policy layer trust assumptions
+- [`examples/opa-sidecar`](https://github.com/aevum-labs/aevum/tree/main/examples/opa-sidecar) — runnable Cedar+OPA deployment example

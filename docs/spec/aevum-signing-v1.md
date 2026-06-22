@@ -350,7 +350,17 @@ A verifier must:
    h. Verify `system_time` is >= previous event's `system_time` (HLC monotonicity)
 5. Report: pass/fail per event, total events verified, any chain breaks
 
-A reference verifier is provided at `tools/verify/verify_chain.py`.
+A standalone reference verifier is provided by the `aevum-verify` package
+(shares no code with `aevum-core` — every primitive above is reimplemented
+directly from this spec):
+
+```bash
+pip install aevum-verify
+aevum-verify CHAIN_FILE --ed25519-pub HEX [--mldsa65-pub HEX]
+```
+
+See [`packages/aevum-verify`](https://github.com/aevum-labs/aevum/tree/main/packages/aevum-verify)
+for the Python API and full CLI reference.
 
 ---
 

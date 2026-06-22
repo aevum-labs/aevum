@@ -136,8 +136,8 @@ jobs:
         run: |
           MONTH=$(date +'%B %Y')
           STAMP=$(date +'%Y-%m-%d')
+          mkdir -p maintenance
 
-          # Build scan_results.md — this is what kickoff.py will embed in RESEARCH.md
           cat > maintenance/scan_results.md << SCANEOF
           # Monthly Scan Results — $MONTH
           Generated: $STAMP
