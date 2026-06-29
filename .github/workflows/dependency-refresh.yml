@@ -1,8 +1,11 @@
 name: dependency-refresh
 
 # Clears security advisories frozen in uv.lock by relocking the affected
-# packages and opening a REVIEWABLE PR (never auto-merged). Replaces Dependabot's
-# uv updater, which fails on this multi-member workspace (run /1419382975).
+# packages, pushing a relock BRANCH, and notifying the maintainer to open the
+# PR themselves (branch + notify). A maintainer-opened PR runs the required
+# checks; a bot-opened one would not — and a security relock should be a
+# conscious human merge. Never auto-merged. Replaces Dependabot's uv updater,
+# which fails on this multi-member workspace (run /1419382975).
 # security.yml (weekly pip-audit) remains the authoritative detection backstop.
 
 on:
@@ -12,7 +15,7 @@ on:
 
 permissions:
   contents: write             # push the relock branch
-  pull-requests: write        # open the PR
+  issues: write               # open the notify issue
 
 concurrency:
   group: dependency-refresh
@@ -69,15 +72,19 @@ jobs:
           uv sync --frozen
           uv run pytest -q
 
-      - name: Open reviewable PR
+      - name: Push relock branch + notify maintainer (branch + notify)
         if: steps.audit.outputs.clean == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ASSIGNEE: ${{ vars.RELOCK_NOTIFY_ASSIGNEE }}
         run: |
           set -euo pipefail
           if git diff --quiet -- uv.lock; then
-            echo "uv.lock unchanged after relock — no PR."; exit 0
+            echo "uv.lock unchanged after relock — nothing to ship."
+            echo "uv.lock unchanged after relock — no branch pushed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
+
           BRANCH="auto/dep-refresh-$(date -u +%Y%m%d-%H%M%S)"
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -85,13 +92,45 @@ jobs:
           git add uv.lock
           git commit -m "security: relock to clear advisories (${{ steps.audit.outputs.pkgs }})"
           git push origin "$BRANCH"
-          gh pr create \
-            --title "security: relock uv.lock to clear advisories" \
-            --body  "Automated relock of: ${{ steps.audit.outputs.pkgs }}.
 
-          - Re-audit: clean (pip-audit exit 0)
-          - Tests: pass (uv run pytest)
+          # --- branch is safe on origin from here; notify is best-effort and must NOT fail the run ---
+          set +e
+          NEW_PR_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pull/new/${BRANCH}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
 
-          Self-gated by this workflow. **Review the lockfile diff and merge manually** — merge to main runs full CI. Not auto-merged (it's from github-actions[bot], not dependabot[bot])." \
-            --label dependencies --label security \
-            --head "$BRANCH" --base main
+          {
+            echo "## 🔒 Relock branch ready — open the PR yourself"
+            echo ""
+            echo "Advisories cleared in: ${{ steps.audit.outputs.pkgs }}"
+            echo ""
+            echo "A maintainer-opened PR runs the required checks (a bot-opened one would not):"
+            echo ""
+            echo "➡️ $NEW_PR_URL"
+            echo ""
+            echo "Self-gated above — re-audit clean, tests pass. Review the uv.lock diff and merge on green."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          {
+            printf '%s\n' \
+              "Automated relock cleared advisories in: ${{ steps.audit.outputs.pkgs }}" \
+              "" \
+              "Open the PR as yourself so the required checks run, then merge on green:" \
+              "" \
+              "$NEW_PR_URL" \
+              "" \
+              "- Re-audit: clean (pip-audit exit 0)" \
+              "- Tests: pass (uv run pytest)" \
+              "- Branch: $BRANCH (commit already on origin)" \
+              "" \
+              "cc @$OWNER" \
+              "" \
+              "Not auto-PR'd by design (branch + notify). Detection backstop: security.yml."
+          } > /tmp/relock-issue.md
+
+          ARGS=(--title "security: relock ready — clear advisories ($BRANCH)" --body-file /tmp/relock-issue.md)
+          [ -n "${ASSIGNEE:-}" ] && ARGS+=(--assignee "$ASSIGNEE")
+          if gh issue create "${ARGS[@]}"; then
+            echo "Notify issue created for $BRANCH."
+          else
+            echo "::warning::Notify issue could not be created — branch is pushed; open the PR manually: $NEW_PR_URL"
+          fi
