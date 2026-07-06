@@ -22,7 +22,16 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("crewai", reason="crewai not installed")
+try:
+    import crewai  # noqa: F401
+except ModuleNotFoundError as exc:
+    # Only skip when crewai itself is absent. Any other ImportError/ModuleNotFoundError
+    # (e.g. a transitive dependency version conflict, such as crewai pulling an
+    # opentelemetry-sdk that's missing a symbol it expects) is a real regression and
+    # must fail loudly here, not be silently reclassified as "not installed".
+    if exc.name != "crewai":
+        raise
+    pytest.skip("crewai not installed", allow_module_level=True)
 
 from unittest.mock import MagicMock, patch  # noqa: E402
 
