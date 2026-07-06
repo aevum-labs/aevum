@@ -9,7 +9,6 @@ a real self-signed TSA cert + real `openssl ts` response, no network.
 from __future__ import annotations
 
 import subprocess
-from pathlib import Path
 
 import cbor2
 import pytest
@@ -159,21 +158,6 @@ class TestVerifyReceiptTsa:
         assert verify_receipt_tsa(bad, tsa_root_cert=mock_tsa["tsa_cert_pem"]) is False
 
 
-class TestReceiptTsaIndependence:
-    def test_module_never_imports_aevum_publish(self) -> None:
-        """verify_receipt_tsa must not import aevum.publish — independent reimplementation."""
-        import ast
-
-        import aevum.verify._core as _core_mod
-        tree = ast.parse(Path(_core_mod.__file__).read_text())
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    assert not alias.name.startswith("aevum.publish"), (
-                        f"import {alias.name} found — independence violated"
-                    )
-            elif isinstance(node, ast.ImportFrom):
-                module = node.module or ""
-                assert not module.startswith("aevum.publish"), (
-                    f"from {module} import ... found — independence violated"
-                )
+# The AST-level independence guarantee (no aevum.publish import in _core.py) is
+# enforced in test_merkle_sth.py::TestMerkleIndependence.test_ast_no_aevum_publish_import_in_core,
+# alongside the equivalent aevum.core guarantee for the Merkle/STH layer.

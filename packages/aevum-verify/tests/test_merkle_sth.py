@@ -35,16 +35,19 @@ _D = [bytes([i] * 32) for i in range(20)]
 class TestMerkleIndependence:
     @staticmethod
     def _assert_no_aevum_core_import(source_path: Path) -> None:
+        """Assert no import statement in source_path names aevum.core.* or
+        aevum.publish.* — the two runtimes this module must never trust."""
         tree = ast.parse(source_path.read_text())
+        forbidden_prefixes = ("aevum.core", "aevum.publish")
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    assert not alias.name.startswith("aevum.core"), (
+                    assert not alias.name.startswith(forbidden_prefixes), (
                         f"{source_path.name}: import {alias.name} found — independence violated"
                     )
             elif isinstance(node, ast.ImportFrom):
                 module = node.module or ""
-                assert not module.startswith("aevum.core"), (
+                assert not module.startswith(forbidden_prefixes), (
                     f"{source_path.name}: from {module} import ... found — independence violated"
                 )
 
@@ -68,6 +71,18 @@ class TestMerkleIndependence:
         """
         import aevum.verify._format as _format_mod
         self._assert_no_aevum_core_import(Path(_format_mod.__file__))  # type: ignore[arg-type]
+
+    def test_ast_no_aevum_publish_import_in_core(self) -> None:
+        """AST-level check: no import statement in _core.py names any aevum.publish module.
+
+        verify_receipt_tsa independently reimplements the CTT MessageImprint
+        check for aevum.publish.encoder.ReceiptEncoder's COSE_Sign1 output. It
+        must not import the encoder (or any other aevum.publish.* module), so
+        the verifier never trusts the producer's runtime — same guarantee the
+        two tests above already enforce for aevum.core.
+        """
+        import aevum.verify._core as _core_mod
+        self._assert_no_aevum_core_import(Path(_core_mod.__file__))  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
