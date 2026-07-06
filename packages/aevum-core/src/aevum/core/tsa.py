@@ -16,11 +16,16 @@ Why external timestamps matter for regulated workloads:
     dates and times from a trusted source.
   The TSA provides the "trusted source" element that operator-controlled system time cannot.
 
-TTC ordering (Timestamp Then COSE, draft-ietf-cose-tsa-tst-header-parameter-08):
-  The TST (TimeStampToken) timestamps the canonical payload bytes, not the COSE_Sign1
-  receipt. This ordering matters: the timestamp proves the payload existed at this time;
-  the COSE receipt then wraps both. Reversing the order would make the timestamp cover
-  only the receipt metadata, not the underlying data being timestamped.
+TSAClient.timestamp() is generic: it timestamps whatever bytes the caller passes and
+does not itself encode TTC or CTT semantics (RFC 9921). The meaning is entirely a
+function of the call site:
+  - Merkle/STH anchoring (merkle.py, sigchain.py's representative-hash path) times
+    the canonical representative bytes before any outer signature exists — a
+    TTC-shaped usage.
+  - The per-entry COSE_Sign1 receipt encoder (aevum.publish.encoder.ReceiptEncoder)
+    times the Ed25519 signature bytes (CTT, RFC 9921 label 270) so the non-blocking
+    circuit-breaker below can run after signing without changing the protected
+    header shape. See encoder.py's module docstring for the full rationale.
 
 Rate-limiting: The Sigstore TSA (~100 req/min) and DigiCert TSA are free but rate-limited.
   In CI and dev mode, the sigchain uses NullBackend or mocked httpx to avoid consuming
@@ -121,18 +126,18 @@ class TSAClient:
         self._enabled = enabled
 
     def timestamp(self, data: bytes) -> TSAToken | None:
-        """Request an RFC 3161 timestamp over the canonical payload bytes.
+        """Request an RFC 3161 timestamp over the given bytes.
 
-        Follows TTC ordering (Timestamp Then COSE): the TST covers the raw payload bytes,
-        not any outer wrapper. This proves the payload existed before the timestamp time,
-        which is the correct evidentiary claim for audit purposes.
+        The evidentiary meaning (TTC vs CTT, RFC 9921) depends entirely on what
+        the caller passes as `data` — this method is a plain timestamp-over-bytes
+        primitive. See the module docstring for how each call site uses it.
 
         Circuit-breaker: returns None rather than raising if TSA is disabled or all
         configured TSA servers fail. The caller (sigchain.new_event) logs the failure
         and writes the entry without a timestamp token — the entry is still valid.
 
         Args:
-            data: The canonical payload bytes to timestamp (RFC 8785 JCS form).
+            data: The bytes to timestamp — meaning is caller-defined.
 
         Returns:
             TSAToken with DER-encoded TimeStampResponse on success; None on any failure.

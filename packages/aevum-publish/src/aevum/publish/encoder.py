@@ -8,14 +8,26 @@ RFC 9052 §4.2 COSE_Sign1 structure:
 
   protected header (CBOR map, then bstr-wrapped):
     {1: -8, 3: "application/aevum-receipt+cbor", 4: b"aevum-issuer-v1",
-     "iss": "did:web:<AEVUM_ISSUER_HOST>",
-     "sub": "urn:aevum:receipt:<sigchain_entry_hash[:16]>",
+     15: {1: "did:web:<AEVUM_ISSUER_HOST>",
+          2: "urn:aevum:receipt:<sigchain_entry_hash[:16]>"},
      "iat": <int unix timestamp>}
     alg -8 = EdDSA (Ed25519). NOT -7 (ECDSA/ES256).
+    label 15 is the CWT_Claims map (draft-ietf-scitt-architecture-22 CDDL),
+    keyed by RFC 8392 CWT claim numbers: 1=iss, 2=sub.
 
   unprotected header (plain CBOR map):
-    {9: <tsa_token_bytes>}  if TSA succeeded and not dev mode
-    label 9 per draft-ietf-cose-tsa-tst-header-parameter-08 (TBD; using 9 as placeholder)
+    {270: <tsa_token_bytes>}  if TSA succeeded and not dev mode
+    label 270 is "3161-ctt" per RFC 9921 IANA Considerations — a Countersignature
+    Timestamp Token. The TST's MessageImprint covers the COSE_Sign1 signature
+    bytes (signature_bstr), not the payload. This is a deliberate CTT choice
+    over TTC (RFC 9921 §1.1's suggested fit for SCITT-style notarization,
+    label 269, protected header): TTC requires the TSA round-trip to complete
+    *before* signing, which would either block receipt issuance on TSA
+    availability or make the protected-header shape depend on whether the TSA
+    responded in time. Both outcomes conflict with the existing "TSA outage
+    never blocks a sigchain write" circuit-breaker contract (see tsa.py). CTT
+    preserves that contract: the token is fetched non-blockingly after signing
+    and simply omitted on failure.
 
   payload: AevumReceipt.to_cbor_payload() bytes
 
@@ -44,9 +56,16 @@ logger = logging.getLogger(__name__)
 # -7 is ECDSA (ES256) — WRONG. -8 is EdDSA — CORRECT.
 _COSE_ALG_EDDSA = -8
 
-# draft-ietf-cose-tsa-tst-header-parameter-08 label TBD; using integer 9 as placeholder.
-# Update when RFC publishes.
-_COSE_TST_HEADER_LABEL = 9
+# RFC 9921 IANA Considerations: label 270 = "3161-ctt" (unprotected), the TST
+# covers the COSE_Sign1 signature bytes. See module docstring for why CTT
+# (not TTC, label 269/protected) was chosen for Aevum's per-entry receipts.
+_COSE_CTT_LABEL = 270
+
+# draft-ietf-scitt-architecture-22 CDDL: CWT_Claims map, protected label 15.
+_COSE_CWT_CLAIMS_LABEL = 15
+# RFC 8392 CBOR Web Token (CWT) Claims registry: iss=1, sub=2.
+_CWT_ISS = 1
+_CWT_SUB = 2
 
 
 def _build_protected_header(
@@ -59,12 +78,14 @@ def _build_protected_header(
         1: _COSE_ALG_EDDSA,
         3: "application/aevum-receipt+cbor",
         4: b"aevum-issuer-v1",
-        # SCITT-profile protected header fields
-        # draft-ietf-scitt-architecture-22 §4.1 — iss/sub labels TBD
-        # Using CBOR text key strings until integer labels are standardized.
-        # When draft publishes as RFC: update to assigned integer labels.
-        "iss": issuer_uri,
-        "sub": subject_uri,
+        # SCITT-profile protected header field: CWT_Claims map (iss, sub).
+        _COSE_CWT_CLAIMS_LABEL: {
+            _CWT_ISS: issuer_uri,
+            _CWT_SUB: subject_uri,
+        },
+        # iat is not part of the CWT_Claims map — only iss/sub nesting was
+        # confirmed against the -22 CDDL; kept flat pending a re-check of
+        # whether iat (RFC 8392 claim 6) belongs under label 15 too.
         "iat": issued_at,
     }
 
@@ -132,10 +153,11 @@ class ReceiptEncoder:
         unprotected: dict[int, Any] = {}
         if not self._dev_mode and self._tsa_client is not None:
             try:
-                tsa_token = self._tsa_client.timestamp(payload_bstr)
+                # CTT (RFC 9921 label 270): timestamp the signature bytes, not the
+                # payload — see module docstring for the TTC-vs-CTT tradeoff.
+                tsa_token = self._tsa_client.timestamp(signature_bytes)
                 if tsa_token is not None:
-                    # draft-ietf-cose-tsa-tst-header-parameter-08 label TBD; using 9 as placeholder.
-                    unprotected[_COSE_TST_HEADER_LABEL] = tsa_token.token_bytes
+                    unprotected[_COSE_CTT_LABEL] = tsa_token.token_bytes
             except Exception as exc:  # noqa: BLE001
                 logger.warning("ReceiptEncoder: TSA timestamp failed (non-blocking): %s", exc)
 

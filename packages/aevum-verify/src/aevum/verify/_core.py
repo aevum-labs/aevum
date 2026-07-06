@@ -44,6 +44,16 @@ Merkle + STH layer:
                    full token-signature + cert-chain validation against a pinned TSA
                    root certificate.  Returns None / True / False (no-token / valid /
                    invalid) preserving the existing tri-state.
+
+Per-entry receipt layer:
+                   verify_receipt_tsa independently validates the CTT (RFC 9921 label
+                   270) token that aevum.publish.encoder.ReceiptEncoder stamps on a
+                   COSE_Sign1 receipt's unprotected header. It reimplements the COSE
+                   array decode and the CTT MessageImprint check (over the
+                   signature_bstr, not the payload) from the public spec — it does not
+                   import aevum.publish or aevum.core, preserving the same independence
+                   this module holds for the Merkle/STH layer. Same tri-state contract
+                   as verify_sth_tsa_full (None / True / False).
 """
 from __future__ import annotations
 
@@ -55,6 +65,7 @@ import logging
 from pathlib import Path
 from typing import Any, Protocol
 
+import cbor2
 import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.x509 import load_der_x509_certificate, load_pem_x509_certificate
@@ -107,6 +118,10 @@ _SHA_OID_TO_ALGO: dict[str, str] = {
     "2.16.840.1.101.3.4.2.2": "sha384",
     "2.16.840.1.101.3.4.2.3": "sha512",
 }
+
+# RFC 9921 IANA Considerations: label 270 = "3161-ctt" (unprotected COSE header).
+# Reimplemented independently of aevum.publish.encoder — see module docstring.
+_COSE_CTT_LABEL = 270
 
 
 # ---------------------------------------------------------------------------
@@ -698,4 +713,68 @@ def verify_sth_tsa_full(
         return True
     except (VerificationError, Exception) as exc:
         logger.debug("TSA full validation failed: %s", exc)
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Per-entry receipt CTT verifier
+# ---------------------------------------------------------------------------
+
+def verify_receipt_tsa(
+    cose_bytes: bytes,
+    *,
+    tsa_root_cert: bytes,
+) -> bool | None:
+    """Full RFC 3161 validation of a per-entry COSE_Sign1 receipt's CTT token.
+
+    Aevum's receipt encoder (aevum.publish.encoder.ReceiptEncoder) stamps receipts
+    with a Countersignature Timestamp Token (CTT — RFC 9921 label 270, unprotected
+    header): the TST's MessageImprint covers the COSE_Sign1 signature bytes
+    (element 3 of the array), not the payload. This reimplements that check
+    independently of the encoder — same independence contract as the Merkle/STH
+    verifiers above (no import of aevum.publish or aevum.core).
+
+    Does not verify the Ed25519 signature itself — pair with the caller's own
+    signature check (see aevum.publish.encoder.ReceiptEncoder.decode_and_verify
+    or the CLI's own COSE decode) for full receipt validation.
+
+    Returns:
+        None   — cose_bytes decodes to a well-formed COSE_Sign1 array but its
+                 unprotected header has no CTT token at label 270 (no
+                 attestation; not invalid).
+        True   — imprint == sha-of(signature bytes) AND token signature valid
+                 AND chain to the pinned tsa_root_cert.
+        False  — cose_bytes is malformed, OR a token is present but any check
+                 fails (fail-closed).
+    """
+    try:
+        cose = cbor2.loads(cose_bytes)
+    except Exception:
+        return False
+    if not isinstance(cose, list) or len(cose) != 4:
+        return False
+
+    _protected_bstr, unprotected, _payload_bstr, signature_bytes = cose
+    if not isinstance(unprotected, dict) or _COSE_CTT_LABEL not in unprotected:
+        return None
+
+    try:
+        token_bytes = bytes(unprotected[_COSE_CTT_LABEL])
+        response = decode_timestamp_response(token_bytes)
+
+        try:
+            root_cert = load_pem_x509_certificate(tsa_root_cert)
+        except Exception:
+            root_cert = load_der_x509_certificate(tsa_root_cert)
+
+        has_embedded_certs = len(response.signed_data.certificates) > 0
+        builder = VerifierBuilder().add_root_certificate(root_cert)
+        if not has_embedded_certs:
+            builder = builder.tsa_certificate(root_cert)
+        verifier = builder.build()
+
+        verifier.verify_message(response, bytes(signature_bytes))
+        return True
+    except (VerificationError, Exception) as exc:
+        logger.debug("Receipt CTT validation failed: %s", exc)
         return False

@@ -547,18 +547,48 @@ def verify_receipt(
             verified = True
         except nacl.exceptions.BadSignatureError:
             typer.echo("SIGNATURE INVALID", err=True)
-            _print_receipt_summary(receipt, unprotected, verified=False, store_info=store_info)
+            tsa_status = _check_receipt_tsa(raw, unprotected, state_dir)
+            _print_receipt_summary(receipt, tsa_status, verified=False, store_info=store_info)
             raise typer.Exit(code=1) from None
         except Exception as exc:  # noqa: BLE001
             typer.echo(f"SIGNATURE INVALID: {exc}", err=True)
             raise typer.Exit(code=1) from None
 
-    _print_receipt_summary(receipt, unprotected, verified=verified, store_info=store_info)
+    tsa_status = _check_receipt_tsa(raw, unprotected, state_dir)
+    _print_receipt_summary(receipt, tsa_status, verified=verified, store_info=store_info)
+
+
+# RFC 9921 IANA Considerations: label 270 = "3161-ctt" (unprotected COSE header).
+_COSE_CTT_LABEL = 270
+
+
+def _check_receipt_tsa(raw: bytes, unprotected: dict, state_dir: Path) -> str:  # type: ignore[type-arg]
+    """Return a human-readable CTT verification status: absent/unverified/verified/FAILED.
+
+    Cryptographic verification requires a pinned TSA root cert at
+    ~/.aevum/tsa-root.pem. Without it, presence is reported but not verified.
+    """
+    if _COSE_CTT_LABEL not in unprotected:
+        return "none"
+
+    tsa_root_cert_path = state_dir / "tsa-root.pem"
+    if not tsa_root_cert_path.exists():
+        token_len = len(unprotected[_COSE_CTT_LABEL])
+        return f"<RFC 3161 token, {token_len} bytes — unverified: no ~/.aevum/tsa-root.pem>"
+
+    from aevum.verify._core import verify_receipt_tsa
+
+    result = verify_receipt_tsa(raw, tsa_root_cert=tsa_root_cert_path.read_bytes())
+    if result is True:
+        return "verified"
+    if result is False:
+        return "FAILED"
+    return "none"  # token disappeared between the presence check and here — treat as absent
 
 
 def _print_receipt_summary(
     receipt: Any,
-    unprotected: dict,  # type: ignore[type-arg]
+    tsa_status: str,
     verified: bool,
     store_info: dict[str, object] | None = None,
 ) -> None:
@@ -567,10 +597,6 @@ def _print_receipt_summary(
     status_line = "✓ Aevum Receipt Verified" if verified else "! Aevum Receipt (unverified)"
     typer.echo(status_line)
     typer.echo("─" * 36)
-
-    tsa_info = "none"
-    if 9 in unprotected:
-        tsa_info = f"<RFC 3161 token, {len(unprotected[9])} bytes>"
 
     barriers_summary = (
         ", ".join(f"{k}:{v}" for k, v in receipt.barrier_evaluations.items())
@@ -590,7 +616,7 @@ def _print_receipt_summary(
     typer.echo(f"Handoff type:   {receipt.handoff_type or 'none'}")
     typer.echo(f"Model hash:     {model_display}...")
     typer.echo(f"Policy version: {receipt.policy_version}")
-    typer.echo(f"TSA timestamp:  {tsa_info}")
+    typer.echo(f"TSA timestamp:  {tsa_status}")
     typer.echo(f"Barriers:       {barriers_summary}")
 
     if store_info is not None:

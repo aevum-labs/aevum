@@ -19,6 +19,7 @@ dependencies = [
     "rfc8785>=0.1.2",
     "cryptography>=48.0.1",  # GHSA-537c-gmf6-5ccf: wheels <48.0.1 bundle vulnerable OpenSSL
     "rfc3161-client>=1.0.6",  # CVE-2026-33753 — TSA impersonation, fixed 1.0.6
+    "cbor2>=5.6",  # independent COSE_Sign1 array decode for verify_receipt_tsa
 ]
 
 [project.optional-dependencies]
