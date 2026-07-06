@@ -15,10 +15,12 @@ COSE_Sign1 structure (RFC 9052 §4.2):
 
   protected header:
     {1: -8 (EdDSA/Ed25519), 3: content_type, 4: kid,
-     "iss": "did:web:<host>", "sub": "urn:aevum:receipt:...", "iat": <int>}
+     15: {1: "did:web:<host>", 2: "urn:aevum:receipt:..."}, "iat": <int>}
+    label 15 is the CWT_Claims map (draft-ietf-scitt-architecture-22).
 
   unprotected header:
-    {9: <RFC 3161 TST bytes>}  if TSA succeeded (TTC mode)
+    {270: <RFC 3161 TST bytes>}  if TSA succeeded (CTT mode, RFC 9921 label 270 —
+    the TST covers the signature bytes; see encoder.py for the CTT-vs-TTC rationale)
 
   signature: Ed25519 over SHA3-256(CBOR(Sig_Structure))
 

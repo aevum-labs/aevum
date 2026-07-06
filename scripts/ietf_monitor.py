@@ -22,10 +22,10 @@ WATCHED_DRAFTS: dict[str, dict[str, object]] = {
         "note": "SCITT ScrAPI — when RFC: implement ScittTsBackend fully",
         "watch_for": ["RFC Published", "Publication Requested", "Last Call"],
     },
-    "draft-ietf-cose-tsa-tst-header-parameter": {
-        "note": "TST COSE header label — when RFC: update label 9 placeholder",
-        "watch_for": ["RFC Published"],
-    },
+    # draft-ietf-cose-tsa-tst-header-parameter published as RFC 9921 — the
+    # per-entry receipt encoder already uses its assigned label 270 (CTT).
+    # See aevum-publish/src/aevum/publish/encoder.py and
+    # docs/adrs/adr-009-black-box-receipt-format.md.
     "draft-ietf-cose-merkle-tree-proofs": {
         "note": "COSE Merkle proofs — relevant for Tier 1 crash-protected receipts",
         "watch_for": ["RFC Published", "Last Call"],

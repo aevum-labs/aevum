@@ -148,6 +148,11 @@ class Sigchain:
         dual_signer: DualSigner | None = None,
         tsa_client: TSAClient | None = None,
         # Phase 1A: COSE_Sign1 receipt encoder — optional, non-blocking
+        # NOTE: wiring this into a service that persists its output is a one-way
+        # format commitment — the protected/unprotected COSE header shape becomes
+        # part of what's signed and stored. Any future change to that shape
+        # (see aevum.publish.encoder's module docstring) then needs a real
+        # migration path, not a direct edit, once receipts exist in the wild.
         receipt_encoder: ReceiptEncoder | None = None,
         # Phase 1B: ambient context encoder — optional, caller-driven
         ambient_encoder: AmbientContextEncoder | None = None,

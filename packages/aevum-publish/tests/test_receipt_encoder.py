@@ -126,7 +126,7 @@ class TestReceiptEncoder:
         raw = encoder.encode(receipt)
         decoded = cbor2.loads(raw)
         unprotected = decoded[1]
-        assert 9 not in unprotected
+        assert 270 not in unprotected
 
     def test_encode_signature_verifiable(self) -> None:
         import hashlib
@@ -154,8 +154,10 @@ class TestReceiptEncoder:
         raw = encoder.encode(receipt)
         decoded = cbor2.loads(raw)
         protected = cbor2.loads(decoded[0])
-        assert "iss" in protected, f"iss missing from protected header: {protected}"
-        assert protected["iss"].startswith("did:web:"), f"iss wrong format: {protected['iss']}"
+        assert 15 in protected, f"CWT_Claims (label 15) missing from protected header: {protected}"
+        cwt_claims = protected[15]
+        assert 1 in cwt_claims, f"iss (CWT claim 1) missing from CWT_Claims: {cwt_claims}"
+        assert cwt_claims[1].startswith("did:web:"), f"iss wrong format: {cwt_claims[1]}"
 
     def test_encode_protected_header_sub(self) -> None:
         signer = InProcessSigner()
@@ -164,8 +166,10 @@ class TestReceiptEncoder:
         raw = encoder.encode(receipt)
         decoded = cbor2.loads(raw)
         protected = cbor2.loads(decoded[0])
-        assert "sub" in protected, f"sub missing from protected header: {protected}"
-        sub = protected["sub"]
+        assert 15 in protected, f"CWT_Claims (label 15) missing from protected header: {protected}"
+        cwt_claims = protected[15]
+        assert 2 in cwt_claims, f"sub (CWT claim 2) missing from CWT_Claims: {cwt_claims}"
+        sub = cwt_claims[2]
         assert sub.startswith("urn:aevum:receipt:"), f"sub wrong format: {sub}"
 
     def test_encode_protected_header_iat(self) -> None:
@@ -189,7 +193,7 @@ class TestReceiptEncoder:
         raw = encoder.encode(receipt)
         decoded = cbor2.loads(raw)
         protected = cbor2.loads(decoded[0])
-        assert protected["iss"] == "did:web:example.com"
+        assert protected[15][1] == "did:web:example.com"
 
     def test_encode_issuer_host_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AEVUM_DEV", "1")
@@ -208,6 +212,55 @@ class TestReceiptEncoder:
         encoder = ReceiptEncoder.from_env()
         assert encoder._dev_mode is False
         assert encoder._tsa_client is not None
+
+
+class TestReceiptEncoderCtt:
+    """CTT (RFC 9921 label 270): the TSA MessageImprint covers the COSE_Sign1
+    signature bytes, not the payload. See encoder.py's module docstring."""
+
+    class _FakeTsaClient:
+        def __init__(self) -> None:
+            self.timestamped_data: bytes | None = None
+
+        def timestamp(self, data: bytes) -> object:
+            from aevum.core.tsa import TSAToken
+            self.timestamped_data = data
+            return TSAToken(tsa_url="https://tsa.invalid", token_bytes=b"fake-token")
+
+    def test_tsa_timestamps_signature_bytes_not_payload(self) -> None:
+        signer = InProcessSigner()
+        fake_tsa = self._FakeTsaClient()
+        encoder = ReceiptEncoder(signer=signer, tsa_client=fake_tsa, dev_mode=False)  # type: ignore[arg-type]
+        receipt = AevumReceipt.from_sigchain_event(_make_event())
+        raw = encoder.encode(receipt)
+        decoded = cbor2.loads(raw)
+        _protected_bstr, _unprotected, payload_bstr, signature_bytes = decoded
+
+        assert fake_tsa.timestamped_data == bytes(signature_bytes)
+        assert fake_tsa.timestamped_data != payload_bstr
+
+    def test_tsa_token_stored_at_label_270(self) -> None:
+        signer = InProcessSigner()
+        fake_tsa = self._FakeTsaClient()
+        encoder = ReceiptEncoder(signer=signer, tsa_client=fake_tsa, dev_mode=False)  # type: ignore[arg-type]
+        receipt = AevumReceipt.from_sigchain_event(_make_event())
+        raw = encoder.encode(receipt)
+        unprotected = cbor2.loads(raw)[1]
+        assert unprotected[270] == b"fake-token"
+
+    def test_protected_header_cwt_claims_nested_shape(self) -> None:
+        signer = InProcessSigner()
+        encoder = ReceiptEncoder(signer=signer, dev_mode=True, issuer_host="nest.example")
+        receipt = AevumReceipt.from_sigchain_event(_make_event())
+        raw = encoder.encode(receipt)
+        protected = cbor2.loads(cbor2.loads(raw)[0])
+        assert isinstance(protected[15], dict)
+        assert protected[15] == {
+            1: "did:web:nest.example",
+            2: f"urn:aevum:receipt:{receipt.sigchain_entry_hash[:16]}",
+        }
+        assert "iss" not in protected
+        assert "sub" not in protected
 
 
 class TestTransparencyBackends:

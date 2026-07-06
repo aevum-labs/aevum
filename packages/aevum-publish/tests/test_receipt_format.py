@@ -188,4 +188,4 @@ def test_no_tst_in_unprotected_header_by_default() -> None:
     encoder, _ = _make_encoder()
     cose_bytes = encoder.encode(_make_receipt())
     unprotected = cbor2.loads(cose_bytes)[1]
-    assert 9 not in unprotected
+    assert 270 not in unprotected

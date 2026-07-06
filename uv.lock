@@ -83,6 +83,7 @@ source = { editable = "packages/aevum-cli" }
 dependencies = [
     { name = "aevum-core" },
     { name = "aevum-server" },
+    { name = "aevum-verify" },
     { name = "typer" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -103,6 +104,7 @@ requires-dist = [
     { name = "aevum-conformance", marker = "extra == 'conform'", editable = "packages/aevum-conformance" },
     { name = "aevum-core", editable = "packages/aevum-core" },
     { name = "aevum-server", editable = "packages/aevum-server" },
+    { name = "aevum-verify", editable = "packages/aevum-verify" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
@@ -518,6 +520,7 @@ name = "aevum-verify"
 version = "0.9.0"
 source = { editable = "packages/aevum-verify" }
 dependencies = [
+    { name = "cbor2" },
     { name = "cryptography" },
     { name = "rfc3161-client" },
     { name = "rfc8785" },
@@ -536,6 +539,7 @@ pqc = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cbor2", specifier = ">=5.6" },
     { name = "cryptography", specifier = ">=48.0.1" },
     { name = "liboqs-python", marker = "extra == 'pqc'", specifier = ">=0.14.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
