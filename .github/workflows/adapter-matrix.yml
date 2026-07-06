@@ -64,47 +64,44 @@ jobs:
         if: matrix.install-extra == 'no-cedar'
         run: uv sync --frozen --extra pqc --python ${{ matrix.python }}
 
+      # All per-adapter extras below (cedar, openai-agents, langgraph, crewai,
+      # anthropic, langchain, adk, maf) are already declared as optional
+      # dependencies in packages/aevum-core/pyproject.toml and already fully
+      # resolved in the committed uv.lock. A single `--frozen` sync installs
+      # the exact, mutually-compatible versions the lock pins — no separate
+      # `uv pip install "<pkg>>=<range>"` step, which used to bypass the lock
+      # entirely and re-resolve the package (and all its transitive deps)
+      # fresh from PyPI on every run. That drift broke the crewai leg in
+      # 2026-07 (an unpinned crewai pulled a newer, incompatible
+      # opentelemetry-sdk than the rest of the environment expected) with
+      # nothing in this repo having changed.
       - name: Install workspace (with Cedar)
         if: matrix.install-extra == 'with-cedar'
-        run: |
-          uv sync --frozen --extra pqc --python ${{ matrix.python }}
-          uv pip install --python ${{ matrix.python }} "cedarpy>=4.8.1"
+        run: uv sync --frozen --extra pqc --extra cedar --python ${{ matrix.python }}
 
       - name: Install workspace (openai-agents)
         if: matrix.install-extra == 'openai-agents'
-        run: |
-          uv sync --frozen --extra pqc --python ${{ matrix.python }}
-          uv pip install --python ${{ matrix.python }} "openai-agents>=0.0.12,<1.0"
+        run: uv sync --frozen --extra pqc --extra openai-agents --python ${{ matrix.python }}
 
       - name: Install workspace (langgraph)
         if: matrix.install-extra == 'langgraph'
-        run: |
-          uv sync --frozen --extra pqc --python ${{ matrix.python }}
-          uv pip install --python ${{ matrix.python }} "langgraph-checkpoint>=4.1.0"
+        run: uv sync --frozen --extra pqc --extra langgraph --python ${{ matrix.python }}
 
       - name: Install workspace (crewai)
         if: matrix.install-extra == 'crewai'
-        run: |
-          uv sync --frozen --extra pqc --python ${{ matrix.python }}
-          uv pip install --python ${{ matrix.python }} "crewai>=0.80.0"
+        run: uv sync --frozen --extra pqc --extra crewai --python ${{ matrix.python }}
 
       - name: Install workspace (anthropic)
         if: matrix.install-extra == 'anthropic'
-        run: |
-          uv sync --frozen --extra pqc --python ${{ matrix.python }}
-          uv pip install --python ${{ matrix.python }} "anthropic>=0.50.0"
+        run: uv sync --frozen --extra pqc --extra anthropic --python ${{ matrix.python }}
 
       - name: Install workspace (langchain)
         if: matrix.install-extra == 'langchain'
-        run: |
-          uv sync --frozen --extra pqc --python ${{ matrix.python }}
-          uv pip install --python ${{ matrix.python }} "langchain-core>=0.2.0"
+        run: uv sync --frozen --extra pqc --extra langchain --python ${{ matrix.python }}
 
       - name: Install workspace (adk)
         if: matrix.install-extra == 'adk'
-        run: |
-          uv sync --frozen --extra pqc --python ${{ matrix.python }}
-          uv pip install --python ${{ matrix.python }} "google-adk>=2.2,<3"
+        run: uv sync --frozen --extra pqc --extra adk --python ${{ matrix.python }}
 
       - name: Verify liboqs is loadable (fail loud, not as a buried signing error)
         if: "!contains(fromJSON('[\"openai-agents\",\"langgraph\",\"crewai\",\"anthropic\",\"langchain\",\"adk\",\"maf\"]'), matrix.install-extra)"
@@ -145,9 +142,7 @@ jobs:
 
       - name: Install workspace (maf)
         if: matrix.install-extra == 'maf'
-        run: |
-          uv sync --frozen --extra pqc --python ${{ matrix.python }}
-          uv pip install --python ${{ matrix.python }} "agent-framework-core>=1.0.0"
+        run: uv sync --frozen --extra pqc --extra maf --python ${{ matrix.python }}
 
       - name: Run MAF adapter snapshot tests
         if: matrix.install-extra == 'maf'
