@@ -24,7 +24,15 @@ import pytest
 
 # Skip the entire module at collection time if openai-agents is not installed.
 # This guard must precede all non-stdlib imports so collection never fails.
-pytest.importorskip("agents", reason="openai-agents not installed")
+try:
+    import agents  # noqa: F401
+except ModuleNotFoundError as exc:
+    # Only skip when openai-agents itself is absent. Any other ImportError/ModuleNotFoundError
+    # (e.g. a transitive dependency version conflict) is a real regression and must fail
+    # loudly here, not be silently reclassified as "not installed".
+    if exc.name != "agents":
+        raise
+    pytest.skip("openai-agents not installed", allow_module_level=True)
 
 from unittest.mock import MagicMock, patch  # noqa: E402
 

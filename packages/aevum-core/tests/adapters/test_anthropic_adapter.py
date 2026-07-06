@@ -24,7 +24,15 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("anthropic", reason="anthropic not installed")
+try:
+    import anthropic  # noqa: F401
+except ModuleNotFoundError as exc:
+    # Only skip when anthropic itself is absent. Any other ImportError/ModuleNotFoundError
+    # (e.g. a transitive dependency version conflict) is a real regression and must fail
+    # loudly here, not be silently reclassified as "not installed".
+    if exc.name != "anthropic":
+        raise
+    pytest.skip("anthropic not installed", allow_module_level=True)
 
 from types import SimpleNamespace  # noqa: E402
 from unittest.mock import MagicMock, patch  # noqa: E402

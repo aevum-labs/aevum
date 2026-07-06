@@ -15,8 +15,9 @@ COSE_Sign1 structure (RFC 9052 §4.2):
 
   protected header:
     {1: -8 (EdDSA/Ed25519), 3: content_type, 4: kid,
-     15: {1: "did:web:<host>", 2: "urn:aevum:receipt:..."}, "iat": <int>}
-    label 15 is the CWT_Claims map (draft-ietf-scitt-architecture-22).
+     15: {1: "did:web:<host>", 2: "urn:aevum:receipt:...", 6: <int iat>}}
+    label 15 is the CWT_Claims map (draft-ietf-scitt-architecture-22),
+    keyed by RFC 8392 CWT claim numbers: 1=iss, 2=sub, 6=iat.
 
   unprotected header:
     {270: <RFC 3161 TST bytes>}  if TSA succeeded (CTT mode, RFC 9921 label 270 —

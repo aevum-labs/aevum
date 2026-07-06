@@ -109,6 +109,25 @@ signed-format change — `principal_commitment_key_id` already identifies which
 key produced a commitment — it is purely an operational decision about how
 `CommitmentKeyStore` mints keys.
 
+### AmbientContextEncoder still uses the pre-update COSE format
+
+`aevum.core.ambient.AmbientContextEncoder` was not in scope for the 2026-07
+receipt-format update (ADR-009) and now drifts from `ReceiptEncoder`'s
+shipped format:
+
+- protected header keeps flat `"iss"`/`"sub"` string keys instead of nesting
+  them under the `CWT_Claims` map at protected label 15 (RFC 8392 claim
+  numbers 1/2), the way `ReceiptEncoder` does.
+- unprotected header uses placeholder integer label 9 for the TSA token,
+  instead of RFC 9921's assigned CTT label 270, and timestamps the payload
+  bytes rather than the COSE_Sign1 signature bytes.
+
+Not fixed yet because no persisting service is wired to
+`AmbientContextEncoder` — same one-way-format caveat as `ReceiptEncoder`
+applies once one is. See `docs/adrs/adr-009-black-box-receipt-format.md`'s
+"Open questions" section and
+`packages/aevum-core/src/aevum/core/ambient.py`.
+
 ---
 
 ## Compliance- and standards-adjacent (forward-looking)

@@ -182,9 +182,12 @@ class TestReceiptEncoder:
         after = int(time.time())
         decoded = cbor2.loads(raw)
         protected = cbor2.loads(decoded[0])
-        assert "iat" in protected, f"iat missing from protected header: {protected}"
-        assert isinstance(protected["iat"], int), f"iat must be int: {type(protected['iat'])}"
-        assert before <= protected["iat"] <= after + 1
+        assert 15 in protected, f"CWT_Claims (label 15) missing from protected header: {protected}"
+        cwt_claims = protected[15]
+        assert 6 in cwt_claims, f"iat (CWT claim 6) missing from CWT_Claims: {cwt_claims}"
+        iat = cwt_claims[6]
+        assert isinstance(iat, int), f"iat must be int: {type(iat)}"
+        assert before <= iat <= after + 1
 
     def test_encode_issuer_host_from_constructor(self) -> None:
         signer = InProcessSigner()
@@ -249,18 +252,26 @@ class TestReceiptEncoderCtt:
         assert unprotected[270] == b"fake-token"
 
     def test_protected_header_cwt_claims_nested_shape(self) -> None:
+        import time
+
         signer = InProcessSigner()
         encoder = ReceiptEncoder(signer=signer, dev_mode=True, issuer_host="nest.example")
         receipt = AevumReceipt.from_sigchain_event(_make_event())
+        before = int(time.time())
         raw = encoder.encode(receipt)
+        after = int(time.time())
         protected = cbor2.loads(cbor2.loads(raw)[0])
         assert isinstance(protected[15], dict)
-        assert protected[15] == {
+        cwt_claims = dict(protected[15])
+        iat = cwt_claims.pop(6)
+        assert before <= iat <= after + 1
+        assert cwt_claims == {
             1: "did:web:nest.example",
             2: f"urn:aevum:receipt:{receipt.sigchain_entry_hash[:16]}",
         }
         assert "iss" not in protected
         assert "sub" not in protected
+        assert "iat" not in protected
 
 
 class TestTransparencyBackends:
