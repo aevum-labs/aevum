@@ -70,7 +70,7 @@ jobs:
             | grep -v "^\./packages/" > /tmp/audit-req2.txt
           uv run pip-audit --desc on --ignore-vuln PYSEC-2025-183 -r /tmp/audit-req2.txt
           uv sync --frozen
-          uv run pytest -q
+          uv run pytest -q --inline-snapshot=disable
 
       - name: Push relock branch + notify maintainer (branch + notify)
         if: steps.audit.outputs.clean == 'false'
