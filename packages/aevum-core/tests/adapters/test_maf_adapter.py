@@ -36,7 +36,15 @@ import pytest
 
 # Skip the entire module at collection time if agent-framework is not installed.
 # This guard must precede all non-stdlib imports so collection never fails.
-pytest.importorskip("agent_framework", reason="agent-framework not installed")
+try:
+    import agent_framework  # noqa: F401
+except ModuleNotFoundError as exc:
+    # Only skip when agent-framework itself is absent. Any other ImportError/ModuleNotFoundError
+    # (e.g. a transitive dependency version conflict) is a real regression and must fail
+    # loudly here, not be silently reclassified as "not installed".
+    if exc.name != "agent_framework":
+        raise
+    pytest.skip("agent-framework not installed", allow_module_level=True)
 
 from unittest.mock import AsyncMock, MagicMock, patch  # noqa: E402
 

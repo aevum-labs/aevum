@@ -36,7 +36,17 @@ import pytest
 
 # Skip the entire module at collection time if google-adk is not installed.
 # This guard must precede all non-stdlib imports so collection never fails.
-pytest.importorskip("google.adk", reason="google-adk not installed")
+try:
+    import google.adk  # noqa: F401
+except ModuleNotFoundError as exc:
+    # Only skip when google-adk itself is absent. A dotted import fails on whichever
+    # component is missing first, so exc.name may be "google" or "google.adk" — both
+    # mean the package isn't installed. Any other ImportError/ModuleNotFoundError (e.g.
+    # a transitive dependency version conflict) is a real regression and must fail
+    # loudly here, not be silently reclassified as "not installed".
+    if exc.name != "google.adk" and not "google.adk".startswith(f"{exc.name}."):
+        raise
+    pytest.skip("google-adk not installed", allow_module_level=True)
 
 import inspect  # noqa: E402
 from unittest.mock import MagicMock, patch  # noqa: E402

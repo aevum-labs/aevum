@@ -51,17 +51,22 @@ Existing options considered:
   15: {                                      # CWT_Claims map (RFC 8392 claim numbers)
     1: "did:web:<AEVUM_ISSUER_HOST>",        #   iss: SCITT issuer URI
     2: "urn:aevum:receipt:<hash[:16]>",      #   sub: SCITT subject (compact sigchain ref)
+    6: <int unix timestamp>,                 #   iat: issued-at
   },
-  "iat": <int unix timestamp>,              # issued-at (not part of CWT_Claims)
 }
 ```
 
-SCITT-profile fields per draft-ietf-scitt-architecture-22's CDDL: iss/sub are
-nested under a `CWT_Claims` map at protected label 15, keyed by the RFC 8392
-CWT claim registry (1=iss, 2=sub) — not flat string keys. `iat` is kept as a
-flat protected field rather than moved under label 15's claim 6; only the
-iss/sub nesting was confirmed against the -22 CDDL at implementation time.
-See: `packages/aevum-publish/src/aevum/publish/encoder.py`.
+SCITT-profile fields per draft-ietf-scitt-architecture-22's CDDL: iss/sub/iat
+are all nested under a `CWT_Claims` map at protected label 15, keyed by the
+RFC 8392 CWT claim registry (1=iss, 2=sub, 6=iat) — not flat string keys.
+`iat` was originally kept flat pending a re-check of whether it belonged
+under label 15 too; resolved 2026-07 in favor of nesting it alongside iss/sub
+— the CWT_Claims map exists precisely so a third-party SCITT verifier has one
+place to look for registered claims, and splitting iat out to a flat key
+would recreate the ambiguity nesting iss/sub was meant to remove. Safe to
+change without a migration path: `receipt_encoder` is still an unwired
+`Sigchain` constructor parameter (see below), so no persisted receipt uses
+the old flat shape. See: `packages/aevum-publish/src/aevum/publish/encoder.py`.
 
 > **Update (2026-07):** the original text-key form (`"iss"`/`"sub"` flat
 > strings) shipped in Phase 1A was replaced by the nested `CWT_Claims` shape
@@ -164,9 +169,6 @@ The two commands serve distinct purposes and must remain separate:
   fit for SCITT-style notarization (TTC). Revisiting this later means moving
   the TSA call before signing and accepting either a blocking dependency on
   TSA availability or a non-deterministic protected-header shape.
-- `iat` is not nested under the CWT_Claims map (label 15) the way iss/sub
-  are — only the iss/sub nesting was confirmed against the -22 CDDL. Worth
-  re-checking whether `iat` (RFC 8392 claim 6) belongs under label 15 too.
 - SCITT TS submission deferred until ScrAPI (draft-ietf-scitt-scrapi) stabilizes
 - RekorV2Backend failure degrades I6 (CRASH_PROTECTED) to "best effort"; logged as warning
 - `aevum.core.ambient.AmbientContextEncoder` still uses the pre-update format

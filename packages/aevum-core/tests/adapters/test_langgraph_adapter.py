@@ -23,7 +23,18 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("langgraph.checkpoint.base", reason="langgraph-checkpoint not installed")
+try:
+    import langgraph.checkpoint.base  # noqa: F401
+except ModuleNotFoundError as exc:
+    # Only skip when langgraph-checkpoint itself is absent. A dotted import fails on
+    # whichever component is missing first, so exc.name may be "langgraph",
+    # "langgraph.checkpoint", or "langgraph.checkpoint.base" — all mean the package
+    # isn't installed. Any other ImportError/ModuleNotFoundError (e.g. a transitive
+    # dependency version conflict) is a real regression and must fail loudly here, not
+    # be silently reclassified as "not installed".
+    if exc.name != "langgraph.checkpoint.base" and not "langgraph.checkpoint.base".startswith(f"{exc.name}."):
+        raise
+    pytest.skip("langgraph-checkpoint not installed", allow_module_level=True)
 
 from datetime import UTC, datetime  # noqa: E402
 from pathlib import Path  # noqa: E402

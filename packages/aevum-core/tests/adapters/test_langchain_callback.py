@@ -24,7 +24,15 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("langchain_core", reason="langchain-core not installed")
+try:
+    import langchain_core  # noqa: F401
+except ModuleNotFoundError as exc:
+    # Only skip when langchain-core itself is absent. Any other ImportError/ModuleNotFoundError
+    # (e.g. a transitive dependency version conflict) is a real regression and must fail
+    # loudly here, not be silently reclassified as "not installed".
+    if exc.name != "langchain_core":
+        raise
+    pytest.skip("langchain-core not installed", allow_module_level=True)
 
 from unittest.mock import MagicMock, patch  # noqa: E402
 from uuid import UUID  # noqa: E402
@@ -236,7 +244,15 @@ def test_callback_propagates_through_langgraph_state_graph() -> None:
     This test verifies the contract: if LangGraph changes how it propagates
     callbacks through nodes, this test will fail.
     """
-    pytest.importorskip("langgraph", reason="langgraph not installed")
+    try:
+        import langgraph  # noqa: F401
+    except ModuleNotFoundError as exc:
+        # Only skip when langgraph itself is absent. Any other ImportError/ModuleNotFoundError
+        # (e.g. a transitive dependency version conflict) is a real regression and must fail
+        # loudly here, not be silently reclassified as "not installed".
+        if exc.name != "langgraph":
+            raise
+        pytest.skip("langgraph not installed")
 
     from langchain_core.callbacks import CallbackManager
     from langgraph.graph import StateGraph

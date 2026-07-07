@@ -9,11 +9,11 @@ RFC 9052 §4.2 COSE_Sign1 structure:
   protected header (CBOR map, then bstr-wrapped):
     {1: -8, 3: "application/aevum-receipt+cbor", 4: b"aevum-issuer-v1",
      15: {1: "did:web:<AEVUM_ISSUER_HOST>",
-          2: "urn:aevum:receipt:<sigchain_entry_hash[:16]>"},
-     "iat": <int unix timestamp>}
+          2: "urn:aevum:receipt:<sigchain_entry_hash[:16]>",
+          6: <int unix timestamp>}}
     alg -8 = EdDSA (Ed25519). NOT -7 (ECDSA/ES256).
     label 15 is the CWT_Claims map (draft-ietf-scitt-architecture-22 CDDL),
-    keyed by RFC 8392 CWT claim numbers: 1=iss, 2=sub.
+    keyed by RFC 8392 CWT claim numbers: 1=iss, 2=sub, 6=iat.
 
   unprotected header (plain CBOR map):
     {270: <tsa_token_bytes>}  if TSA succeeded and not dev mode
@@ -63,9 +63,10 @@ _COSE_CTT_LABEL = 270
 
 # draft-ietf-scitt-architecture-22 CDDL: CWT_Claims map, protected label 15.
 _COSE_CWT_CLAIMS_LABEL = 15
-# RFC 8392 CBOR Web Token (CWT) Claims registry: iss=1, sub=2.
+# RFC 8392 CBOR Web Token (CWT) Claims registry: iss=1, sub=2, iat=6.
 _CWT_ISS = 1
 _CWT_SUB = 2
+_CWT_IAT = 6
 
 
 def _build_protected_header(
@@ -78,15 +79,22 @@ def _build_protected_header(
         1: _COSE_ALG_EDDSA,
         3: "application/aevum-receipt+cbor",
         4: b"aevum-issuer-v1",
-        # SCITT-profile protected header field: CWT_Claims map (iss, sub).
+        # SCITT-profile protected header field: CWT_Claims map (iss, sub, iat).
+        # Decision: iat nests under label 15 as CWT claim 6, same as iss/sub,
+        # rather than sitting flat at the top level. The CWT_Claims map exists
+        # so a third-party SCITT verifier has exactly one place to look for
+        # RFC 8392-registered claims; splitting iat out to a separate flat key
+        # would recreate the two-location ambiguity that nesting iss/sub was
+        # meant to avoid, for no compensating benefit. Safe to decide now: no
+        # service persists ReceiptEncoder's output yet (receipt_encoder is an
+        # unwired constructor param — see Sigchain.__init__ and
+        # KNOWN_LIMITATIONS.md), so this is not yet a one-way format
+        # commitment requiring a migration path.
         _COSE_CWT_CLAIMS_LABEL: {
             _CWT_ISS: issuer_uri,
             _CWT_SUB: subject_uri,
+            _CWT_IAT: issued_at,
         },
-        # iat is not part of the CWT_Claims map — only iss/sub nesting was
-        # confirmed against the -22 CDDL; kept flat pending a re-check of
-        # whether iat (RFC 8392 claim 6) belongs under label 15 too.
-        "iat": issued_at,
     }
 
 
