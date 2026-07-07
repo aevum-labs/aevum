@@ -1,0 +1,32 @@
+name: Wipe maintenance_entries (gated, one-time)
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dryrun = count rows only; DELETE = actually wipe"
+        required: true
+        default: "dryrun"
+        type: choice
+        options: [dryrun, DELETE]
+permissions: { contents: read }
+jobs:
+  wipe:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Wipe or preview maintenance_entries
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          if [ "$MODE" = "DELETE" ]; then
+            flyctl ssh console -a aevum-maintainer \
+              -C "sqlite3 /data/aevum_maintainer.db 'DELETE FROM maintenance_entries;'"
+            echo "Wiped."
+          else
+            flyctl ssh console -a aevum-maintainer \
+              -C "sqlite3 /data/aevum_maintainer.db 'SELECT COUNT(*) FROM maintenance_entries;'"
+            echo "DRYRUN only -- nothing deleted. Re-run with mode=DELETE."
+          fi
