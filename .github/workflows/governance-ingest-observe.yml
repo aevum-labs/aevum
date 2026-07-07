@@ -1,0 +1,51 @@
+name: governance-ingest-observe
+
+# Step 1 of the governance-ingest work: observe-only.
+#
+# Logs pull_request "closed" event fields to Action logs so we can verify,
+# against real merges, which actor fields are reliably populated
+# (merged_by vs actor/sender) before any ingest call or token is wired up.
+#
+# No external calls. No secrets. No writes beyond the job log. Does not
+# touch ci.yml, release.yml, or auto-merge.yml.
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log PR-close event fields
+        env:
+          EVENT_ACTION: ${{ github.event.action }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_MERGED_BY_LOGIN: ${{ github.event.pull_request.merged_by.login }}
+          PR_MERGED_BY_TYPE: ${{ github.event.pull_request.merged_by.type }}
+          PR_AUTHOR_LOGIN: ${{ github.event.pull_request.user.login }}
+          PR_AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+          SENDER_LOGIN: ${{ github.event.sender.login }}
+          ACTOR: ${{ github.actor }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          AUTO_MERGE_ENABLED_BY: ${{ github.event.pull_request.auto_merge.enabled_by.login }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          echo "action=$EVENT_ACTION"
+          echo "pr_number=$PR_NUMBER"
+          echo "merged=$PR_MERGED"
+          echo "merged_by.login=$PR_MERGED_BY_LOGIN"
+          echo "merged_by.type=$PR_MERGED_BY_TYPE"
+          echo "pr_author.login=$PR_AUTHOR_LOGIN"
+          echo "pr_author.type=$PR_AUTHOR_TYPE"
+          echo "sender.login=$SENDER_LOGIN"
+          echo "actor=$ACTOR"
+          echo "triggering_actor=$TRIGGERING_ACTOR"
+          echo "auto_merge.enabled_by.login=$AUTO_MERGE_ENABLED_BY"
+          echo "base_ref=$BASE_REF"
+          echo "head_ref=$HEAD_REF"
