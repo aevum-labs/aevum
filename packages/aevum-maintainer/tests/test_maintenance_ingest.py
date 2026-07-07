@@ -358,3 +358,38 @@ def test_count_equals_total_ledger_size(ingest_client: TestClient) -> None:
     visible = len(data.get("entries", []))
     assert total >= visible, "count must be >= len(entries)"
     assert total >= 2, "count must include at least session.start + the ingested entry"
+
+
+# ── GET /v1/sessions — governance session labeling ────────────
+
+
+def test_sessions_labels_pr_merged_session_as_governance(
+    ingest_client: TestClient,
+) -> None:
+    """governance-ingest.yml writes session_id='pr-<N>'; must render as Governance."""
+    _ingest(
+        ingest_client,
+        [_entry("governance.pr_merged")],
+        session_id="pr-347",
+    )
+    data = ingest_client.get("/v1/sessions").json()
+    sessions = {s["session_id"]: s for s in data["sessions"]}
+    assert "pr-347" in sessions
+    assert sessions["pr-347"]["session_type"] == "governance"
+    assert "Governance" in sessions["pr-347"]["label"]
+
+
+def test_sessions_labels_release_session_as_governance(
+    ingest_client: TestClient,
+) -> None:
+    """release.yml writes session_id='release-<tag>'; must render as Governance/Release."""
+    _ingest(
+        ingest_client,
+        [_entry("release.published")],
+        session_id="release-v0.8.0",
+    )
+    data = ingest_client.get("/v1/sessions").json()
+    sessions = {s["session_id"]: s for s in data["sessions"]}
+    assert "release-v0.8.0" in sessions
+    assert sessions["release-v0.8.0"]["session_type"] == "governance"
+    assert "Release" in sessions["release-v0.8.0"]["label"]

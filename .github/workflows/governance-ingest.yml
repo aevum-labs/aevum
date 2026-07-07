@@ -1,0 +1,84 @@
+name: governance-ingest
+
+# Step 2 of the governance-ingest work. Replaces governance-ingest-observe.yml.
+#
+# Step 1 confirmed: merged_by.login/type populate reliably for a human merge,
+# and GITHUB_TOKEN-driven merges (Dependabot via auto-merge.yml) cannot
+# trigger this workflow at all — GitHub's loop-prevention rule blocks
+# GITHUB_TOKEN-triggered `pull_request: closed` events from starting new
+# workflow runs. So every run here is, by construction, a human-initiated
+# merge. No bot-vs-human filtering needed.
+#
+# Ingests one governance.pr_merged entry per human-merged PR. Non-blocking:
+# a failed ingest never fails the merge. PR title is untrusted input — bound
+# via env: and JSON-encoded in Python, never bash-interpolated, per GitHub's
+# own script-injection guidance.
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  ingest:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build and send governance.pr_merged entry
+        continue-on-error: true
+        env:
+          MAINTENANCE_INGEST_TOKEN: ${{ secrets.MAINTENANCE_INGEST_TOKEN }}
+          DEMO_API_URL: https://demo.aevum.build
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          MERGED_BY: ${{ github.event.pull_request.merged_by.login }}
+          ACTOR: ${{ github.actor }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          if [ -z "$MAINTENANCE_INGEST_TOKEN" ]; then
+            echo "MAINTENANCE_INGEST_TOKEN not set — skipping ingest"
+            exit 0
+          fi
+
+          python3 - <<'PYEOF' > /tmp/governance_payload.json
+          import json, os
+
+          MAX_TITLE = 200
+          pr_number = os.environ["PR_NUMBER"]
+          title = os.environ.get("PR_TITLE", "")
+          truncated = len(title) > MAX_TITLE
+          title_safe = title[:MAX_TITLE] + ("…" if truncated else "")
+          merged_by = os.environ.get("MERGED_BY") or os.environ.get("ACTOR") or "unknown"
+
+          payload = {
+              "pr_number": int(pr_number),
+              "pr_title": title_safe,
+              "pr_title_truncated": truncated,
+              "merged_by": merged_by,
+              "base_ref": os.environ.get("BASE_REF", ""),
+              "head_ref": os.environ.get("HEAD_REF", ""),
+              "merge_sha": os.environ.get("MERGE_SHA", ""),
+              "summary": f"PR #{pr_number} merged by {merged_by}",
+          }
+          body = {
+              "session_id": f"pr-{pr_number}",
+              "entries": [{
+                  "action": "governance.pr_merged",
+                  "resource": "aevum-labs/aevum",
+                  "principal": merged_by,
+                  "payload": payload,
+              }],
+          }
+          print(json.dumps(body))
+          PYEOF
+
+          curl -sf \
+            -X POST "${DEMO_API_URL}/v1/maintenance/ingest" \
+            -H "Authorization: Bearer ${MAINTENANCE_INGEST_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/governance_payload.json \
+            && echo "✅ governance.pr_merged ingested to production sigchain" \
+            || echo "⚠️  Ingest failed (non-blocking)"

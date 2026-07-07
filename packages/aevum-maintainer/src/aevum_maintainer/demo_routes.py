@@ -239,6 +239,12 @@ def make_demo_router(get_engine: Callable[[], Engine]) -> APIRouter:
             elif sid.startswith("example-"):
                 session_type = "example"
                 type_label = "Example"
+            elif sid.startswith("pr-"):
+                session_type = "governance"
+                type_label = "Governance"
+            elif sid.startswith("release-"):
+                session_type = "governance"
+                type_label = "Release"
             else:
                 session_type = "system"
                 type_label = "System"
