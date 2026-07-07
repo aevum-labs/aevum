@@ -518,8 +518,10 @@ class Engine:
         method's signature; only commitment_key_id does (HO-G-PLUMB SR1).
 
         Returns:
-            OutputEnvelope — status "ok" with the signed AuditEvent audit_id in data,
-            or "error" if the ledger write failed. Never raises on policy denial.
+            OutputEnvelope — status "ok" with the signed AuditEvent's audit_id in
+            envelope.audit_id (not envelope.data, which only carries
+            {"committed": True, "event_type": ...}), or "error" if the ledger
+            write failed. Never raises on policy denial.
         """
         return _commit(
             event_type=event_type, payload=payload, actor=actor,
@@ -567,6 +569,33 @@ class Engine:
             episode_id=episode_id, correlation_id=correlation_id,
             model_context=model_context,
         )
+
+    def restore_events(self, events: list[AuditEvent]) -> None:
+        """Re-hydrate already-signed historical events without re-signing
+        them. Only supported by ledger backends that implement
+        restore_events() themselves (e.g. InMemoryLedger). Raises
+        NotImplementedError otherwise -- fails loud rather than silently
+        doing nothing, since a silent no-op here would look like success
+        while leaving every restored event unsigned/missing."""
+        restore = getattr(self._ledger, "restore_events", None)
+        if restore is None:
+            raise NotImplementedError(
+                f"{type(self._ledger).__name__} does not support "
+                "restore_events()"
+            )
+        restore(events)
+
+    def get_last_committed_event(self) -> AuditEvent | None:
+        """Return the AuditEvent most recently written via commit(), or
+        None if the ledger is empty. Use this instead of
+        get_ledger_entries()[-1] or envelope.data after commit() --
+        OutputEnvelope.data does not carry audit_id despite what its
+        previous docstring claimed (verified empirically; the docstring
+        has since been corrected)."""
+        audit_id = self._ledger.last_audit_id()
+        if audit_id is None:
+            return None
+        return self._ledger.get(audit_id)
 
     def record_capture_gap(
         self,

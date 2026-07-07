@@ -15,6 +15,8 @@ can distinguish genuine human review from rubber-stamp approvals.
 POST /v1/ingest/scan-results receives OIDC-verified scan results from GitHub
 Actions and records them as governed ingest operations in the sigchain.
 """
+import base64
+import dataclasses
 import datetime
 import hashlib
 import hmac
@@ -36,9 +38,15 @@ except _PNF:
 
 import httpx
 import jwt
+from aevum.core.audit.event import AuditEvent
+from aevum.core.audit.ledger import InMemoryLedger
 from aevum.core.audit.rekor_anchor import RekorAnchor
+from aevum.core.audit.sigchain import Sigchain
+from aevum.core.audit.signer import InProcessSigner
 from aevum.core.consent.models import ConsentGrant
 from aevum.core.engine import Engine
+from aevum.core.functions.commit import commit as _sign_ledger_event
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -234,6 +242,12 @@ class _MaintenanceStore:
         self._db_path = db_path
         conn = self._connect()
         conn.execute(self._CREATE)
+        # CREATE TABLE IF NOT EXISTS is a no-op against a table that already
+        # exists on disk from before this column was introduced -- migrate it
+        # explicitly so upgrading in place doesn't crash on "no such column".
+        existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(maintenance_entries)")}
+        if "signed_event_json" not in existing_cols:
+            conn.execute("ALTER TABLE maintenance_entries ADD COLUMN signed_event_json TEXT")
         conn.commit()
         conn.close()
 
@@ -255,18 +269,49 @@ class _MaintenanceStore:
     def all(self) -> list[dict[str, Any]]:
         conn = self._connect()
         rows = conn.execute(
-            "SELECT session_id, action, principal, payload FROM maintenance_entries ORDER BY id"
+            "SELECT id, session_id, action, principal, payload, signed_event_json"
+            " FROM maintenance_entries ORDER BY id"
         ).fetchall()
         conn.close()
         return [
             {
+                "id": r["id"],
                 "session_id": r["session_id"],
                 "action": r["action"],
                 "principal": r["principal"],
                 "payload": json.loads(r["payload"]),
+                "signed_event_json": r["signed_event_json"],
             }
             for r in rows
         ]
+
+    def set_signed_event(self, *, row_id: int, signed_event_json: str) -> None:
+        conn = self._connect()
+        conn.execute(
+            "UPDATE maintenance_entries SET signed_event_json = ? WHERE id = ?",
+            (signed_event_json, row_id),
+        )
+        conn.commit()
+        conn.close()
+
+
+def _event_to_json(event: AuditEvent) -> str:
+    """Serialize a signed AuditEvent for storage. Every field except
+    receipt_cbor is already JSON-safe str/int/None; receipt_cbor (bytes |
+    None) is base64-encoded when present so this round-trips even though
+    no ingest path in this project populates it today."""
+    d = dataclasses.asdict(event)
+    if d.get("receipt_cbor") is not None:
+        d["receipt_cbor"] = base64.b64encode(d["receipt_cbor"]).decode("ascii")
+        d["_receipt_cbor_b64"] = True
+    return json.dumps(d)
+
+
+def _event_from_json(s: str) -> AuditEvent:
+    d = json.loads(s)
+    if d.pop("_receipt_cbor_b64", False):
+        d["receipt_cbor"] = base64.b64decode(d["receipt_cbor"])
+    return AuditEvent(**d)
 
 
 _EXAMPLE_SESSION_ID = "example-fund-transfer-review"
@@ -307,8 +352,31 @@ def _seed_example_session(store: _MaintenanceStore) -> None:
 
 def create_app(engine: Engine | None = None) -> FastAPI:
     """Create the maintainer FastAPI application."""
-    _engine = engine or Engine()
+    _log = logging.getLogger(__name__)
     app = FastAPI(title="Aevum Maintainer", version=_MAINTAINER_VERSION)
+
+    _signing_key_b64 = os.environ.get("AEVUM_MAINTAINER_SIGNING_KEY")
+    _custom_sigchain: Sigchain | None = None
+    if _signing_key_b64 and engine is None:
+        try:
+            _raw_key = base64.b64decode(_signing_key_b64)
+            _private_key = Ed25519PrivateKey.from_private_bytes(_raw_key)
+            _signer = InProcessSigner(private_key=_private_key)
+            _custom_sigchain = Sigchain(signer=_signer)
+            _log.info("Loaded persistent signing key from AEVUM_MAINTAINER_SIGNING_KEY")
+        except Exception:
+            _log.exception(
+                "AEVUM_MAINTAINER_SIGNING_KEY set but invalid -- refusing to "
+                "start with an unusable key rather than silently falling "
+                "back to an ephemeral one"
+            )
+            raise
+    elif engine is None:
+        _log.warning(
+            "AEVUM_MAINTAINER_SIGNING_KEY not set -- using an EPHEMERAL "
+            "signing key. All signatures will become unverifiable on the "
+            "next restart. Expected in dev/test only."
+        )
 
     # Initialise SQLite persistence for maintenance entries.
     # AEVUM_DB_PATH is set by fly.toml to /data/aevum_maintainer.db (Fly volume).
@@ -317,26 +385,94 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     _store: _MaintenanceStore | None = (
         _MaintenanceStore(_db_path) if _db_path else None
     )
-    if _store:
-        _log = logging.getLogger(__name__)
+    if engine is not None:
+        _engine = engine
+    elif _store is None:
+        _engine = Engine(sigchain=_custom_sigchain)
+    else:
         # Seed the illustrative example session for a real on-disk store only
         # (never :memory: — keeps the unit-test suite pristine).
         if _db_path and _db_path != ":memory:":
             _seed_example_session(_store)
-        replayed = 0
-        for entry in _store.all():
-            try:
-                _engine.commit(
-                    event_type=entry["action"],
-                    payload=entry["payload"],
-                    actor=entry["principal"],
-                    episode_id=entry["session_id"],
-                )
-                replayed += 1
-            except Exception as exc:
-                _log.warning("Skipping persisted entry during replay: %s", exc)
-        if replayed:
-            _log.info("Replayed %d maintenance entries from %s", replayed, _db_path)
+
+        if _custom_sigchain is None:
+            # No persistent key configured: signatures are already
+            # unverifiable across restarts regardless of what we do here
+            # (each boot gets a fresh ephemeral key), so restoring a
+            # previous boot's signed_event_json would sign events under a
+            # key this boot no longer holds and break verify_chain()
+            # immediately. Preserve the existing behavior exactly: re-sign
+            # every persisted entry fresh, every boot.
+            _engine = Engine()
+            replayed = 0
+            for entry in _store.all():
+                try:
+                    _engine.commit(
+                        event_type=entry["action"],
+                        payload=entry["payload"],
+                        actor=entry["principal"],
+                        episode_id=entry["session_id"],
+                    )
+                    replayed += 1
+                except Exception as exc:
+                    _log.warning("Skipping persisted entry during replay: %s", exc)
+            if replayed:
+                _log.info("Replayed %d maintenance entries from %s", replayed, _db_path)
+        else:
+            # Persistent key configured: replay onto a ledger that is not
+            # yet attached to an Engine. Engine.__init__ unconditionally
+            # appends a session.start event as soon as it is constructed,
+            # so restoring history afterward would strand already-signed
+            # entries behind a session.start claiming sequence 1 and break
+            # prior_hash continuity. Building the ledger here and handing
+            # it to Engine's sigchain=/ledger= constructor arguments lets
+            # Engine's own session.start correctly continue the restored
+            # chain instead of colliding with it.
+            _replay_ledger = InMemoryLedger(_custom_sigchain)
+            replayed = 0
+            for entry in _store.all():
+                signed_json = entry.get("signed_event_json")
+                if signed_json:
+                    try:
+                        _replay_ledger.restore_events([_event_from_json(signed_json)])
+                        replayed += 1
+                        continue
+                    except Exception as exc:
+                        _log.warning(
+                            "Corrupt signed_event_json for row %s, re-signing: %s",
+                            entry["id"], exc,
+                        )
+                # No valid signed event yet (freshly seeded row, e.g. the
+                # example session, or a corrupt one) -- sign it exactly
+                # once, then persist the result so this branch is never
+                # hit again for this specific row, across all future
+                # restarts.
+                try:
+                    envelope = _sign_ledger_event(
+                        event_type=entry["action"],
+                        payload=entry["payload"],
+                        actor=entry["principal"],
+                        episode_id=entry["session_id"],
+                        ledger=_replay_ledger,
+                    )
+                    # Persist whatever was actually appended -- ok, error
+                    # (e.g. reserved_event_type), or crisis all still write
+                    # a real AuditEvent via ledger.append() inside commit().
+                    # Freezing that outcome is what makes this row stable
+                    # across future restarts; gating on status=="ok" would
+                    # leave error-outcome rows re-signing (and
+                    # re-timestamping) on every restart.
+                    signed_event = _replay_ledger.get(envelope.audit_id)
+                    _store.set_signed_event(
+                        row_id=entry["id"],
+                        signed_event_json=_event_to_json(signed_event),
+                    )
+                    replayed += 1
+                except Exception as exc:
+                    _log.warning("Skipping unreplayable entry %s: %s", entry["id"], exc)
+            if replayed:
+                _log.info("Replayed %d maintenance entries from %s", replayed, _db_path)
+            _engine = Engine(sigchain=_custom_sigchain, ledger=_replay_ledger)
 
     # Register slowapi rate limiting.
     app.state.limiter = limiter

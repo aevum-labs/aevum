@@ -100,6 +100,24 @@ class InMemoryLedger:
         with self._lock:
             return len(self._events)
 
+    def restore_events(self, events: list[AuditEvent]) -> None:
+        """
+        Re-hydrate already-signed events from persisted storage without
+        re-signing them. Mirrors PostgresLedger._resume_chain_from_db() --
+        never calls new_event(); never re-derives valid_from, system_time,
+        signature, or hash. Call once at startup, before serving requests,
+        with events in original commit order.
+        """
+        if not events:
+            return
+        with self._lock:
+            for e in events:
+                self._events.append(e)
+                self._index[e.audit_id()] = e
+            last = events[-1]
+            continuation_hash = AuditEvent.hash_event_for_chain(last)
+            self._sigchain.restore((last.sequence, continuation_hash))
+
     def last_audit_id(self) -> str | None:
         all_ev = self.all_events()
         if not all_ev:
