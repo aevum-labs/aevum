@@ -39,4 +39,4 @@ jobs:
           fi
           ENCODED=$(echo "$PYSCRIPT" | base64 -w0)
           flyctl ssh console -a aevum-maintainer \
-            -C "echo $ENCODED | base64 -d | python3 -u -"
+            -C "python3 -c \"import base64; exec(base64.b64decode('$ENCODED').decode())\""
