@@ -22,11 +22,19 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$MODE" = "DELETE" ]; then
-            flyctl ssh console -a aevum-maintainer \
-              -C "sqlite3 /data/aevum_maintainer.db 'DELETE FROM maintenance_entries;'"
-            echo "Wiped."
+            PYSCRIPT='import sqlite3
+          c = sqlite3.connect("/data/aevum_maintainer.db")
+          c.execute("DELETE FROM maintenance_entries")
+          c.commit()
+          print("wiped rows:", c.total_changes)
+          c.close()'
           else
-            flyctl ssh console -a aevum-maintainer \
-              -C "sqlite3 /data/aevum_maintainer.db 'SELECT COUNT(*) FROM maintenance_entries;'"
-            echo "DRYRUN only -- nothing deleted. Re-run with mode=DELETE."
+            PYSCRIPT='import sqlite3
+          c = sqlite3.connect("/data/aevum_maintainer.db")
+          n = c.execute("SELECT COUNT(*) FROM maintenance_entries").fetchone()[0]
+          print("row count (dryrun, nothing changed):", n)
+          c.close()'
           fi
+          ENCODED=$(echo "$PYSCRIPT" | base64 -w0)
+          flyctl ssh console -a aevum-maintainer \
+            -C "echo $ENCODED | base64 -d | python3 -"
