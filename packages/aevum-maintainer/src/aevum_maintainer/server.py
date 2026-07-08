@@ -329,11 +329,11 @@ def _seed_example_session(store: _MaintenanceStore) -> None:
         return
     note = "Illustrative example — synthetic data, not a real event."
     entries: list[tuple[str, str, dict[str, Any]]] = [
-        ("agent.action_requested", "demo-agent",
+        ("app.action_requested", "demo-agent",
          {"action": "fund_transfer", "amount_usd": 25000,
           "beneficiary": "newly added", "subject": "ACME-3318", "note": note,
           "summary": "Agent requested a $25,000 wire to a newly added beneficiary"}),
-        ("policy.evaluated", "demo-agent",
+        ("app.policy_evaluated", "demo-agent",
          {"classification_ceiling": "ALLOW", "provenance": "ALLOW", "note": note,
           "summary": "Policy evaluation allowed on classification and provenance"}),
         ("consent.review_requested", "demo-agent",
