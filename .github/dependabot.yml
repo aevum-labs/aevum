@@ -13,3 +13,11 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 3
+
+  # Docker base images — FROM lines are digest-pinned; Dependabot bumps the
+  # digest (keeping the tag) so pinned images still receive upstream patches.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
