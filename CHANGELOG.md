@@ -8,6 +8,15 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Removed
+
+- **`wipe-maintenance-history.yml` GitHub Actions workflow.** This gated,
+  one-time workflow existed only to correct the `example-fund-transfer-review`
+  illustrative session's seeded rows in production after the event-type and
+  `payload_summary` fixes above. Its job is done — the session has been
+  wiped and re-seeded with the corrected data — so the workflow is removed
+  rather than left as standing production-database-mutation tooling.
+
 ### Fixed
 
 - **`aevum-maintainer` example session event types collided with kernel-reserved
