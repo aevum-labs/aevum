@@ -8,6 +8,18 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`aevum-maintainer` example session `payload_summary` was empty.** The
+  seeded illustrative session (`example-fund-transfer-review`) carried a
+  `note` key on each entry but not the `summary` key `demo_routes.py` reads
+  for the compliance view's `payload_summary` field. Added a short `summary`
+  to all 5 seeded entries.
+- **`wipe-maintenance-history` workflow can now scope to one `session_id`.**
+  Added an optional `session_id` input so the gated wipe/dryrun workflow can
+  target a single session's rows instead of always operating on the whole
+  `maintenance_entries` table. Uses parameterized SQL for the scoped query.
+
 ## [0.9.0] — 2026-06-21
 
 ### Added
