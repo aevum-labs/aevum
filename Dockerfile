@@ -1,6 +1,6 @@
 # Build: 2026-06-02-force
 # ── Stage 1: Build React / Vite frontend ─────────────────────────────────────
-FROM node:20-slim AS frontend-builder
+FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS frontend-builder
 WORKDIR /demo
 
 COPY demo/package.json demo/package-lock.json ./
@@ -15,7 +15,7 @@ RUN npm run build
 # Output: /demo/dist/
 
 # ── Stage 2: FastAPI server ───────────────────────────────────────────────────
-FROM python:3.12-slim AS app
+FROM python:3.12-slim@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf AS app
 WORKDIR /app
 
 # Install uv
