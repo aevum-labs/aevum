@@ -393,3 +393,23 @@ def test_sessions_labels_release_session_as_governance(
     assert "release-v0.8.0" in sessions
     assert sessions["release-v0.8.0"]["session_type"] == "governance"
     assert "Release" in sessions["release-v0.8.0"]["label"]
+
+
+def test_ingest_auth_uses_constant_time_comparison() -> None:
+    """Both bearer-token checks (OIDC scan + maintenance ingest) must use
+    hmac.compare_digest — never a raw == / != on the secret. Timing-safe by
+    construction; this guards against regression to a plain comparison."""
+    from pathlib import Path
+
+    import aevum_maintainer.server as server_mod
+
+    source = Path(server_mod.__file__).read_text()
+    assert source.count("hmac.compare_digest(") >= 2, (
+        "expected >=2 hmac.compare_digest call sites (OIDC scan + maintenance ingest)"
+    )
+    assert "!= expected_token" not in source, (
+        "raw '!= expected_token' found — use hmac.compare_digest (timing-safe)"
+    )
+    assert "== expected_token" not in source, (
+        "raw '== expected_token' found — use hmac.compare_digest (timing-safe)"
+    )

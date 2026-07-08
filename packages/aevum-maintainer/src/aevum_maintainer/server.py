@@ -831,7 +831,12 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             )
 
         auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer ") or auth_header[7:] != expected_token:
+        provided_token = (
+            auth_header.removeprefix("Bearer ")
+            if auth_header.startswith("Bearer ")
+            else ""
+        )
+        if not hmac.compare_digest(provided_token, expected_token):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or missing bearer token",
