@@ -10,6 +10,14 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ### Fixed
 
+- **`aevum-maintainer` example session event types collided with kernel-reserved
+  prefixes.** The seeded illustrative session (`example-fund-transfer-review`)
+  used `agent.action_requested` and `policy.evaluated`, both of which fall
+  under `commit.py`'s `_RESERVED_PREFIXES` (`agent.`, `policy.`) — prefixes
+  the kernel reserves so application code cannot forge kernel-asserted event
+  types. Renamed to `app.action_requested` and `app.policy_evaluated`, which
+  live in the explicitly-writable `app.` namespace. Payload content and the
+  other three event types are unchanged.
 - **`aevum-maintainer` example session `payload_summary` was empty.** The
   seeded illustrative session (`example-fund-transfer-review`) carried a
   `note` key on each entry but not the `summary` key `demo_routes.py` reads
