@@ -8,6 +8,10 @@ on:
         default: "dryrun"
         type: choice
         options: [dryrun, DELETE]
+      session_id:
+        description: "Optional: scope to one session_id. Leave blank to wipe all (original behavior)."
+        required: false
+        default: ""
 permissions: { contents: read }
 jobs:
   wipe:
@@ -19,23 +23,44 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           MODE: ${{ inputs.mode }}
+          SESSION_ID: ${{ inputs.session_id }}
         run: |
           set -euo pipefail
+          SESSION_ID_LITERAL=$(python3 -c "import json,os; print(json.dumps(os.environ.get('SESSION_ID', '')))")
           if [ "$MODE" = "DELETE" ]; then
-            PYSCRIPT='import sqlite3
+            if [ -n "$SESSION_ID" ]; then
+              PYSCRIPT="import sqlite3
+          c = sqlite3.connect(\"/data/aevum_maintainer.db\")
+          c.execute(\"DELETE FROM maintenance_entries WHERE session_id = ?\", ($SESSION_ID_LITERAL,))
+          c.commit()
+          print(\"wiped rows:\", c.total_changes, flush=True)
+          import sys; print(\"wiped rows:\", c.total_changes, file=sys.stderr, flush=True)
+          c.close()"
+            else
+              PYSCRIPT='import sqlite3
           c = sqlite3.connect("/data/aevum_maintainer.db")
           c.execute("DELETE FROM maintenance_entries")
           c.commit()
           print("wiped rows:", c.total_changes, flush=True)
           import sys; print("wiped rows:", c.total_changes, file=sys.stderr, flush=True)
           c.close()'
+            fi
           else
-            PYSCRIPT='import sqlite3
+            if [ -n "$SESSION_ID" ]; then
+              PYSCRIPT="import sqlite3
+          c = sqlite3.connect(\"/data/aevum_maintainer.db\")
+          n = c.execute(\"SELECT COUNT(*) FROM maintenance_entries WHERE session_id = ?\", ($SESSION_ID_LITERAL,)).fetchone()[0]
+          print(\"row count (dryrun, nothing changed):\", n, flush=True)
+          import sys; print(\"row count (dryrun, nothing changed):\", n, file=sys.stderr, flush=True)
+          c.close()"
+            else
+              PYSCRIPT='import sqlite3
           c = sqlite3.connect("/data/aevum_maintainer.db")
           n = c.execute("SELECT COUNT(*) FROM maintenance_entries").fetchone()[0]
           print("row count (dryrun, nothing changed):", n, flush=True)
           import sys; print("row count (dryrun, nothing changed):", n, file=sys.stderr, flush=True)
           c.close()'
+            fi
           fi
           ENCODED=$(echo "$PYSCRIPT" | base64 -w0)
           flyctl ssh console -a aevum-maintainer \

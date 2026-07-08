@@ -331,15 +331,20 @@ def _seed_example_session(store: _MaintenanceStore) -> None:
     entries: list[tuple[str, str, dict[str, Any]]] = [
         ("agent.action_requested", "demo-agent",
          {"action": "fund_transfer", "amount_usd": 25000,
-          "beneficiary": "newly added", "subject": "ACME-3318", "note": note}),
+          "beneficiary": "newly added", "subject": "ACME-3318", "note": note,
+          "summary": "Agent requested a $25,000 wire to a newly added beneficiary"}),
         ("policy.evaluated", "demo-agent",
-         {"classification_ceiling": "ALLOW", "provenance": "ALLOW", "note": note}),
+         {"classification_ceiling": "ALLOW", "provenance": "ALLOW", "note": note,
+          "summary": "Policy evaluation allowed on classification and provenance"}),
         ("consent.review_requested", "demo-agent",
-         {"reason": "wire above $10k to a newly added beneficiary", "note": note}),
+         {"reason": "wire above $10k to a newly added beneficiary", "note": note,
+          "summary": "Human review requested: wire above $10k to a newly added beneficiary"}),
         ("consent.approved", "compliance-reviewer",
-         {"decision": "approve", "handoff": "HUMAN_OVERRIDE", "note": note}),
+         {"decision": "approve", "handoff": "HUMAN_OVERRIDE", "note": note,
+          "summary": "Compliance reviewer approved the transfer via human override"}),
         ("tool.executed", "demo-agent",
-         {"outcome": "wire submitted", "note": note}),
+         {"outcome": "wire submitted", "note": note,
+          "summary": "Wire transfer tool executed; wire submitted"}),
     ]
     for action, principal, payload in entries:
         store.add(
