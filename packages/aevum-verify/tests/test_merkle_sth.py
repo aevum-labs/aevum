@@ -51,6 +51,60 @@ class TestMerkleIndependence:
                     f"{source_path.name}: from {module} import ... found — independence violated"
                 )
 
+    @staticmethod
+    def _assert_no_dynamic_import(source_path: Path) -> None:
+        """Assert source_path uses no dynamic-import or code-exec primitive.
+
+        The static import guard above only sees `import` / `from ... import`
+        statements. A dynamic import (importlib.import_module, __import__) or
+        exec/eval could pull in aevum.core / aevum.publish at runtime and evade
+        it. The verifier has no legitimate need for any of these, so their mere
+        presence in verify source is a violation.
+        """
+        tree = ast.parse(source_path.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    assert alias.name.split(".")[0] != "importlib", (
+                        f"{source_path.name}: import {alias.name} — dynamic import primitive"
+                    )
+            elif isinstance(node, ast.ImportFrom):
+                root = (node.module or "").split(".")[0]
+                assert root != "importlib", (
+                    f"{source_path.name}: from {node.module} import ... — dynamic import primitive"
+                )
+            elif isinstance(node, ast.Call):
+                func = node.func
+                if isinstance(func, ast.Name):
+                    assert func.id not in ("__import__", "exec", "eval"), (
+                        f"{source_path.name}: {func.id}() call — code-exec primitive"
+                    )
+                elif isinstance(func, ast.Attribute):
+                    assert func.attr != "import_module", (
+                        f"{source_path.name}: import_module() call — dynamic import primitive"
+                    )
+
+    def test_ast_no_forbidden_import_in_all_verify_files(self) -> None:
+        """Independence guard over EVERY file in the verify package, not just
+        _core.py / _format.py. __init__.py and __main__.py were previously
+        unguarded; a forbidden import added there would have gone undetected.
+
+        Files are discovered at runtime from the package dir (rglob), so any
+        file added later is covered automatically. Also rejects dynamic-import
+        primitives the static import check cannot see.
+        """
+        import aevum.verify._core as _core_mod
+
+        pkg_dir = Path(_core_mod.__file__).parent  # type: ignore[arg-type]
+        py_files = sorted(pkg_dir.rglob("*.py"))
+        assert len(py_files) >= 3, (
+            f"expected multiple .py files in the verify package, found "
+            f"{[p.name for p in py_files]} — glob may be wrong"
+        )
+        for src in py_files:
+            self._assert_no_aevum_core_import(src)
+            self._assert_no_dynamic_import(src)
+
     def test_ast_no_aevum_core_import_in_core(self) -> None:
         """AST-level check: no import statement in _core.py names any aevum.core module.
 
