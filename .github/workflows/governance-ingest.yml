@@ -3,11 +3,13 @@ name: governance-ingest
 # Step 2 of the governance-ingest work. Replaces governance-ingest-observe.yml.
 #
 # Step 1 confirmed: merged_by.login/type populate reliably for a human merge,
-# and GITHUB_TOKEN-driven merges (Dependabot via auto-merge.yml) cannot
-# trigger this workflow at all — GitHub's loop-prevention rule blocks
-# GITHUB_TOKEN-triggered `pull_request: closed` events from starting new
-# workflow runs. So every run here is, by construction, a human-initiated
-# merge. No bot-vs-human filtering needed.
+# and GITHUB_TOKEN-driven merges cannot trigger this workflow at all —
+# GitHub's loop-prevention rule blocks GITHUB_TOKEN-triggered
+# `pull_request: closed` events from starting new workflow runs. This is
+# also why repo auto-merge is not enabled and auto-merge.yml was removed:
+# either would land commits on main with no governance.pr_merged entry.
+# So every run here is, by construction, a human-initiated merge. No
+# bot-vs-human filtering needed.
 #
 # Ingests one governance.pr_merged entry per human-merged PR. Non-blocking:
 # a failed ingest never fails the merge. PR title is untrusted input — bound
