@@ -21,3 +21,9 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 3
+    # Stay on the pinned tags (node 20-slim / python 3.12-slim / this uv version);
+    # only accept digest refreshes and patch bumps. Major/minor base-image upgrades
+    # are deliberate, not bot-driven.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
