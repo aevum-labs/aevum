@@ -69,7 +69,7 @@ jobs:
         # release.yml generates sbom-{version}.json. This bridges the gap.
 
       - name: Attest SBOM
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2  # v2.2.3
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4.1.1
         with:
           subject-path: sbom-${{ env.RELEASE_TAG }}.json
 
