@@ -7,9 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to (re)publish, e.g. v0.8.0 (publishes only packages not already on PyPI via skip-existing)"
+        # NOTE: this input only LABELS the SBOM/attestation filenames. It does NOT select the
+        # source that gets built — actions/checkout uses the ref you dispatch from. To (re)publish
+        # a specific version, dispatch this workflow FROM THAT TAG, not from main.
+        description: "Tag label, e.g. v0.9.0. Dispatch FROM the matching tag — this does not pick the source."
         required: true
         type: string
+      dry_run:
+        description: "Validation run: build, SBOM, attest and upload, but publish NOTHING to PyPI."
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   build-and-publish:
@@ -112,6 +120,9 @@ jobs:
           fi
 
       - name: Publish to PyPI (Trusted Publishing — no API key)
+        # Tag pushes always publish (inputs.dry_run is null there, short-circuited by the first
+        # clause). A manual dispatch publishes only when dry_run is explicitly false.
+        if: github.event_name == 'push' || inputs.dry_run != true
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # release/v1
         with:
           packages-dir: dist/
