@@ -43,7 +43,7 @@ jobs:
 
       - name: Install build tools
         run: |
-          pip install "hatchling>=1.21" "build>=1.0" "cyclonedx-bom>=4.0"
+          pip install "hatchling>=1.21" "build>=1.0" "cyclonedx-bom==7.3.0"
 
       - name: Build all packages
         run: |
@@ -55,13 +55,16 @@ jobs:
           echo "Built packages:"
           ls dist/
 
-      - name: Generate SBOM (CycloneDX JSON)
+      - name: Remove private packages from dist
         run: |
-          pip install "aevum-core" --find-links dist/ || true
-          cyclonedx-py environment \
-            --output-format json \
-            --output-file "sbom-$RELEASE_TAG.json"
-          echo "SBOM generated: $(wc -l < "sbom-$RELEASE_TAG.json") lines"
+          rm -f dist/aevum_maintainer-*.whl dist/aevum_maintainer-*.tar.gz
+
+      - name: Generate SBOM (CycloneDX JSON)
+        run: python scripts/generate_sbom.py --output "sbom-$RELEASE_TAG.json"
+
+      - name: Verify SBOM contents
+        # Gate: a wrong SBOM must never reach actions/attest.
+        run: python scripts/verify_sbom.py "sbom-$RELEASE_TAG.json"
 
       - name: Copy SBOM for compliance pack
         run: cp "sbom-$RELEASE_TAG.json" sbom.json
@@ -79,10 +82,6 @@ jobs:
           name: sbom
           path: sbom-${{ env.RELEASE_TAG }}.json
           retention-days: 90
-
-      - name: Remove private packages from dist
-        run: |
-          rm -f dist/aevum_maintainer-*.whl dist/aevum_maintainer-*.tar.gz
 
       - name: Verify PyPI registration
         run: |
