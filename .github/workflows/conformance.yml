@@ -1,13 +1,23 @@
 name: Conformance
 
+# This workflow deliberately has NO trigger-level `paths:` filter. A path-filtered
+# workflow never reports a status on PRs it skips, which leaves a REQUIRED check
+# "Pending" and blocks the PR forever. See GitHub docs, "Troubleshooting required
+# status checks". Instead the job always runs, and the expensive steps are
+# conditionally skipped — a skipped step still lets the job report Success.
+#
+# The job name "Conformance suite" is the required-check name. Do not rename it.
+
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "packages/aevum-core/**"
 
 permissions:
   contents: read
+
+concurrency:
+  group: conformance-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   conformance:
@@ -16,13 +26,38 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Detect aevum-core change
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          echo "Changed files:"
+          echo "$changed"
+          if echo "$changed" | grep -qE '^(packages/aevum-core/|\.github/workflows/conformance\.yml$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::aevum-core (or this workflow) changed — running conformance suite."
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No aevum-core change — skipping suite; job reports success."
+          fi
+
       - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081  # v5
+        if: steps.detect.outputs.run == 'true'
         with:
           version: "latest"
+
       - name: Install dependencies
+        if: steps.detect.outputs.run == 'true'
         run: uv sync --frozen
+
       - name: Run canary tests (Barriers 1 3 4 5)
+        if: steps.detect.outputs.run == 'true'
         run: uv run pytest packages/aevum-core/tests/test_canary.py -v --tb=short
       # Full aevum-labs/conform@v0 action runs once the action is tagged.
       # When conform@v0 is tagged, replace the step above with:
