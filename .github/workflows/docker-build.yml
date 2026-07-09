@@ -1,18 +1,20 @@
 name: docker-build
 
-# Builds the container image on any PR that touches the Dockerfile, so a
-# base-image change — including Dependabot digest/version bumps — is proven to
-# build BEFORE it can reach main and trigger a Fly deploy. deploy-api.yml only
-# builds on push-to-main (via flyctl deploy); this closes that gap at PR time.
+# Builds the container image on PRs that touch the Dockerfile, so a base-image
+# change — including Dependabot digest bumps — is proven to build BEFORE it can
+# reach main and trigger a Fly deploy (deploy-api.yml only builds on push-to-main).
 #
-# This workflow's own path is in the filter so edits to it re-run the build
-# (self-validating). Merging a workflow-only change does not redeploy.
+# This workflow deliberately has NO trigger-level `paths:` filter. A path-filtered
+# workflow never reports a status on PRs it skips, which leaves a REQUIRED check
+# "Pending" and blocks the PR forever. See GitHub docs, "Troubleshooting required
+# status checks": path/branch filtering must not be used on a required workflow.
+# Instead the job always runs, and the expensive build STEP is conditionally
+# skipped — a skipped step still lets the job report Success.
+#
+# The job name "Docker image builds" is the required-check name. Do not rename it.
 
 on:
   pull_request:
-    paths:
-      - "Dockerfile"
-      - ".github/workflows/docker-build.yml"
 
 permissions:
   contents: read
@@ -28,6 +30,27 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Detect Dockerfile change
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          echo "Changed files:"
+          echo "$changed"
+          if echo "$changed" | grep -qxE 'Dockerfile|\.github/workflows/docker-build\.yml'; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Dockerfile (or this workflow) changed — building image."
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Dockerfile change — skipping build; job reports success."
+          fi
+
       - name: Build image (no push)
+        if: steps.detect.outputs.build == 'true'
         run: docker build -t "aevum-maintainer:pr-${{ github.event.pull_request.number }}" .
