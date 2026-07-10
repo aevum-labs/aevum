@@ -34,6 +34,8 @@ Thumbs.db
 # Verify scripts (run locally, never commit)
 verify_*.py
 scripts/verify_*.py
+# Exception: scripts/verify_sbom.py is a release-workflow gate, not a local dev script.
+!scripts/verify_sbom.py
 
 # Aevum development — never commit (Phase 0+)
 aevum_principles.key

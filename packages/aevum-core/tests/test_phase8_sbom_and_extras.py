@@ -5,6 +5,8 @@ Infrastructure tests for Phase 8: SBOM, extras, pyproject.toml, and workflow che
 """
 from __future__ import annotations
 
+import importlib.util
+import json
 from pathlib import Path
 
 
@@ -114,6 +116,33 @@ class TestReleaseWorkflow:
         content = Path(".github/workflows/release.yml").read_text()
         assert "upload-artifact" in content
 
+    def test_release_workflow_verifies_sbom_before_attesting(self) -> None:
+        content = Path(".github/workflows/release.yml").read_text()
+        verify_at = content.find("scripts/verify_sbom.py")
+        attest_at = content.find("actions/attest-build-provenance")
+        assert verify_at != -1, "release.yml no longer verifies the SBOM"
+        assert attest_at != -1
+        assert verify_at < attest_at, "SBOM is attested before it is verified"
+
+    def test_release_workflow_removes_private_before_sbom(self) -> None:
+        content = Path(".github/workflows/release.yml").read_text()
+        rm_at = content.find("Remove private packages from dist")
+        gen_at = content.find("scripts/generate_sbom.py")
+        assert rm_at != -1 and gen_at != -1
+        assert rm_at < gen_at, "private wheels are still in dist/ when the SBOM is built"
+
+    def test_release_workflow_pins_sbom_generator(self) -> None:
+        content = Path(".github/workflows/release.yml").read_text()
+        assert "cyclonedx-bom==" in content, "SBOM generator version must be pinned"
+
+    def test_release_workflow_has_no_masked_failures(self) -> None:
+        content = Path(".github/workflows/release.yml").read_text()
+        assert "|| true" not in content, "a masked failure can ship an empty SBOM"
+
+    def test_sbom_scripts_exist(self) -> None:
+        assert Path("scripts/generate_sbom.py").exists()
+        assert Path("scripts/verify_sbom.py").exists()
+
 
 class TestMkdocs:
     def test_mkdocs_yml_exists(self) -> None:
@@ -163,3 +192,18 @@ class TestCLIPackageStructure:
         """ConformanceSuite must be importable from aevum.cli.app for patching (Rule 57)."""
         import aevum.cli.app as cli_app
         assert hasattr(cli_app, "ConformanceSuite")
+
+
+class TestVerifySbomFailsClosed:
+    def _load_verify_sbom(self):
+        spec = importlib.util.spec_from_file_location("verify_sbom", "scripts/verify_sbom.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_verify_sbom_rejects_hand_broken_sbom(self, tmp_path: Path) -> None:
+        verify_sbom = self._load_verify_sbom()
+        broken = tmp_path / "broken.json"
+        broken.write_text(json.dumps({"metadata": {}, "components": []}))
+        rc = verify_sbom.main([str(broken), "--skip-digests"])
+        assert rc == 1
