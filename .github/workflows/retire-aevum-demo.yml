@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1  # v1
 
       - name: Show current state (dryrun always runs)
         env:
