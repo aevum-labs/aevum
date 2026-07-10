@@ -30,7 +30,7 @@ SUBJECT_TEMPLATE = """\
 [project]
 name = "{name}"
 version = "{version}"
-description = "Aevum release distribution: all published aevum-* packages and their runtime closure."
+description = "Aevum release distribution: published aevum-* packages and their runtime closure."
 license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = [

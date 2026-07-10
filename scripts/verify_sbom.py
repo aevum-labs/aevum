@@ -87,7 +87,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         if mc.get("version") != expected_version:
             errors.append(
-                f"metadata.component.version is {mc.get('version')!r}, expected {expected_version!r}"
+                f"metadata.component.version is {mc.get('version')!r}, "
+                f"expected {expected_version!r}"
             )
         if mc.get("purl"):
             errors.append(
