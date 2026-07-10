@@ -39,7 +39,7 @@ jobs:
         run: |
           [ -n "$FLY_API_TOKEN" ] && echo "FLY_API_TOKEN: set (len ${#FLY_API_TOKEN})" || echo "FLY_API_TOKEN: MISSING"
       - name: Install flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
+        uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1  # v1
       - name: Read-only Fly state, main token (NO mutations)
         continue-on-error: true
         env:
