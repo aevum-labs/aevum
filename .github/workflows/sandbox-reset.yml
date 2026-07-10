@@ -5,6 +5,8 @@ on:
     - cron: '0 0 * * *'   # midnight UTC
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   reset:
     runs-on: ubuntu-latest
