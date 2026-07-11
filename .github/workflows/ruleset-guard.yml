@@ -1,0 +1,34 @@
+name: Ruleset guard
+
+on:
+  # Runs on PRs that touch workflows or the guard, and weekly to catch UI-side drift
+  # (a matrix leg added or a check re-sourced in the ruleset editor produces no commit).
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - "scripts/check_ruleset.py"
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Ruleset drift guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Assert ruleset matches reality
+        run: |
+          pip install pyyaml --quiet
+          python scripts/check_ruleset.py --repo "${{ github.repository }}" --branch main
