@@ -180,4 +180,4 @@ jobs:
       - name: Run zizmor
         run: |
           pip install zizmor --quiet
-          zizmor --format sarif .github/workflows/ > zizmor.sarif 2>/dev/null || true
+          zizmor --offline --no-progress --min-severity high .github/workflows/
