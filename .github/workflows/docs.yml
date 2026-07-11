@@ -70,6 +70,8 @@ jobs:
         env:
           MAINTENANCE_INGEST_TOKEN: ${{ secrets.MAINTENANCE_INGEST_TOKEN }}
           DEMO_API_URL: https://demo.aevum.build
+          GH_RUN_ID: ${{ github.run_id }}
+          GH_REF_NAME: ${{ github.ref_name }}
         run: |
           if [ -z "$MAINTENANCE_INGEST_TOKEN" ]; then
             echo "MAINTENANCE_INGEST_TOKEN not set — skipping ingest"
@@ -85,16 +87,16 @@ jobs:
             -H "Authorization: Bearer ${MAINTENANCE_INGEST_TOKEN}" \
             -H "Content-Type: application/json" \
             -d "{
-              \"session_id\": \"docs-${{ github.run_id }}\",
+              \"session_id\": \"docs-${GH_RUN_ID}\",
               \"entries\": [
                 {
                   \"action\":    \"docs.published\",
                   \"resource\":  \"aevum.build\",
                   \"principal\": \"github_actions\",
                   \"payload\": {
-                    \"run_id\":  \"${{ github.run_id }}\",
+                    \"run_id\":  \"${GH_RUN_ID}\",
                     \"commit\":  \"${SHORT_SHA}\",
-                    \"ref\":     \"${{ github.ref_name }}\",
+                    \"ref\":     \"${GH_REF_NAME}\",
                     \"summary\": \"Documentation published at commit ${SHORT_SHA}\"
                   }
                 }
