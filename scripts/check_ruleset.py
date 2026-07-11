@@ -53,9 +53,10 @@ def check_names_from_workflows(workflows: pathlib.Path) -> set[str]:
                 continue
             for combo in itertools.product(*axes):
                 expanded = template
-                for k, v in zip(keys, combo):
+                for k, v in zip(keys, combo, strict=True):
                     expanded = MATRIX_REF.sub(
-                        lambda m, k=k, v=v: v if m.group(1) == k else m.group(0), expanded
+                        lambda m, k=k, v=v: v if m.group(1) == k else m.group(0),
+                        expanded,
                     )
                 names.add(expanded)
     return names
