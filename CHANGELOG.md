@@ -8,6 +8,21 @@ from v1.0.0 onward. Pre-1.0 versions may have breaking changes in any release.
 
 ## [Unreleased]
 
+### Added
+
+- **Ruleset drift guard (`scripts/check_ruleset.py`,
+  `.github/workflows/ruleset-guard.yml`).** Reads the public
+  `GET /repos/{owner}/{repo}/rules/branches/{branch}` endpoint and cross-checks
+  every `required_status_checks` entry on `main`'s ruleset against the job
+  names GitHub Actions actually produces from `.github/workflows/*.yml`.
+  Flags a required context that matches no workflow job (stays Pending
+  forever, forcing every merge to bypass the ruleset) and a required context
+  with no `integration_id` (any `statuses: write` credential, not only
+  GitHub Actions, can satisfy it — the default for hand-typed matrix-leg
+  contexts added through the ruleset UI). Runs on PRs touching workflows or
+  the guard itself, plus weekly for UI-only drift. Not itself a required
+  check yet — left as a follow-up decision.
+
 ### Removed
 
 - **`wipe-maintenance-history.yml` GitHub Actions workflow.** This gated,
